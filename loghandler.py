@@ -1,0 +1,156 @@
+import os
+
+from watchdog.events import FileSystemEventHandler
+
+import output
+
+
+class LogHandler(FileSystemEventHandler):
+    def __init__(self):
+        super().__init__()
+        self._file_list = dict()
+
+    def dump_state(self):
+        states = []
+        for files in self._file_list.values():
+            states.append(files.dump_state())
+        return states
+
+    def add_file(self, filename, pos=0, parsers=None, inode=None, dev=None, ctime=None, output=None):
+        self._file_list[filename] = FileHandler(filename, pos, parsers, inode, dev, ctime, output)
+        print(self._file_list[filename])
+
+    def match(self, event):
+        for filename in self._file_list:
+            if not event.is_directory and filename == event.src_path:
+                return self._file_list[filename]
+        return None
+
+    def on_deleted(self, event):
+        try:
+            self.match(event).on_deleted(event)
+        except Exception:
+            pass
+
+    def on_modified(self, event):
+        try:
+            self.match(event).on_modified(event)
+        except Exception:
+            pass
+
+    def on_moved(self, event):
+        try:
+            self.match(event).on_moved(event)
+        except Exception:
+            pass
+
+    def on_created(self, event):
+        try:
+            self.match(event).on_created(event)
+        except Exception:
+            pass
+
+
+class FileHandler:
+    def __init__(self, filename, pos=0, parsers=None, inode=None, dev=None, ctime=None, output=None):
+        self._pos = pos
+        self._path = filename
+        self._file = None
+        self._inode = None
+        self._dev = None
+        self._ctime = None
+        self._output = output
+        self._output_engine = None
+
+        self.line = ""
+        self._parsers = parsers
+        self._open_output()
+        self._open_file(inode, dev, ctime)
+
+    def __str__(self):
+        return "path: {}, pos: {},  output: {}".format(self._path, self._pos,self._output)
+
+    def _open_output(self):
+        print(self._output)
+        self._output_engine = output.factory(self._output)(self._output)
+        print(self._output_engine)
+        self._output_engine.connect()
+
+    def _open_file(self, inode=None, dev=None, ctime=None):
+        self._line = ''
+        try:
+            stat_info = os.stat(self._path)
+            self._inode = stat_info.st_ino
+            self._dev = stat_info.st_dev
+            self._ctime = stat_info.st_ctime
+            self._file = open(self._path, "r")
+
+            if inode == self._inode and dev == self._dev and ctime == self._ctime:
+                # we got the same file as before
+                # otherwise we start reading at 0, file may have been truncated or rotated
+                self._file.seek(self._pos)
+            self._read_contents()
+        except FileNotFoundError:
+            self._file = None
+            self._inode = None
+            self._dev = None
+            self._ctime = None
+
+    def dump_state(self):
+        return {"pos": self._pos, "path": self._path, 'inode': self._inode, 'device': self._dev, 'ctime': self._ctime}
+
+    def add_parser(self, parser):
+        self._parsers.append(parser)
+
+    def _match_line(self, line):
+        # print('aoueae : ' + line)
+        # print(self._parsers)
+        for p in self._parsers:
+            # print(p)
+            m = p.match(line)
+            if m:
+                print(self._output_engine)
+                self._output_engine.write(p.emit(m))
+
+    def _process_line(self, line):
+        if line[-1:] == "\n":
+            line = self.line + line
+            self.line = ''
+            self._match_line(line)
+            return True
+        else:
+            self.line += line
+            return False
+
+    def _read_contents(self):
+        while True:
+            line = self._file.readline()
+            if not line:
+                break
+            if self._process_line(line):
+                self._pos = self._file.tell()
+
+    def on_modified(self, event):
+        if not event.is_directory and self._path == event.src_path:
+            print('modified')
+            self._read_contents()
+
+    def on_deleted(self, event):
+        if not event.is_directory and self._path == event.src_path:
+            print('deleted')
+            self._read_contents()
+            self._file.close()
+            self.__init__(self._path, 0)
+
+    def on_moved(self, event):
+        if not event.is_directory and self._path == event.src_path:
+            print('moved')
+            self._read_contents()
+            self._file.close()
+            self.__init__(self._path, 0)
+
+    def on_created(self, event):
+        if not event.is_directory and self._path == event.src_path:
+            self._open_file()
+            self._read_contents()
+            print("created")

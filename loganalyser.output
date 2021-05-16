@@ -1,0 +1,10 @@
+[{
+    "name": "mongo",
+    "type": "mongo",
+    "database": "logs",
+    "collection": "logs"
+},
+{
+    "name": "stdout",
+    "type": "stdout"
+}]
