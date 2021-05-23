@@ -1,4 +1,5 @@
 import os
+import threading
 
 from watchdog.events import FileSystemEventHandler
 
@@ -16,8 +17,12 @@ class LogHandler(FileSystemEventHandler):
             states.append(files.dump_state())
         return states
 
-    def add_file(self, filename, pos=0, parsers=None, inode=None, dev=None, ctime=None, output=None):
-        self._file_list[filename] = FileHandler(filename, pos, parsers, inode, dev, ctime, output)
+    def flush_output(self):
+        for files in self._file_list.values():
+            files.flush_output()
+
+    def add_file(self, filename, pos=0, parsers=None, inode=None, dev=None, ctime=None, output=None, name=None):
+        self._file_list[filename] = FileHandler(filename, pos, parsers, inode, dev, ctime, output, name)
         print(self._file_list[filename])
 
     def match(self, event):
@@ -52,29 +57,34 @@ class LogHandler(FileSystemEventHandler):
 
 
 class FileHandler:
-    def __init__(self, filename, pos=0, parsers=None, inode=None, dev=None, ctime=None, output=None):
+    def __init__(self, filename, pos=0, parsers=None, inode=None, dev=None, ctime=None, output=None, name=None):
         self._pos = pos
+        self._lock = threading.Lock()
         self._path = filename
+        self._name = name
         self._file = None
         self._inode = None
         self._dev = None
         self._ctime = None
         self._output = output
         self._output_engine = None
-
         self.line = ""
         self._parsers = parsers
         self._open_output()
         self._open_file(inode, dev, ctime)
+        print(self._lock)
 
     def __str__(self):
-        return "path: {}, pos: {},  output: {}".format(self._path, self._pos,self._output)
+        return "path: {}, pos: {},  output: {}, name: {}".format(self._path, self._pos, self._output, self._name)
 
     def _open_output(self):
-        print(self._output)
+        # print(self._output)
         self._output_engine = output.factory(self._output)(self._output)
-        print(self._output_engine)
+        # print(self._output_engine)
         self._output_engine.connect()
+
+    def flush_output(self):
+        self._output_engine.commit()
 
     def _open_file(self, inode=None, dev=None, ctime=None):
         self._line = ''
@@ -85,10 +95,12 @@ class FileHandler:
             self._ctime = stat_info.st_ctime
             self._file = open(self._path, "r")
 
-            if inode == self._inode and dev == self._dev and ctime == self._ctime:
+            if inode != self._inode or dev != self._dev:
                 # we got the same file as before
                 # otherwise we start reading at 0, file may have been truncated or rotated
-                self._file.seek(self._pos)
+                self._pos = 0
+            self._file.seek(self._pos)
+            print(self._path, "starting at :", self._file.tell())
             self._read_contents()
         except FileNotFoundError:
             self._file = None
@@ -97,22 +109,24 @@ class FileHandler:
             self._ctime = None
 
     def dump_state(self):
-        return {"pos": self._pos, "path": self._path, 'inode': self._inode, 'device': self._dev, 'ctime': self._ctime}
+        self._lock.acquire()
+        _pos = self._pos
+        self._lock.release()
+        state = {"pos": _pos, "path": self._path, 'inode': self._inode, 'device': self._dev, 'ctime': self._ctime}
+        return state
 
     def add_parser(self, parser):
         self._parsers.append(parser)
 
     def _match_line(self, line):
-        # print('aoueae : ' + line)
-        # print(self._parsers)
         for p in self._parsers:
-            # print(p)
             m = p.match(line)
             if m:
                 print(self._output_engine)
-                self._output_engine.write(p.emit(m))
+                self._output_engine.write(p.emit(m, self._name))
 
     def _process_line(self, line):
+        print(line)
         if line[-1:] == "\n":
             line = self.line + line
             self.line = ''
@@ -125,10 +139,13 @@ class FileHandler:
     def _read_contents(self):
         while True:
             line = self._file.readline()
+
             if not line:
                 break
             if self._process_line(line):
+                self._lock.acquire()
                 self._pos = self._file.tell()
+                self._lock.release()
 
     def on_modified(self, event):
         if not event.is_directory and self._path == event.src_path:
@@ -151,6 +168,6 @@ class FileHandler:
 
     def on_created(self, event):
         if not event.is_directory and self._path == event.src_path:
+            print("created")
             self._open_file()
             self._read_contents()
-            print("created")

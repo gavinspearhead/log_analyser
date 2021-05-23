@@ -24,11 +24,12 @@ class State:
             try:
                 for i in ['pos', 'path', 'inode', 'device', 'ctime']:
                     if i not in s:
-                        raise Exception('foo')
+                        raise ValueError('Unknown parameter {}'.format(i))
                     # else:
                     #     print(i, s[i])
                 r_state.append(s)
-            except Exception:
+            except ValueError as e:
+                print(e)
                 pass
         self._state = r_state
 
@@ -74,17 +75,24 @@ class Config:
         for s in config:
             tmp = dict()
             tmp['path'] = s['path']
+            tmp['name'] = s['name']
             tmp['output'] = s['output']
             tmp['filter'] = []
             for t in s['filter']:
                 filter = dict()
                 filter['regex'] = t['regex']
                 filter['emit'] = t['emit']
+                filter['transform'] = t['transform'] if 'transform' in t else dict()
                 tmp['filter'].append(filter)
             r_config.append(tmp)
 
-        # print(r_config)
         self._config = r_config
+
+    def get_name(self, filename):
+        for i in self._config:
+            if i['path'] == filename:
+                return i['name']
+        return None
 
     def get_filter(self, filename):
         for i in self._config:
@@ -99,15 +107,11 @@ class Config:
         return False
 
     def get_files(self):
-        files = []
         for i in self._config:
-            files.append(i['path'])
-
-        return files
+            yield i['path']
 
     def get_output(self, filename):
         for i in self._config:
-            print('aouaoeu,', i)
             if i['path'] == filename:
                 return i['output']
         return None
