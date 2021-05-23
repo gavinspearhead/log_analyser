@@ -15,7 +15,7 @@ for k in res1:
     print(k)
 
 print("IP Address ssh")
-res2 = col.aggregate([{"$match": {"name": "auth_ssh"}}, {"$group": {"_id": "$ip_address", "total": {"$sum": 1}}}])
+res2 = col.aggregate([{"$match": {"name": "auth_ssh"}}, {"$group": {"_id": {"username": "$ip_address", "type" : "$type"}  , "total": {"$sum": 1}}}])
 for j in res2:
     print(j)
 
