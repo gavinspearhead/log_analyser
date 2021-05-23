@@ -2,7 +2,10 @@
     "name": "mongo",
     "type": "mongo",
     "database": "logs",
-    "collection": "logs"
+    "collection": "logs",
+    "username": "loganaliser",
+    "password": "",
+    "auth_db": "logs"
 },
 {
     "name": "stdout",

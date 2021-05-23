@@ -1,12 +1,18 @@
 from pymongo import MongoClient
+from config import Outputs
+from output import MongoConnector
 
-mc = MongoClient()
+output_file = "loganalyser.output"
+output = Outputs()
+output.parse_outputs(output_file)
+config = output.get_output('mongo')
+print(config)
 
-db = mc['logs']
-col = db['logs']
+mc = MongoConnector(config)
+col = mc.get_collection()
 
-for i in col.find({}):
-    print(i)
+# db = mc['logs']
+# col = db['logs']
 
 print("Addresses Apache")
 res1 = col.aggregate([{"$match": {"name": "apache_access"}}, {"$group": {"_id": "$ip_address", "total": {"$sum": 1}}}])
@@ -15,10 +21,10 @@ for k in res1:
     print(k)
 
 print("IP Address ssh")
-res2 = col.aggregate([{"$match": {"name": "auth_ssh"}}, {"$group": {"_id": {"username": "$ip_address", "type" : "$type"}  , "total": {"$sum": 1}}}])
+res2 = col.aggregate([{"$match": {"name": "auth_ssh"}},
+                      {"$group": {"_id": {"username": "$ip_address", "type": "$type"}, "total": {"$sum": 1}}}])
 for j in res2:
     print(j)
-
 
 print("")
 print("usernames ssh")
@@ -49,7 +55,8 @@ res3 = col.aggregate([
             "total": {
                 "$sum": 1
             },
-            "users": {"$addToSet": "$username"}
+            "users": {"$addToSet": "$username"},
+            "ips": {"$addToSet": "$ip_address"}
         }
     }
 ]

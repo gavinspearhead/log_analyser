@@ -53,6 +53,22 @@ class StdOutput(AbstractOutput):
         pass
 
 
+class MongoConnector:
+    def __init__(self, config):
+        self._config = config
+        if 'username' in self._config and 'password'  in self._config and \
+                (self._config['username'] != '' and self._config['password'] != ''):
+            self._mongo = MongoClient(username=self._config['username'], password=self._config['password'],
+                                      authSource=self._config['auth_db'])
+        else:
+            self._mongo = MongoClient()
+        self._db = self._mongo[self._config['database']]
+        self._collection = self._db[self._config['collection']]
+
+    def get_collection(self):
+        return self._collection
+
+
 class MongoOutput(AbstractOutput):
     def __init__(self, config):
         super().__init__(config)
@@ -80,10 +96,8 @@ class MongoOutput(AbstractOutput):
             self._lock.release()
 
     def connect(self):
-        self._mongo = MongoClient()
-        self._db = self._mongo[self._config['database']]
-        self._collection = self._db[self._config['collection']]
-        pass
+        self._db = MongoConnector(self._config)
+        self._collection = self._db.get_collection()
 
 
 def factory(config):
