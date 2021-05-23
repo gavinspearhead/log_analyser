@@ -24,25 +24,23 @@ class TimestampParsers:
         self._syslog_pattern = re.compile(r'([A-Za-z]+)\s(\d+)\s(\d+):(\d+):(\d+)')
 
     def parse_syslog_timestamp(self, timestr):
-        # (%ALPHA:mon) (%NUM:day) (%TIME:time)
-
         matches = self._syslog_pattern.search(timestr)
         try:
             x = matches.groups()
             day = int(x[1])
             mn = x[0].lower()
-            print(mn)
+            # print(mn)
             if mn in self.months:
                 mon = self.months[mn]
-                print(mon)
+                # print(mon)
             year = datetime.datetime.now().year
             hour = int(x[2])
             mn = int(x[3])
             sec = int(x[4])
             tz = time.strftime("%z", time.localtime())
-            print(year, mon, day, hour, mn, sec, tz)
+            # print(year, mon, day, hour, mn, sec, tz)
             timestr = "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}{:s}".format(year, mon, day, hour, mn, sec, tz)
-            print(timestr)
+            # print(timestr)
         except Exception as e:
             print("Invalid Date", e)
             return ""
@@ -54,18 +52,18 @@ class TimestampParsers:
         try:
             day = int(x[0])
             mn = x[1].lower()
-            print(mn)
+            # print(mn)
             if mn in self.months:
                 mon = self.months[mn]
-                print(mon)
+                # print(mon)
             year = int(x[2])
             hour = int(x[3])
             mn = int(x[4])
             sec = int(x[5])
             tz = int(x[6])
-            print(year, mon, day, hour, mn, sec, tz)
+            # print(year, mon, day, hour, mn, sec, tz)
             timestr = "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}{:+05d}".format(year, mon, day, hour, mn, sec, tz)
-            print(timestr)
+            # print(timestr)
         except Exception as e:
             print("Invalid Date", e)
             return ""
@@ -183,14 +181,12 @@ class RegexParser(LogParser):
             return False
         return rv
 
-
-
     def emit(self, matches, name):
         res = dict()
         vals = dict()
         for idx, val in self._filters.items():
             try:
-                print(val, matches[val[0]])
+                # print(val, matches[val[0]])
                 v = val[1](matches[val[0]])
                 vals[idx] = v
             except TypeError:

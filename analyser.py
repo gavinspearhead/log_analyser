@@ -6,7 +6,6 @@ output_file = "loganalyser.output"
 output = Outputs()
 output.parse_outputs(output_file)
 config = output.get_output('mongo')
-print(config)
 
 mc = MongoConnector(config)
 col = mc.get_collection()
@@ -20,6 +19,14 @@ res1 = col.aggregate([{"$match": {"name": "apache_access"}}, {"$group": {"_id": 
 for k in res1:
     print(k)
 
+print("")
+print("Codes Apache")
+res1 = col.aggregate([{"$match": {"name": "apache_access"}}, {"$group": {"_id": "$code", "total": {"$sum": 1}}}])
+
+for k in res1:
+    print(k)
+
+print("")
 print("IP Address ssh")
 res2 = col.aggregate([{"$match": {"name": "auth_ssh"}},
                       {"$group": {"_id": {"username": "$ip_address", "type": "$type"}, "total": {"$sum": 1}}}])

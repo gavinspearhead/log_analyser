@@ -23,7 +23,7 @@ class LogHandler(FileSystemEventHandler):
 
     def add_file(self, filename, pos=0, parsers=None, inode=None, dev=None, ctime=None, output=None, name=None):
         self._file_list[filename] = FileHandler(filename, pos, parsers, inode, dev, ctime, output, name)
-        print(self._file_list[filename])
+        # print(self._file_list[filename])
 
     def match(self, event):
         for filename in self._file_list:
@@ -72,7 +72,7 @@ class FileHandler:
         self._parsers = parsers
         self._open_output()
         self._open_file(inode, dev, ctime)
-        print(self._lock)
+        # print(self._lock)
 
     def __str__(self):
         return "path: {}, pos: {},  output: {}, name: {}".format(self._path, self._pos, self._output, self._name)
@@ -100,7 +100,7 @@ class FileHandler:
                 # otherwise we start reading at 0, file may have been truncated or rotated
                 self._pos = 0
             self._file.seek(self._pos)
-            print(self._path, "starting at :", self._file.tell())
+            # print(self._path, "starting at :", self._file.tell())
             self._read_contents()
         except FileNotFoundError:
             self._file = None
@@ -122,11 +122,11 @@ class FileHandler:
         for p in self._parsers:
             m = p.match(line)
             if m:
-                print(self._output_engine)
+                # print(self._output_engine)
                 self._output_engine.write(p.emit(m, self._name))
 
     def _process_line(self, line):
-        print(line)
+        # print(line)
         if line[-1:] == "\n":
             line = self.line + line
             self.line = ''
