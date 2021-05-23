@@ -8,13 +8,20 @@ col = db['logs']
 for i in col.find({}):
     print(i)
 
-print("")
+print("Addresses Apache")
 res1 = col.aggregate([{"$match": {"name": "apache_access"}}, {"$group": {"_id": "$ip_address", "total": {"$sum": 1}}}])
 
 for k in res1:
     print(k)
 
+print("IP Address ssh")
+res2 = col.aggregate([{"$match": {"name": "auth_ssh"}}, {"$group": {"_id": "$ip_address", "total": {"$sum": 1}}}])
+for j in res2:
+    print(j)
+
+
 print("")
+print("usernames ssh")
 res2 = col.aggregate([{"$match": {"name": "auth_ssh"}}, {"$group": {"_id": "$username", "total": {"$sum": 1}}}])
 for j in res2:
     print(j)
