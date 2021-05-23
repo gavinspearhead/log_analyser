@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<title>Log Analyser</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link href="{{ url_for('static', filename='css/custom.css') }}" rel="stylesheet">
+	<link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+	<link href="{{ url_for('static', filename='css/fontawesome-all.min.css') }}" rel="stylesheet">
+	<link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <script type="text/javascript" src="{{ url_for('static', filename='js/jquery-3.2.1.min.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/popper.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+
+<style> {# included here because relative path #}
+@font-face {
+    font-family: "My Custom Font";
+    src: url("{{ request.script_root }}/static/fonts/fontawesome-webfont.ttf") format("truetype");
+}
+</style>
+</head>
+
+<body class="text-white bg-dark">
+
+<script type="text/javascript">
+
+</script>
+
+<nav class="navbar navbar-fixed-top">
+    <div>
+        <!-- Button trigger modal -->
+        <button type="button" class="btn btn-secondary btn-sm" id="apache_log">Apache</button>
+        <button type="button" id="ssh_log" class="btn btn-secondary btn-sm">SSH</button>
+    </div>
+</nav>
+
+<div id="maindiv" class="container-fluid max-height no-overflow">
+    <div class="row max-height">
+        <div class="col-3 scrollable bottom_margin" id="logtypes">
+            <ul class="list-unstyled components" id="log_list">
+                <li><b>Apache</b>
+                    <ul id="apache_ip_addresses">IP Addresses</ul>
+                    <ul id="apache_codes">Codes</ul>
+                    <ul id="apache_urls">URLs</ul>
+                    <ul id="apache_">foo</ul>
+                </li>
+                <li><b>SSH</b>
+                    <ul id="ssh_users">Users</ul>
+                    <ul id="ssh_ip_addresses">IP addresses</ul>
+                    <ul>bar</ul>
+                </li>
+            </ul>
+        </div>
+        <div class="col scrollable bottom_margin" id="itemstablediv">
+            <table class="table table-condensed table-sm table-hover" id="itemstable" cellpadding="0" cellspacing="0">
+            <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+
+<div id="alert_success_bar" class="hidden alert_bar alert_outer">
+<div class="alert alert-success alert-dismissable fade show" role="alert">
+    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+    <span aria-hidden="true">&times;</span>
+  </button>
+  <span id="alert_success_text"></span>
+</div>
+</div>
+
+<div id="alert_error_bar" class="hidden alert_bar alert_outer" >
+<div class="alert alert-danger alert-dismissable fade show" role="alert">
+    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+    <span aria-hidden="true">&times;</span>
+  </button>
+  <span id="alert_error_text"></span>
+</div>
+</div>
+
+
+<script>
+var script_root = '{{ request.script_root }}';
+</script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/custom.js') }}"></script>
+
+</body>
+</html>
