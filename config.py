@@ -17,8 +17,11 @@ class State:
         self._state = None
 
     def parse_state(self, filename):
-        with open(filename, "r") as infile:
-            state = json.load(infile)
+        try:
+            with open(filename, "r") as infile:
+                state = json.load(infile)
+        except FileNotFoundError:
+            state = []
         r_state = []
         for s in state:
             try:
