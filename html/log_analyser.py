@@ -11,14 +11,14 @@ from flask import Flask, render_template, request
 from config import Outputs
 from output import MongoConnector
 
-app = Flask(__name__)
 output_file_name = "loganalyser.output"
-config_path = '.'
+config_path = os.path.dirname(__file__)
+app = Flask(__name__)
 
 
 def get_mongo_connection():
     output = Outputs()
-    output.parse_outputs(os.path.join(config_path, output_file_name))
+    output.parse_outputs(os.path.join(config_path, '..', output_file_name))
     config = output.get_output('mongo')
     mc = MongoConnector(config)
     col = mc.get_collection()
@@ -93,14 +93,16 @@ def get_ssh_data(name, period):
             time_mask = 'dayOfMonth'
         res = col.aggregate(
             [{"$match": {"$and": [{"name": "auth_ssh"}, mask]}},
-             {"$group": {"_id": {"ip_address": "$ip_address", "type": "$type", "time": {"$" + time_mask: "$timestamp"}}, "total": {"$sum": 1},
-              "usernames": {"$addToSet": "$username"}}},
+             {"$group": {"_id": {"ip_address": "$ip_address", "type": "$type", "time": {"$" + time_mask: "$timestamp"}},
+                         "total": {"$sum": 1},
+                         "usernames": {"$addToSet": "$username"}}},
              {"$sort": {'_id.time': 1, "total": -1}}
              ])
 
         for x in res:
             keys = [time_mask, 'IP Addresses', 'type', 'total', 'usernames']
-            row = {'time': x['_id']['time'], 'ip_address': x['_id']['ip_address'], 'type': x['_id']['type'],  'total': x['total'], 'users': ", ".join(x['usernames']) }
+            row = {'time': x['_id']['time'], 'ip_address': x['_id']['ip_address'], 'type': x['_id']['type'],
+                   'total': x['total'], 'users': ", ".join(x['usernames'])}
             rv.append(row)
     elif name == 'ip_addresses':
         keys = ['IP Addresses', 'type', 'count', 'users']
