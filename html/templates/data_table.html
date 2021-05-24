@@ -8,7 +8,7 @@
 {% for d in data %}
 <tr>
 {% for k in d %}
-    <td><span title="{{d[k]}}">{{ d[k]| truncate(200) }}</span> </td>
+    <td><span title="{{d[k]}}">{{ d[k]| truncate(80) }}</span> </td>
 {% endfor %}
 </tr>
 {% endfor %}
