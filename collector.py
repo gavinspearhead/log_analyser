@@ -1,3 +1,4 @@
+import argparse
 import json
 import os
 import threading
@@ -8,16 +9,17 @@ from config import Config, State, Outputs
 from parsers import RegexParser
 from loghandler import LogHandler
 
-config_file = "loganalyser.config"
-state_file = "loganalyser.state"
-output_file = "loganalyser.output"
+config_file_name = "loganalyser.config"
+state_file_name = "loganalyser.state"
+output_file_name = "loganalyser.output"
 
 
 class LogObserver:
-    def __init__(self):
+    def __init__(self, state_file):
         self._observer = Observer()
         self._lock = threading.Lock()
         self._event_handlers = dict()
+        self._state_file = state_file
 
     def add(self, filepath, pos, parsers, inode, device, ctime, output, name):
         directory = os.path.dirname(filepath)
@@ -43,8 +45,11 @@ class LogObserver:
         state = []
         for eh in self._event_handlers.values():
             state += eh.dump_state()
-        with open(state_file, 'w') as outfile:
-            json.dump(state, outfile)
+        try:
+            with open(self._state_file, 'w') as outfile:
+                json.dump(state, outfile)
+        except Exception as e:
+            print("Cannot write file {}". format(self._state_file))
 
     def flush_output(self):
         for eh in self._event_handlers.values():
@@ -52,18 +57,28 @@ class LogObserver:
 
 
 if __name__ == '__main__':
-    path = "/var/log/auth.log"
-    path1 = "/home/harm/test.log"
-    path2 = "/home/harm/test1.log"
 
+    parser = argparse.ArgumentParser(description="RSS update daemon")
+    parser.add_argument("-c", '--config', help="Config File Directory", default="", metavar="FILE")
+    # path = "/var/log/auth.log"
+    # path1 = "/home/harm/test.log"
+    # path2 = "/home/harm/test1.log"
+    args = parser.parse_args()
+    config_path = ''
+    if args.config:
+        config_path = args.config
+    config_file = os.path.join(config_path, config_file_name)
+    state_file = os.path.join(config_path, state_file_name)
+    output_file = os.path.join(config_path, output_file_name)
     config = Config()
     state = State()
     output = Outputs()
     config.parse_config(config_file)
     state.parse_state(state_file)
     output.parse_outputs(output_file)
+    args = parser.parse_args()
 
-    observer = LogObserver()
+    observer = LogObserver(state_file)
     for fl in config.get_files():
         pos = state.pos(fl)
         file_id = state.id(fl)
