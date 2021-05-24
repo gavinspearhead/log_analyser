@@ -16,7 +16,7 @@ output_file_name = "loganalyser.output"
 config_path = '.'
 
 
-def get_mongo_connection(config_path):
+def get_mongo_connection():
     output = Outputs()
     output.parse_outputs(os.path.join(config_path, output_file_name))
     config = output.get_output('mongo')
