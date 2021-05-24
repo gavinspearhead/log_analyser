@@ -58,7 +58,6 @@ def get_ssh_data(name, period):
     mask = get_period_mask(period)
     time_mask = mask[2]
     mask = {"$and": [{"timestamp": {"$gte": mask[0]}}, {"timestamp": {"$lte": mask[1]}}]}
-    print(mask)
     if name == 'users':
         keys = ['username', 'type', 'count', 'ips']
         res = col.aggregate(
@@ -67,7 +66,6 @@ def get_ssh_data(name, period):
                          "ips": {"$addToSet": "$ip_address"}}},
              {"$sort": {"total": -1}}
              ])
-        print(res)
         for x in res:
             row = {'username': x['_id']['username'], 'type': x['_id']['type'], 'count': x['total'],
                    'ips': ", ".join(x['ips'])}
@@ -79,13 +77,16 @@ def get_ssh_data(name, period):
             [{"$match": {"$and": [{"name": "auth_ssh"}, mask]}},
              {"$group": {"_id": {"username": "$username", "type": "$type", "time": {"$" + time_mask: "$timestamp"}},
                          "total": {"$sum": 1},
-                         "ips": {"$addToSet": "$ip_address"}}},
+                         "ips": {"$addToSet": "$ip_address"},
+                         'month': {"$addToSet": {"$month": "$timestamp"}}}},
              {"$sort": {'_id.time': 1, "total": -1}}
              ])
 
         for x in res:
+            extra_time = "-" + str(x['month'][0]) if time_mask == 'dayOfMonth' else ''
             keys = [time_mask, 'username', 'type', 'total', 'ips']
-            row = {'time': x['_id']['time'], 'username': x['_id']['username'], 'type': x['_id']['type'],
+            row = {'time': "{} {}".format(x['_id']['time'], extra_time), 'username': x['_id']['username'],
+                   'type': x['_id']['type'],
                    'total': x['total'], 'ips': ", ".join(x['ips'])}
             rv.append(row)
     elif name == 'time_ips':
@@ -95,13 +96,15 @@ def get_ssh_data(name, period):
             [{"$match": {"$and": [{"name": "auth_ssh"}, mask]}},
              {"$group": {"_id": {"ip_address": "$ip_address", "type": "$type", "time": {"$" + time_mask: "$timestamp"}},
                          "total": {"$sum": 1},
-                         "usernames": {"$addToSet": "$username"}}},
+                         "usernames": {"$addToSet": "$username"},
+                         'month': {"$addToSet": {"$month": "$timestamp"}}}},
              {"$sort": {'_id.time': 1, "total": -1}}
              ])
-
         for x in res:
+            extra_time = "-" + str(x['month'][0]) if time_mask == 'dayOfMonth' else ''
             keys = [time_mask, 'IP Addresses', 'type', 'total', 'usernames']
-            row = {'time': x['_id']['time'], 'ip_address': x['_id']['ip_address'], 'type': x['_id']['type'],
+            row = {'time': "{} {}".format(x['_id']['time'], extra_time),
+                   'ip_address': x['_id']['ip_address'], 'type': x['_id']['type'],
                    'total': x['total'], 'users': ", ".join(x['usernames'])}
             rv.append(row)
     elif name == 'ip_addresses':
@@ -154,7 +157,7 @@ def get_apache_data(name, period):
              {"$group": {"_id": "$ip_address", "total": {"$sum": 1}}},
              {"$sort": {"total": -1}}
              ])
-        keys = ['ip_address', 'count']
+        keys = ['ip address', 'count']
         for x in res:
             row = {'code': x['_id'], 'count': x['total']}
             rv.append(row)
@@ -176,12 +179,15 @@ def get_apache_data(name, period):
             {"$group": {
                 "_id": {"time": {"$" + time_mask: "$timestamp"}, "ip_address": "$ip_address"},
                 "total": {"$sum": 1},
-                "ips": {"$addToSet": "$ip_address"}}},
+                "codes": {"$addToSet": "$code"},
+                'month': {"$addToSet": {"$month": "$timestamp"}}}},
             {"$sort": {'_id.time': 1, 'total': -1}}])
         for x in res:
-            keys = [time_mask, 'ip address', 'total', 'ips']
-            row = {'time': x['_id']['time'], 'ip_address': x['_id']['ip_address'], 'total': x['total'],
-                   'ips': ", ".join(x['ips'])}
+            extra_time = "-" + str(x['month'][0]) if time_mask == 'dayOfMonth' else ''
+            keys = [time_mask, 'ip address', 'total', 'codes']
+            row = {'time': "{} {}".format(x['_id']['time'], extra_time), 'ip_address': x['_id']['ip_address'],
+                   'total': x['total'],
+                   'codes': ", ".join(x['codes'])}
             rv.append(row)
     elif name == 'time_urls':
         if time_mask == 'day':
@@ -191,11 +197,14 @@ def get_apache_data(name, period):
             {"$group": {
                 "_id": {"time": {"$" + time_mask: "$timestamp"}, "path": "$path"},
                 "total": {"$sum": 1},
-                "ips": {"$addToSet": "$ip_address"}}},
+                "ips": {"$addToSet": "$ip_address"},
+                'month': {"$addToSet": {"$month": "$timestamp"}}}},
             {"$sort": {'_id.time': 1, 'total': -1}}])
         for x in res:
+            extra_time = "-" + str(x['month'][0]) if time_mask == 'dayOfMonth' else ''
             keys = [time_mask, 'path', 'total', 'ips']
-            row = {'time': x['_id']['time'], 'path': x['_id']['path'], 'total': x['total'], 'ips': ", ".join(x['ips'])}
+            row = {'time': "{} {}".format(x['_id']['time'], extra_time), 'path': x['_id']['path'], 'total': x['total'],
+                   'ips': ", ".join(x['ips'])}
             rv.append(row)
     else:
         raise ValueError("Invalid item: {}".format(name))
@@ -211,6 +220,9 @@ def data():
         res, keys = get_ssh_data(name, period)
     elif type == 'apache':
         res, keys = get_apache_data(name, period)
+    else:
+        raise ValueError("Unknown type: {}".format(type))
+
     rhtml = render_template("data_table.html", data=res, keys=keys)
     return json.dumps({'success': True, 'rhtml': rhtml}), 200, {'ContentType': 'application/json'}
 
