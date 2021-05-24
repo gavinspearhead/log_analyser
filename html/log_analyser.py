@@ -1,153 +1,211 @@
 #!/usr/bin/python3
 
+import datetime
 import json
-import time, datetime
+import pytz
+
 from flask import Flask, render_template, request
-from output import MongoConnector
+
 from config import Outputs
+from output import MongoConnector
 
 app = Flask(__name__)
 output_file = "../loganalyser.output"
-
-
-#
-# def get_fancy_time(sec):
-#     t = datetime.timedelta(seconds=sec)
-#     if t.days > 0:
-#         return str(t.days) + " days"
-#     elif (sec / 3600) > 1:
-#         return str(int(sec // 3600)) + " hrs"
-#     elif (sec / 60) > 1:
-#         return str(int(sec // 60)) + " mins"
-#     else:
-#         return str(sec) + " sec"
-#
-#
-# @app.route('/fancy_time/<int:sec>', methods=['POST'])
-# def fancy_time(sec=0):
-#     try:
-#         val = str(datetime.timedelta(seconds=sec))
-#         return json.dumps({'success': True, 'value': val}), 200, {'ContentType': 'application/json'}
-#     except Exception as e:
-#         #        raise e
-#         return json.dumps({'success': False, 'message': str(e)}), 200, {'ContentType': 'application/json'}
-#
-#
-# @app.route('/getfeed/<int:feedid>/')
-# def getfeed(feedid):
-#     try:
-#         return json.dumps({'success': True, 'result': row}), 200, {'ContentType': 'application/json'}
-#     except Exception as e:
-#         #        raise e
-#         return json.dumps({'success': False, 'message': str(e)}), 200, {'ContentType': 'application/json'}
-
-#
-# @app.route('/getfeedname/<int:feedid>', methods=['POST'])
-# def getfeedname(feedid):
-#     try:
-#         check_feed_exists(feedid)
-#         db = connect_db.connect_db()
-#         cur = db.cursor()
-#         sql = "SELECT feeds.name FROM feeds LEFT JOIN category ON feeds.category = category.id WHERE feeds.id = %s LIMIT 1"
-#         cur.execute(sql, feedid)
-#         row = cur.fetchone()
-#         return json.dumps({'success': True, 'result': row['name']}), 200, {'ContentType': 'application/json'}
-#     except Exception as e:
-#         #        raise e
-#         return json.dumps({'success': False, 'message': str(e)}), 200, {'ContentType': 'application/json'}
-
-#
-# @app.route('/addfeed/', methods=['POST'])
-# def addfeed():
-#     try:
-#         name = request.form.get('name')
-#         url = request.form.get('url')
-#         update = request.form.get('update')
-#         cleanup = request.form.get('cleanup')
-#         feedid = request.form.get('feedid', None)
-#         tag = request.form.get('tag', '')
-#         category = request.form.get('category', 1)
-#         tag_colour = request.form.get('tag_colour')
-#
-#         return json.dumps({'success': True}), 200, {'ContentType': 'application/json'}
-#     except Exception as e:
-#         # raise e
-#         return json.dumps({'success': False, 'message': str(e)}), 200, {'ContentType': 'application/json'}
-
-
 
 
 def get_mongo_connection():
     output = Outputs()
     output.parse_outputs(output_file)
     config = output.get_output('mongo')
-
     mc = MongoConnector(config)
     col = mc.get_collection()
-
     return col
 
 
-def get_ssh_data(name):
+def get_period_mask(period):
+    now = datetime.datetime.now(pytz.UTC)
+    if period == 'today':
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+        return today_start, today_end, 'hour'
+    elif period == 'hour':
+        today_start = now - datetime.timedelta(hours=1)
+        today_end = now
+        return today_start, today_end, 'minute'
+    elif period == 'yesterday':
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0) - datetime.timedelta(days=1)
+        today_end = now.replace(hour=23, minute=59, second=59, microsecond=0) - datetime.timedelta(days=1)
+        return today_start, today_end, 'hour'
+    elif period == 'week':
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0) - datetime.timedelta(weeks=1)
+        today_end = now.replace(hour=23, minute=59, second=59, microsecond=0)
+        return today_start, today_end, 'day'
+    elif period == 'month':
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0) - datetime.timedelta(weeks=4)
+        today_end = now.replace(hour=23, minute=59, second=59, microsecond=0)
+        return today_start, today_end, 'week'
+    else:
+        raise ValueError("Unknown period {}".format(period))
+
+
+def get_ssh_data(name, period):
     col = get_mongo_connection()
     rv = []
     keys = []
+    mask = get_period_mask(period)
+    time_mask = mask[2]
+    mask = {"$and": [{"timestamp": {"$gte": mask[0]}}, {"timestamp": {"$lte": mask[1]}}]}
+    print(mask)
     if name == 'users':
-        keys = ['username', 'count']
-        res = col.aggregate([{"$match": {"name": "auth_ssh"}}, {"$group": {"_id": "$username", "total": {"$sum": 1}}}])
+        keys = ['username', 'type', 'count', 'ips']
+        res = col.aggregate(
+            [{"$match": {"$and": [{"name": "auth_ssh"}, mask]}},
+             {"$group": {"_id": {"username": "$username", "type": "$type"}, "total": {"$sum": 1},
+                         "ips": {"$addToSet": "$ip_address"}}},
+             {"$sort": {"total": -1}}
+             ])
+        print(res)
         for x in res:
-            row = {'username': x['_id'], 'count': x['total']}
+            row = {'username': x['_id']['username'], 'type': x['_id']['type'], 'count': x['total'],
+                   'ips': ", ".join(x['ips'])}
+            rv.append(row)
+    elif name == 'time_users':
+        if time_mask == 'day':
+            time_mask = 'dayOfMonth'
+        res = col.aggregate(
+            [{"$match": {"$and": [{"name": "auth_ssh"}, mask]}},
+             {"$group": {"_id": {"username": "$username", "type": "$type", "time": {"$" + time_mask: "$timestamp"}},
+                         "total": {"$sum": 1},
+                         "ips": {"$addToSet": "$ip_address"}}},
+             {"$sort": {'_id.time': 1, "total": -1}}
+             ])
+
+        for x in res:
+            keys = [time_mask, 'username', 'type', 'total', 'ips']
+            row = {'time': x['_id']['time'], 'username': x['_id']['username'], 'type': x['_id']['type'],
+                   'total': x['total'], 'ips': ", ".join(x['ips'])}
+            rv.append(row)
+    elif name == 'time_ips':
+        if time_mask == 'day':
+            time_mask = 'dayOfMonth'
+        res = col.aggregate(
+            [{"$match": {"$and": [{"name": "auth_ssh"}, mask]}},
+             {"$group": {"_id": {"ip_address": "$ip_address", "type": "$type", "time": {"$" + time_mask: "$timestamp"}}, "total": {"$sum": 1},
+              "usernames": {"$addToSet": "$username"}}},
+             {"$sort": {'_id.time': 1, "total": -1}}
+             ])
+
+        for x in res:
+            keys = [time_mask, 'IP Addresses', 'type', 'total', 'usernames']
+            row = {'time': x['_id']['time'], 'ip_address': x['_id']['ip_address'], 'type': x['_id']['type'],  'total': x['total'], 'users': ", ".join(x['usernames']) }
             rv.append(row)
     elif name == 'ip_addresses':
-        keys = ['username', 'type', 'count']
-        res = col.aggregate([{"$match": {"name": "auth_ssh"}},
-                             {"$group": {"_id": {"ip_address": "$ip_address", "type": "$type"}, "total": {"$sum": 1}}}])
+        keys = ['IP Addresses', 'type', 'count', 'users']
+        res = col.aggregate(
+            [{"$match": {"$and": [{"name": "auth_ssh"}, mask]}},
+             {"$group": {"_id": {"ip_address": "$ip_address", "type": "$type"}, "total": {"$sum": 1},
+                         "users": {"$addToSet": "$username"}}},
+             {"$sort": {"total": -1}}
+             ])
         for x in res:
-            row = {'username': x['_id']['ip_address'], 'count': x['total'], 'type': x['_id']['type']}
+            row = {'username': x['_id']['ip_address'], 'count': x['total'], 'type': x['_id']['type'],
+                   'users': ", ".join(x['users'])}
             rv.append(row)
     else:
         raise ValueError(name)
     return rv, keys
 
 
-def get_apache_data(name):
+def get_apache_data(name, period):
     col = get_mongo_connection()
     rv = []
     keys = []
+    mask = get_period_mask(period)
+    time_mask = mask[2]
+    mask = {"$and": [{"timestamp": {"$gte": mask[0]}}, {"timestamp": {"$lte": mask[1]}}]}
     if name == 'codes':
-        res = col.aggregate([{"$match": {"name": "apache_access"}}, {"$group": {"_id": "$code", "total": {"$sum": 1}}}])
+        res = col.aggregate(
+            [{"$match": {"$and": [{"name": "apache_access"}, mask]}},
+             {"$group": {"_id": "$code", "total": {"$sum": 1}}},
+             {"$sort": {"total": -1}}
+             ])
         keys = ['code', 'count']
         for x in res:
             row = {'code': x['_id'], 'count': x['total']}
             rv.append(row)
+    elif name == 'method':
+        res = col.aggregate(
+            [{"$match": {"$and": [{"name": "apache_access"}, mask]}},
+             {"$group": {"_id": "$http_command", "total": {"$sum": 1}}},
+             {"$sort": {"total": -1}}
+             ])
+        keys = ['HTTP Method', 'count']
+        for x in res:
+            row = {'method': x['_id'], 'count': x['total']}
+            rv.append(row)
     elif name == 'ip_addresses':
-        res = col.aggregate([{"$match": {"name": "apache_access"}}, {"$group": {"_id": "$ip_address", "total": {"$sum": 1}}}])
+        res = col.aggregate(
+            [{"$match": {"$and": [{"name": "apache_access"}, mask]}},
+             {"$group": {"_id": "$ip_address", "total": {"$sum": 1}}},
+             {"$sort": {"total": -1}}
+             ])
         keys = ['ip_address', 'count']
         for x in res:
             row = {'code': x['_id'], 'count': x['total']}
             rv.append(row)
     elif name == 'urls':
         res = col.aggregate(
-            [{"$match": {"name": "apache_access"}}, {"$group": {"_id": "$path", "total": {"$sum": 1}}}])
+            [{"$match": {"$and": [{"name": "apache_access"}, mask]}},
+             {"$group": {"_id": "$path", "total": {"$sum": 1}}},
+             {"$sort": {"total": -1}}
+             ])
         keys = ['path', 'count']
         for x in res:
             row = {'path': x['_id'], 'count': x['total']}
             rv.append(row)
-    elif name == 'urls':
-        return rv
+    elif name == 'time_ips':
+        if time_mask == 'day':
+            time_mask = 'dayOfMonth'
+        res = col.aggregate([
+            {"$match": {"$and": [{"name": "apache_access"}, mask]}},
+            {"$group": {
+                "_id": {"time": {"$" + time_mask: "$timestamp"}, "ip_address": "$ip_address"},
+                "total": {"$sum": 1},
+                "ips": {"$addToSet": "$ip_address"}}},
+            {"$sort": {'_id.time': 1, 'total': -1}}])
+        for x in res:
+            keys = [time_mask, 'ip address', 'total', 'ips']
+            row = {'time': x['_id']['time'], 'ip_address': x['_id']['ip_address'], 'total': x['total'],
+                   'ips': ", ".join(x['ips'])}
+            rv.append(row)
+    elif name == 'time_urls':
+        if time_mask == 'day':
+            time_mask = 'dayOfMonth'
+        res = col.aggregate([
+            {"$match": {"$and": [{"name": "apache_access"}, mask]}},
+            {"$group": {
+                "_id": {"time": {"$" + time_mask: "$timestamp"}, "path": "$path"},
+                "total": {"$sum": 1},
+                "ips": {"$addToSet": "$ip_address"}}},
+            {"$sort": {'_id.time': 1, 'total': -1}}])
+        for x in res:
+            keys = [time_mask, 'path', 'total', 'ips']
+            row = {'time': x['_id']['time'], 'path': x['_id']['path'], 'total': x['total'], 'ips': ", ".join(x['ips'])}
+            rv.append(row)
     else:
-        raise ValueError(name)
+        raise ValueError("Invalid item: {}".format(name))
     return rv, keys
+
 
 @app.route('/data/', methods=['POST'])
 def data():
-    print(request.get_json())
     name = request.json.get('name', '').strip()
     type = request.json.get('type', '').strip()
+    period = request.json.get('period', '').strip()
     if type == 'ssh':
-        res, keys = get_ssh_data(name)
+        res, keys = get_ssh_data(name, period)
     elif type == 'apache':
-        res, keys = get_apache_data(name)
+        res, keys = get_apache_data(name, period)
     rhtml = render_template("data_table.html", data=res, keys=keys)
     return json.dumps({'success': True, 'rhtml': rhtml}), 200, {'ContentType': 'application/json'}
 

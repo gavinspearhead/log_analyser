@@ -21,7 +21,6 @@ html,body {
     background-attachment:fixed;
     padding:0;
     margin:0;
-
 }
 
 .navbar-inner {
@@ -145,8 +144,4 @@ td {
 
 .invisible {
     visibility: hidden;
-}
-
-.category {
-    color: #3399ff;
 }

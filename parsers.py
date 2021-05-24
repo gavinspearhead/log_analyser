@@ -186,7 +186,6 @@ class RegexParser(LogParser):
         vals = dict()
         for idx, val in self._filters.items():
             try:
-                # print(val, matches[val[0]])
                 v = val[1](matches[val[0]])
                 vals[idx] = v
             except TypeError:

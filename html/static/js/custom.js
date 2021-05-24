@@ -4,8 +4,8 @@ $( document ).ready(function() {
     $('body').css('background-image', 'url("' + script_root + '/static/img/background.gif")');
     $('body').css('background-size', 'contain');
 
-
-
+    var g_name= '';
+    var g_type = '';
 
     $('#itemstablediv').scrollTop(0);
 
@@ -13,16 +13,24 @@ $( document ).ready(function() {
 
     function handle_request(name, type) {
         console.log(name, type)
+        g_name = name;
+        g_type = type;
+            var period = 'today';
+            if ($("#daily").is(":checked")) {period = 'today';}
+            else if ($("#hourly").is(":checked")) {period = 'hour';}
+            else if ($("#yesterday").is(":checked")) {period = 'yesterday';}
+            else if ($("#weekly").is(":checked")) {period = 'week';}
+            else if ($("#monthly").is(":checked")) {period = 'month';}
+            console.log(period);
         $.ajax({
             url: script_root + '/data/',
             type: 'POST',
-            data:  JSON.stringify({'name': name, "type": type}),
+            data:  JSON.stringify({'name': name, "type": type, 'period': period}),
             cache: false,
             contentType: "application/json;charset=UTF-8",
 
         }).done(function(data) {
-            var res = JSON.parse(data)
-            console.log(res);
+            var res = JSON.parse(data);
             $('#itemstable').html(res.rhtml);
         });
         return false;
@@ -33,7 +41,6 @@ $( document ).ready(function() {
     {
         $("[id^='ssh_']").unbind('click');
         $("[id^='apache_']").unbind('click');
-
         $("[id^='ssh_']").click(function(event) {
             var type = "ssh";
             var name = $(this).attr("id").replace('ssh_', '');
@@ -44,6 +51,9 @@ $( document ).ready(function() {
             var name = $(this).attr("id").replace('apache_', '');
             handle_request(name, type)
         });
-        }
+        $("[name^='timeperiod").click(function(event) {
+           handle_request(g_name, g_type);
+        });
 
+    }
 });

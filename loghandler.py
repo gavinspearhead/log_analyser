@@ -1,9 +1,9 @@
 import os
 import threading
+import output
 
 from watchdog.events import FileSystemEventHandler
 
-import output
 
 
 class LogHandler(FileSystemEventHandler):
