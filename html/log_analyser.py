@@ -1,7 +1,9 @@
 #!/usr/bin/python3
-
+import argparse
 import datetime
 import json
+import os.path
+
 import pytz
 
 from flask import Flask, render_template, request
@@ -10,12 +12,13 @@ from config import Outputs
 from output import MongoConnector
 
 app = Flask(__name__)
-output_file = "../loganalyser.output"
+output_file_name = "loganalyser.output"
+config_path = '.'
 
 
-def get_mongo_connection():
+def get_mongo_connection(config_path):
     output = Outputs()
-    output.parse_outputs(output_file)
+    output.parse_outputs(os.path.join(config_path, output_file_name))
     config = output.get_output('mongo')
     mc = MongoConnector(config)
     col = mc.get_collection()
@@ -219,6 +222,13 @@ def homepage():
 
 
 if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser(description="RSS update daemon")
+    parser.add_argument("-c", '--config', help="Config File Directory", default="", metavar="FILE")
+    args = parser.parse_args()
+    if args.config:
+        config_path = args.config
+
     app.jinja_env.trim_blocks = True
     app.jinja_env.lstrip_blocks = True
     app.run(host='0.0.0.0', debug=True)
