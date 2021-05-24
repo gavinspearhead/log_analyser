@@ -3,10 +3,11 @@ import argparse
 import datetime
 import json
 import os.path
-
+import sys
 import pytz
-
 from flask import Flask, render_template, request
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from config import Outputs
 from output import MongoConnector
