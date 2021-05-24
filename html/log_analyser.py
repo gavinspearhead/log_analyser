@@ -215,16 +215,20 @@ def get_apache_data(name, period):
 @app.route('/data/', methods=['POST'])
 def data():
     name = request.json.get('name', '').strip()
-    type = request.json.get('type', '').strip()
+    rtype = request.json.get('type', '').strip()
     period = request.json.get('period', '').strip()
-    if type == 'ssh':
+    if rtype == 'ssh':
         res, keys = get_ssh_data(name, period)
-    elif type == 'apache':
+    elif rtype == 'apache':
         res, keys = get_apache_data(name, period)
     else:
-        raise ValueError("Unknown type: {}".format(type))
+        raise ValueError("Unknown type: {}".format(rtype))
+    res2 = []
+    # Force every thing to string so we can truncate stuff in the template
+    for x in res:
+        res2.append({k: str(v) for k, v in x.items()})
 
-    rhtml = render_template("data_table.html", data=res, keys=keys)
+    rhtml = render_template("data_table.html", data=res2, keys=keys)
     return json.dumps({'success': True, 'rhtml': rhtml}), 200, {'ContentType': 'application/json'}
 
 

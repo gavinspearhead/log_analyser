@@ -1,6 +1,6 @@
 <tr>
 {% for x in keys %}
-<th>{{ x|title }}</th>
+<th>{{ x|title }} </th>
 {% endfor %}
 </tr>
 
@@ -8,7 +8,7 @@
 {% for d in data %}
 <tr>
 {% for k in d %}
-<td>{{ d[k] }} </td>
+    <td><span title="{{d[k]}}">{{ d[k]| truncate(200) }}</span> </td>
 {% endfor %}
 </tr>
 {% endfor %}
