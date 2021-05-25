@@ -41,7 +41,7 @@ class LogObserver:
         self._observer.join()
 
     def dump_state(self):
-        print('dump_state')
+        # print('dump_state')
         state = []
         for eh in self._event_handlers.values():
             state += eh.dump_state()

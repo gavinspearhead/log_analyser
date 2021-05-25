@@ -71,7 +71,7 @@ class FileHandler:
         self.line = ""
         self._parsers = parsers
         self._open_output()
-        self._open_file(inode, dev, ctime)
+        self._open_file(inode, dev)
         # print(self._lock)
 
     def __str__(self):
@@ -84,15 +84,16 @@ class FileHandler:
         self._output_engine.connect()
 
     def flush_output(self):
-        self._output_engine.commit()
+        if self._output_engine is not None:
+            self._output_engine.commit()
 
-    def _open_file(self, inode=None, dev=None, ctime=None):
+    def _open_file(self, inode=None, dev=None):
         self._line = ''
         try:
             stat_info = os.stat(self._path)
             self._inode = stat_info.st_ino
             self._dev = stat_info.st_dev
-            self._ctime = stat_info.st_ctime
+            # self._ctime = stat_info.st_ctime
             self._file = open(self._path, "r")
 
             if inode != self._inode or dev != self._dev:
@@ -106,7 +107,7 @@ class FileHandler:
             self._file = None
             self._inode = None
             self._dev = None
-            self._ctime = None
+            # self._ctime = None
 
     def dump_state(self):
         self._lock.acquire()
@@ -149,25 +150,25 @@ class FileHandler:
 
     def on_modified(self, event):
         if not event.is_directory and self._path == event.src_path:
-            print('modified')
+            # print('modified')
             self._read_contents()
 
     def on_deleted(self, event):
         if not event.is_directory and self._path == event.src_path:
-            print('deleted')
+            # print('deleted')
             self._read_contents()
             self._file.close()
             self.__init__(self._path, 0)
 
     def on_moved(self, event):
         if not event.is_directory and self._path == event.src_path:
-            print('moved')
+            # print('moved')
             self._read_contents()
             self._file.close()
             self.__init__(self._path, 0)
 
     def on_created(self, event):
         if not event.is_directory and self._path == event.src_path:
-            print("created")
+            # print("created")
             self._open_file()
             self._read_contents()

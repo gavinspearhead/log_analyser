@@ -81,7 +81,7 @@ class MongoOutput(AbstractOutput):
     #     self._collection.insert_one(data)
 
     def commit(self):
-        print('commiting')
+        # print('commiting')
         if len(self._buffer) == 0:
             return
         try:
