@@ -5,7 +5,6 @@ import output
 from watchdog.events import FileSystemEventHandler
 
 
-
 class LogHandler(FileSystemEventHandler):
     def __init__(self):
         super().__init__()
@@ -55,6 +54,12 @@ class LogHandler(FileSystemEventHandler):
         except Exception:
             pass
 
+    def on_closed(self, event):
+        try:
+            self.match(event).on_closed(event)
+        except Exception:
+            pass
+
 
 class FileHandler:
     def __init__(self, filename, pos=0, parsers=None, inode=None, dev=None, ctime=None, output=None, name=None):
@@ -65,7 +70,7 @@ class FileHandler:
         self._file = None
         self._inode = None
         self._dev = None
-        self._ctime = None
+        # self._ctime = None
         self._output = output
         self._output_engine = None
         self.line = ""
@@ -155,20 +160,25 @@ class FileHandler:
 
     def on_deleted(self, event):
         if not event.is_directory and self._path == event.src_path:
-            # print('deleted')
+            print('deleted')
             self._read_contents()
             self._file.close()
             self.__init__(self._path, 0)
 
     def on_moved(self, event):
         if not event.is_directory and self._path == event.src_path:
-            # print('moved')
+            print('moved')
             self._read_contents()
             self._file.close()
             self.__init__(self._path, 0)
 
     def on_created(self, event):
         if not event.is_directory and self._path == event.src_path:
-            # print("created")
-            self._open_file()
+            print("created")
+            self._open_file(self._inode, self._dev)
+            self._read_contents()
+
+    def on_closed(self, event):
+        if not event.is_directory and self._path == event.src_path:
+            print("closed")
             self._read_contents()
