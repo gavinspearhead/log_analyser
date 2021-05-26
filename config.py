@@ -25,7 +25,7 @@ class State:
         r_state = []
         for s in state:
             try:
-                for i in ['pos', 'path', 'inode', 'device', 'ctime']:
+                for i in ['pos', 'path', 'inode', 'device']:
                     if i not in s:
                         raise ValueError('Unknown parameter {}'.format(i))
                     # else:
@@ -44,7 +44,7 @@ class State:
     def id(self, path):
         for fl in self._state:
             if fl['path'] == path:
-                return fl['inode'], fl['device'], fl['ctime']
+                return fl['inode'], fl['device']
         return None, None, None
 
 

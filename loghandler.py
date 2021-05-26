@@ -20,8 +20,8 @@ class LogHandler(FileSystemEventHandler):
         for files in self._file_list.values():
             files.flush_output()
 
-    def add_file(self, filename, pos=0, parsers=None, inode=None, dev=None, ctime=None, output=None, name=None):
-        self._file_list[filename] = FileHandler(filename, pos, parsers, inode, dev, ctime, output, name)
+    def add_file(self, filename, pos=0, parsers=None, inode=None, dev=None,  output=None, name=None):
+        self._file_list[filename] = FileHandler(filename, pos, parsers, inode, dev, output, name)
         # print(self._file_list[filename])
 
     def match(self, event):
@@ -62,7 +62,7 @@ class LogHandler(FileSystemEventHandler):
 
 
 class FileHandler:
-    def __init__(self, filename, pos=0, parsers=None, inode=None, dev=None, ctime=None, output=None, name=None):
+    def __init__(self, filename, pos=0, parsers=None, inode=None, dev=None, output=None, name=None):
         self._pos = pos
         self._lock = threading.Lock()
         self._path = filename
@@ -70,7 +70,6 @@ class FileHandler:
         self._file = None
         self._inode = None
         self._dev = None
-        # self._ctime = None
         self._output = output
         self._output_engine = None
         self.line = ""
@@ -98,7 +97,6 @@ class FileHandler:
             stat_info = os.stat(self._path)
             self._inode = stat_info.st_ino
             self._dev = stat_info.st_dev
-            # self._ctime = stat_info.st_ctime
             self._file = open(self._path, "r")
 
             if inode != self._inode or dev != self._dev:
@@ -112,13 +110,12 @@ class FileHandler:
             self._file = None
             self._inode = None
             self._dev = None
-            # self._ctime = None
 
     def dump_state(self):
         self._lock.acquire()
         _pos = self._pos
         self._lock.release()
-        state = {"pos": _pos, "path": self._path, 'inode': self._inode, 'device': self._dev, 'ctime': self._ctime}
+        state = {"pos": _pos, "path": self._path, 'inode': self._inode, 'device': self._dev}
         return state
 
     def add_parser(self, parser):

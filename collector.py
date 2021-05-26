@@ -21,12 +21,12 @@ class LogObserver:
         self._event_handlers = dict()
         self._state_file = state_file
 
-    def add(self, filepath, pos, parsers, inode, device, ctime, output, name):
+    def add(self, filepath, pos, parsers, inode, device, output, name):
         directory = os.path.dirname(filepath)
         if directory not in self._event_handlers:
             self._event_handlers[directory] = LogHandler()
 
-        self._event_handlers[directory].add_file(filepath, pos, parsers, inode, device, ctime, output, name)
+        self._event_handlers[directory].add_file(filepath, pos, parsers, inode, device, output, name)
 
     def start(self):
         for dir in self._event_handlers:
@@ -81,7 +81,7 @@ if __name__ == '__main__':
     observer = LogObserver(state_file)
     for fl in config.get_files():
         pos = state.pos(fl)
-        file_id = state.id(fl)
+        inode, dev = state.id(fl)
         filt = config.get_filter(fl)
         name = config.get_name(fl)
         out = output.get_output(config.get_output(fl))
@@ -90,7 +90,7 @@ if __name__ == '__main__':
         for x in filt:
             res.append(RegexParser(x['regex'], x['emit'], x['transform']))
 
-        observer.add(fl, pos, res, file_id[0], file_id[1], file_id[2], out, name)
+        observer.add(fl, pos, res, inode, dev, out, name)
 
     observer.start()
     try:
