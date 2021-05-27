@@ -75,13 +75,13 @@ class Config:
         with open(filename, "r") as infile:
             config = json.load(infile)
         r_config = []
-        for s in config:
+        for config_element in config:
             tmp = dict()
-            tmp['path'] = s['path']
-            tmp['name'] = s['name']
-            tmp['output'] = s['output']
+            tmp['path'] = config_element['path']
+            tmp['name'] = config_element['name']
+            tmp['output'] = config_element['output']
             tmp['filter'] = []
-            for t in s['filter']:
+            for t in config_element['filter']:
                 filter = dict()
                 filter['regex'] = t['regex']
                 filter['emit'] = t['emit']

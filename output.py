@@ -1,4 +1,5 @@
 import json
+import logging
 import threading
 
 from pymongo import MongoClient
@@ -8,6 +9,7 @@ class AbstractOutput:
     DEFAULT_BUFFER_SIZE = 1
 
     def __init__(self, config):
+        logging.debug("Configuring output {}".format(config['name']))
         self._name = config['name']
         self._buffer_size = config['buffer_size'] if 'buffer_size' in config else self.DEFAULT_BUFFER_SIZE
         self._buffer = []

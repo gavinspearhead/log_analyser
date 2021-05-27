@@ -1,6 +1,7 @@
 import os
 import threading
 import output
+import logging
 
 from watchdog.events import FileSystemEventHandler
 
@@ -20,9 +21,8 @@ class LogHandler(FileSystemEventHandler):
         for files in self._file_list.values():
             files.flush_output()
 
-    def add_file(self, filename, pos=0, parsers=None, inode=None, dev=None,  output=None, name=None):
+    def add_file(self, filename, pos=0, parsers=None, inode=None, dev=None, output=None, name=None):
         self._file_list[filename] = FileHandler(filename, pos, parsers, inode, dev, output, name)
-        # print(self._file_list[filename])
 
     def match(self, event):
         for filename in self._file_list:
@@ -33,31 +33,36 @@ class LogHandler(FileSystemEventHandler):
     def on_deleted(self, event):
         try:
             self.match(event).on_deleted(event)
-        except Exception:
+        except AttributeError as e:
+            # print("error deletion", e, event, self)
             pass
 
     def on_modified(self, event):
         try:
             self.match(event).on_modified(event)
-        except Exception:
+        except AttributeError as e:
+            # print("error modified", e, event, self)
             pass
 
     def on_moved(self, event):
         try:
             self.match(event).on_moved(event)
-        except Exception:
+        except AttributeError as e:
+            # print("error moved", e, event)
             pass
 
     def on_created(self, event):
         try:
             self.match(event).on_created(event)
-        except Exception:
+        except AttributeError as e:
+            # print("error created", e, event)
             pass
 
     def on_closed(self, event):
         try:
             self.match(event).on_closed(event)
-        except Exception:
+        except AttributeError as e:
+            # print("error closed", e, event)
             pass
 
 
@@ -72,17 +77,16 @@ class FileHandler:
         self._dev = None
         self._output = output
         self._output_engine = None
-        self.line = ""
+        self._line = ""
         self._parsers = parsers
         self._open_output()
         self._open_file(inode, dev)
-        # print(self._lock)
 
     def __str__(self):
         return "path: {}, pos: {},  output: {}, name: {}".format(self._path, self._pos, self._output, self._name)
 
     def _open_output(self):
-        # print(self._output)
+        logging.debug("Opening output")
         self._output_engine = output.factory(self._output)(self._output)
         # print(self._output_engine)
         self._output_engine.connect()
@@ -92,6 +96,7 @@ class FileHandler:
             self._output_engine.commit()
 
     def _open_file(self, inode=None, dev=None):
+        logging.debug("Opening file: {}".format(self._file))
         self._line = ''
         try:
             stat_info = os.stat(self._path)
@@ -129,53 +134,54 @@ class FileHandler:
                 self._output_engine.write(p.emit(m, self._name))
 
     def _process_line(self, line):
-        # print(line)
+        logging.debug(line)
         if line[-1:] == "\n":
-            line = self.line + line
-            self.line = ''
+            line = self._line + line
+            self._line = ''
             self._match_line(line)
             return True
         else:
-            self.line += line
+            self._line += line
             return False
 
     def _read_contents(self):
         while True:
             line = self._file.readline()
-
+            # print(line)
             if not line:
                 break
             if self._process_line(line):
                 self._lock.acquire()
                 self._pos = self._file.tell()
+                # print(self._pos)
                 self._lock.release()
 
     def on_modified(self, event):
         if not event.is_directory and self._path == event.src_path:
-            # print('modified')
+            # print('modified', event)
             self._read_contents()
 
     def on_deleted(self, event):
         if not event.is_directory and self._path == event.src_path:
-            print('deleted')
+            # print('deleted', event)
             self._read_contents()
             self._file.close()
-            self.__init__(self._path, 0)
+            self._open_file(self._inode, self._dev)
 
     def on_moved(self, event):
         if not event.is_directory and self._path == event.src_path:
-            print('moved')
+            # print('moved', event)
             self._read_contents()
             self._file.close()
-            self.__init__(self._path, 0)
+            self._open_file(self._inode, self._dev)
 
     def on_created(self, event):
         if not event.is_directory and self._path == event.src_path:
-            print("created")
+            # print("created", event)
             self._open_file(self._inode, self._dev)
             self._read_contents()
 
     def on_closed(self, event):
         if not event.is_directory and self._path == event.src_path:
-            print("closed")
+            # print("closed", event)
             self._read_contents()
