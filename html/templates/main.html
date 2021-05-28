@@ -26,18 +26,11 @@
 
 </script>
 
-<nav class="navbar navbar-fixed-top">
-    <div>
-        <!-- Button trigger modal -->
-        <button type="button" class="btn btn-secondary btn-sm" id="apache_log">Apache</button>
-        <button type="button" id="ssh_log" class="btn btn-secondary btn-sm">SSH</button>
-    </div>
-</nav>
-
 <div id="maindiv" class="container-fluid max-height no-overflow">
     <div class="row max-height">
         <div class="col-3 scrollable bottom_margin" id="logtypes">
             <ul class="list-unstyled components" id="log_list">
+                <hr>
                 <li><b>Apache</b>
                     <ul id="apache_ip_addresses">IP Addresses</ul>
                     <ul id="apache_time_ips">IP Addresses per time</ul>
@@ -55,11 +48,12 @@
             </ul>
         </div>
         <div class="col scrollable bottom_margin" id="itemstablediv">
+            <h2 id="header"></h2>
             <div>
-            <input type="radio" class="btn-check" name="timeperiod" id="hourly" autocomplete="off" checked>
+            <input type="radio" class="btn-check" name="timeperiod" id="hourly" autocomplete="off" >
             <label class="btn btn-secondary" for="hourly">Last Hour</label>
 
-            <input type="radio" class="btn-check" name="timeperiod" id="daily" autocomplete="off">
+            <input type="radio" class="btn-check" name="timeperiod" id="daily" autocomplete="off" checked>
             <label class="btn btn-secondary" for="daily">Today</label>
 
             <input type="radio" class="btn-check" name="timeperiod" id="yesterday" autocomplete="off">

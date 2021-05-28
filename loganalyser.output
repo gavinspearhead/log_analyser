@@ -5,6 +5,8 @@
     "collection": "logs",
     "username": "loganaliser",
     "password": "",
+    "hostname": "localhost",
+    "port": "",
     "auth_db": "logs"
 },
 {

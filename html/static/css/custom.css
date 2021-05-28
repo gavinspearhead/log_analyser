@@ -145,3 +145,8 @@ td {
 .invisible {
     visibility: hidden;
 }
+
+h2#header {
+  text-transform: capitalize;
+
+}

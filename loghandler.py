@@ -17,12 +17,16 @@ class LogHandler(FileSystemEventHandler):
             states.append(files.dump_state())
         return states
 
+    def cleanup(self):
+        for files in self._file_list.values():
+            files.cleanup()
+
     def flush_output(self):
         for files in self._file_list.values():
             files.flush_output()
 
-    def add_file(self, filename, pos=0, parsers=None, inode=None, dev=None, output=None, name=None):
-        self._file_list[filename] = FileHandler(filename, pos, parsers, inode, dev, output, name)
+    def add_file(self, filename, pos=0, parsers=None, inode=None, dev=None, output=None, name=None, retention=None):
+        self._file_list[filename] = FileHandler(filename, pos, parsers, inode, dev, output, name, retention)
 
     def match(self, event):
         for filename in self._file_list:
@@ -67,11 +71,12 @@ class LogHandler(FileSystemEventHandler):
 
 
 class FileHandler:
-    def __init__(self, filename, pos=0, parsers=None, inode=None, dev=None, output=None, name=None):
+    def __init__(self, filename, pos=0, parsers=None, inode=None, dev=None, output=None, name=None, retention=0):
         self._pos = pos
         self._lock = threading.Lock()
         self._path = filename
         self._name = name
+        self._retention = retention
         self._file = None
         self._inode = None
         self._dev = None
@@ -115,6 +120,9 @@ class FileHandler:
             self._file = None
             self._inode = None
             self._dev = None
+
+    def cleanup(self):
+        self._output_engine.cleanup(self._name, self._retention)
 
     def dump_state(self):
         self._lock.acquire()

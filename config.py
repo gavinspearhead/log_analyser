@@ -80,6 +80,7 @@ class Config:
             tmp['path'] = config_element['path']
             tmp['name'] = config_element['name']
             tmp['output'] = config_element['output']
+            tmp['retention'] = config_element['retention'] if 'retention' in config_element else None
             tmp['filter'] = []
             for t in config_element['filter']:
                 filter = dict()
@@ -90,6 +91,11 @@ class Config:
             r_config.append(tmp)
 
         self._config = r_config
+
+    def get_retention(self, filename):
+        for i in self._config:
+            if i['path'] == filename:
+                return i['retention']
 
     def get_name(self, filename):
         for i in self._config:

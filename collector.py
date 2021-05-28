@@ -25,19 +25,21 @@ class LogObserver:
         self._lock = threading.Lock()
         self._event_handlers = dict()
         self._state_file = state_file
+        self._cleanup_threat = None
 
-    def add(self, filepath, pos, parsers, inode, device, output, name):
+    def add(self, filepath, pos, parsers, inode, device, output, name, retention):
         directory = os.path.dirname(filepath)
         if directory not in self._event_handlers:
             self._event_handlers[directory] = LogHandler()
 
-        self._event_handlers[directory].add_file(filepath, pos, parsers, inode, device, output, name)
+        self._event_handlers[directory].add_file(filepath, pos, parsers, inode, device, output, name, retention)
 
     def start(self):
+        logging.info('Starting log collector version {}'.format(VERSION))
         for directory in self._event_handlers:
             self._observer.schedule(self._event_handlers[directory], directory, recursive=False)
-        logging.info('Starting log collector version {}'.format(VERSION))
         self._observer.start()
+        self.start_cleanup_threat()
 
     def stop(self):
         logging.info('Stopping log collector')
@@ -45,6 +47,7 @@ class LogObserver:
 
     def join(self):
         self._observer.join()
+        self._cleanup_threat.join()
 
     def dump_state(self):
         logging.debug('dump_state')
@@ -61,6 +64,16 @@ class LogObserver:
         logging.debug('flushing output')
         for eh in self._event_handlers.values():
             eh.flush_output()
+
+    def cleanup(self):
+        for eh in self._event_handlers.values():
+            eh.cleanup()
+        time.sleep(60*60) # 1 hour
+
+    def start_cleanup_threat(self):
+        logging.debug("starting cleanup thread")
+        self._cleanup_threat = threading.Thread(target=self.cleanup)
+        self._cleanup_threat.start()
 
 
 if __name__ == '__main__':
@@ -91,13 +104,14 @@ if __name__ == '__main__':
         inode, dev = state.id(fl)
         filters = config.get_filter(fl)
         name = config.get_name(fl)
+        retention = config.get_retention(fl)
         out = output.get_output(config.get_output(fl))
 
         res = []
         for x in filters:
             res.append(RegexParser(x['regex'], x['emit'], x['transform']))
 
-        observer.add(fl, pos, res, inode, dev, out, name)
+        observer.add(fl, pos, res, inode, dev, out, name, retention)
 
     observer.start()
     try:
