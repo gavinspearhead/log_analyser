@@ -56,9 +56,9 @@ def get_ssh_data(name, period):
     col = get_mongo_connection()
     rv = []
     keys = []
-    mask = get_period_mask(period)
-    time_mask = mask[2]
-    mask = {"$and": [{"timestamp": {"$gte": mask[0]}}, {"timestamp": {"$lte": mask[1]}}]}
+    mask_range = get_period_mask(period)
+    time_mask = mask_range[2]
+    mask = {"$and": [{"timestamp": {"$gte": mask_range[0]}}, {"timestamp": {"$lte": mask_range[1]}}]}
     if name == 'users':
         keys = ['username', 'type', 'count', 'ips']
         res = col.aggregate(
@@ -89,7 +89,8 @@ def get_ssh_data(name, period):
             extra_time2 = str(x['hour'][0]) + ":" if time_mask == 'minute' else ""
 
             keys = [time_mask, 'username', 'type', 'total', 'ips']
-            row = {'time': "{} {} {}".format(extra_time2, x['_id']['time'], extra_time), 'username': x['_id']['username'],
+            row = {'time': "{} {} {}".format(extra_time2, x['_id']['time'], extra_time),
+                   'username': x['_id']['username'],
                    'type': x['_id']['type'], 'total': x['total'], 'ips': ", ".join(x['ips'])}
             rv.append(row)
     elif name == 'time_ips':
@@ -125,41 +126,50 @@ def get_ssh_data(name, period):
                    'users': ", ".join(x['users'])}
             rv.append(row)
     elif name == 'new_users':
-        keys = ['username', 'ip address', 'count']
+        keys = ['username', 'ip address', 'count', 'types']
         users = dict()
         res = col.aggregate(
             [{"$match": {"$and": [{"name": "auth_ssh"}, {"type": "connect"}]}},
-             {"$group": {"_id": {"username": "$username", "ip_address": "$ip_address"}, "total": {"$sum": 1}}},
+             {"$group": {"_id": {"username": "$username", "ip_address": "$ip_address"}, "total": {"$sum": 1},
+                         "oldest": {"$min": "$timestamp"}}},
              {"$sort": {"total": -1}}
              ])
         for x in res:
-            u =x['_id']['username']
+            u = x['_id']['username']
             ip = x['_id']['ip_address']
             t = x['total']
+            o = pytz.UTC.localize(x['oldest'])
             if u not in users:
                 users[u] = dict()
-            users[u][ip] = t
-        print(users)
+            users[u][ip] = (t, o)
+        # print(users)
         res = col.aggregate(
-            [{"$match": {"$and": [{"name": "auth_ssh"}, mask, {"type": "connect"}]}},
-             {"$group": {"_id": {"username": "$username", "ip_address": "$ip_address"}, "total": {"$sum": 1}}},
+            [{"$match": {"$and": [{"name": "auth_ssh"}, mask]}},
+             {"$group": {
+                 "_id": {"username": "$username", "ip_address": "$ip_address"},
+                 "total": {"$sum": 1},
+                 'types': {"$addToSet": "$type"}}},
              {"$sort": {"total": -1}}
              ])
         new_users = dict()
+        # mask_range[0] = pytz.UTC.localize(mask_range[0])
         for x in res:
-            u =x['_id']['username']
+            u = x['_id']['username']
             ip = x['_id']['ip_address']
-            t = x['total']
-            if  u not in users or ip not in users[u] or users[u][ip] < 2*t:
-                    if u not in new_users:
-                        new_users[u] = dict()
-                    new_users[u][ip] = (t, users[u][ip])
+            ts = x['total']
+            ty = ", ".join(x['types'])
 
-        for u in res:
-            for ip in res[u]:
-                row = {'username': u, 'ip_address': ip, 'count': res[u][ip] }
+            if u not in users or ip not in users[u] or (users[u][ip][0] < (2 * ts)) or users[u][ip][1] >= mask_range[0]:
+                if u not in new_users:
+                    new_users[u] = dict()
+                new_users[u][ip] = (ts, ty)
+
+        for u in new_users:
+            for ip in new_users[u]:
+                row = {'username': u, 'ip_address': ip, 'count': new_users[u][ip][0], 'types': new_users[u][ip][1]}
                 rv.append(row)
-
+        # print('aouea')
+        # print(rv)
     else:
         raise ValueError(name)
     return rv, keys
@@ -205,7 +215,7 @@ def get_apache_data(name, period):
     elif name == 'urls':
         res = col.aggregate(
             [{"$match": {"$and": [{"name": "apache_access"}, mask]}},
-             {"$group": {"_id": { "path": "$path", "code": "$code"}, "total": {"$sum": 1}}},
+             {"$group": {"_id": {"path": "$path", "code": "$code"}, "total": {"$sum": 1}}},
              {"$sort": {"total": -1}}
              ])
         keys = ['path', 'code', 'count']
@@ -228,7 +238,8 @@ def get_apache_data(name, period):
             extra_time = "-" + str(x['month'][0]) if time_mask == 'dayOfMonth' else ''
             extra_time2 = str(x['hour'][0]) + ":" if time_mask == 'minute' else ""
             keys = [time_mask, 'ip address', 'total', 'codes']
-            row = {'time': "{}{} {}".format(extra_time2, x['_id']['time'], extra_time), 'ip_address': x['_id']['ip_address'],
+            row = {'time': "{}{} {}".format(extra_time2, x['_id']['time'], extra_time),
+                   'ip_address': x['_id']['ip_address'],
                    'total': x['total'], 'codes': ", ".join(x['codes'])}
             rv.append(row)
     elif name == 'time_urls':
@@ -253,12 +264,12 @@ def get_apache_data(name, period):
     elif name == "size_ip":
         res = col.aggregate(
             [{"$match": {"$and": [{"name": "apache_access"}, mask]}},
-             {"$group": {"_id": { "ip_address": "$ip_address"}, "total": {"$sum": "$size"}}},
+             {"$group": {"_id": {"ip_address": "$ip_address"}, "total": {"$sum": "$size"}}},
              {"$sort": {"total": -1}}
              ])
         keys = ['path', 'size']
         for x in res:
-            row = {'IP Address': x['_id']['ip_address'],  'size': x['total']}
+            row = {'IP Address': x['_id']['ip_address'], 'size': x['total']}
             rv.append(row)
     else:
         raise ValueError("Invalid item: {}".format(name))
