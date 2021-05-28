@@ -11,6 +11,7 @@
     <script type="text/javascript" src="{{ url_for('static', filename='js/jquery-3.6.0.min.js') }}"></script>
     <script type="text/javascript" src="{{ url_for('static', filename='js/popper.js') }}"></script>
     <script type="text/javascript" src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/ChartNew.js') }}"></script>
 
 <style> {# included here because relative path #}
 @font-face {
@@ -38,15 +39,18 @@
                     <ul id="apache_method">HTTP Method</ul>
                     <ul id="apache_urls">URLs</ul>
                     <ul id="apache_time_urls">URLs per time</ul>
+                    <ul id="apache_size_ip">Total size per IP</ul>
                 </li>
                 <li><b>SSH</b>
                     <ul id="ssh_users">Users</ul>
+                    <ul id="ssh_new_users">New Users</ul>
                     <ul id="ssh_time_users">Users per time</ul>
                     <ul id="ssh_ip_addresses">IP addresses</ul>
                     <ul id="ssh_time_ips">IP addresses per time</ul>
                 </li>
             </ul>
         </div>
+
         <div class="col scrollable bottom_margin" id="itemstablediv">
             <h2 id="header"></h2>
             <div>

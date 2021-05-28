@@ -1,6 +1,8 @@
 
 var g_name= '';
 var g_type = '';
+var max_datapoints = 120;
+
 
 function handle_request(name, type)
 {
@@ -24,8 +26,8 @@ function handle_request(name, type)
     }).done(function(data) {
         var res = JSON.parse(data);
         $('#itemstable').html(res.rhtml);
-        document.title = "Log Analyser - " + type + " " + name +  " " + period;
-        $("#header").text(type + " " + name);
+        document.title = ("Log Analyser - " + type + " " + name +  " " + period).replace("_", " ");
+        $("#header").text((type + ": " + name).replace("_", " "));
     });
     return false;
 }

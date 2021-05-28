@@ -124,6 +124,42 @@ def get_ssh_data(name, period):
             row = {'username': x['_id']['ip_address'], 'count': x['total'], 'type': x['_id']['type'],
                    'users': ", ".join(x['users'])}
             rv.append(row)
+    elif name == 'new_users':
+        keys = ['username', 'ip address', 'count']
+        users = dict()
+        res = col.aggregate(
+            [{"$match": {"$and": [{"name": "auth_ssh"}, {"type": "connect"}]}},
+             {"$group": {"_id": {"username": "$username", "ip_address": "$ip_address"}, "total": {"$sum": 1}}},
+             {"$sort": {"total": -1}}
+             ])
+        for x in res:
+            u =x['_id']['username']
+            ip = x['_id']['ip_address']
+            t = x['total']
+            if u not in users:
+                users[u] = dict()
+            users[u][ip] = t
+        print(users)
+        res = col.aggregate(
+            [{"$match": {"$and": [{"name": "auth_ssh"}, mask, {"type": "connect"}]}},
+             {"$group": {"_id": {"username": "$username", "ip_address": "$ip_address"}, "total": {"$sum": 1}}},
+             {"$sort": {"total": -1}}
+             ])
+        new_users = dict()
+        for x in res:
+            u =x['_id']['username']
+            ip = x['_id']['ip_address']
+            t = x['total']
+            if  u not in users or ip not in users[u] or users[u][ip] < 2*t:
+                    if u not in new_users:
+                        new_users[u] = dict()
+                    new_users[u][ip] = (t, users[u][ip])
+
+        for u in res:
+            for ip in res[u]:
+                row = {'username': u, 'ip_address': ip, 'count': res[u][ip] }
+                rv.append(row)
+
     else:
         raise ValueError(name)
     return rv, keys
@@ -169,12 +205,12 @@ def get_apache_data(name, period):
     elif name == 'urls':
         res = col.aggregate(
             [{"$match": {"$and": [{"name": "apache_access"}, mask]}},
-             {"$group": {"_id": "$path", "total": {"$sum": 1}}},
+             {"$group": {"_id": { "path": "$path", "code": "$code"}, "total": {"$sum": 1}}},
              {"$sort": {"total": -1}}
              ])
-        keys = ['path', 'count']
+        keys = ['path', 'code', 'count']
         for x in res:
-            row = {'path': x['_id'], 'count': x['total']}
+            row = {'path': x['_id']['path'], 'code': x['_id']['code'], 'count': x['total']}
             rv.append(row)
     elif name == 'time_ips':
         if time_mask == 'day':
@@ -213,6 +249,16 @@ def get_apache_data(name, period):
             keys = [time_mask, 'path', 'total', 'ips']
             row = {'time': "{}{} {}".format(extra_time2, x['_id']['time'], extra_time), 'path': x['_id']['path'],
                    'total': x['total'], 'ips': ", ".join(x['ips'])}
+            rv.append(row)
+    elif name == "size_ip":
+        res = col.aggregate(
+            [{"$match": {"$and": [{"name": "apache_access"}, mask]}},
+             {"$group": {"_id": { "ip_address": "$ip_address"}, "total": {"$sum": "$size"}}},
+             {"$sort": {"total": -1}}
+             ])
+        keys = ['path', 'size']
+        for x in res:
+            row = {'IP Address': x['_id']['ip_address'],  'size': x['total']}
             rv.append(row)
     else:
         raise ValueError("Invalid item: {}".format(name))
