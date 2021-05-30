@@ -336,7 +336,7 @@ def data():
 
         # Force every thing to string so we can truncate stuff in the template
         res2.append({k: str(v) for k, v in x.items()})
-
+    print(flags)
     rhtml = render_template("data_table.html", data=res2, keys=keys, flags=flags)
     return json.dumps({'success': True, 'rhtml': rhtml}), 200, {'ContentType': 'application/json'}
 
