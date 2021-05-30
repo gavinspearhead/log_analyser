@@ -12,7 +12,7 @@
     {% if k == 'ip_address' %}
         {% set flag = flags[k] %}
         {% if flag != '' %}
-            <img src="{{ url_for('static', filename='img/flags/' ~ flag ~ '.png') }}"
+            <img src="{{ url_for('static', filename='img/flags/' ~ flag ~ '.png') }}">
         {% endif %}
     {% endif %}
     </td>
