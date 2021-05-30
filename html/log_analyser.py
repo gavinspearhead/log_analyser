@@ -19,7 +19,7 @@ from output import MongoConnector
 output_file_name = "loganalyser.output"
 config_path = os.path.dirname(__file__)
 app = Flask(__name__)
-geoip_db = geoip.open_database('data/GeoLite2-Country.mmdb')
+geoip_db = geoip.open_database(os.path.join(os.path.dirname(__file__),'data/GeoLite2-Country.mmdb'))
 
 
 def get_mongo_connection():
