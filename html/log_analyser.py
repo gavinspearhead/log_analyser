@@ -328,11 +328,11 @@ def data():
 
         for k, v in x.items():
             if k == 'ip_address' and k not in flags:
-                try :
+                try:
                     flag = geoip_db.lookup(v).country.lower()
-                    flags[k] = flag
+                    flags[v] = flag
                 except AttributeError:
-                    flags[k] = ''
+                    flags[v] = ''
 
         # Force every thing to string so we can truncate stuff in the template
         res2.append({k: str(v) for k, v in x.items()})
