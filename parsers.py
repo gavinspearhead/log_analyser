@@ -229,13 +229,29 @@ if __name__ == '__main__':
     # print(x, )
     # x = c.match("[15/May/2021:23:45:15 +0200]")
     # print(x, )
-    c = RegexParser("foo (%TIME:freddy) (%ALNUM:host) (%ISOTIME:date) (%IP4) bar", {
-        'test': "{freddy} ",
-        "test1": " {host} at",
-        'test3': "{date} {__3}"})
-    s = "foo 12:34:45 foobar 2021-06-12T12:23:45+03:00 12.34.56.78 bar"
-    m = c.match(s)
-    print(c.emit(m, 'foo'))
+    # c = RegexParser("foo (%TIME:freddy) (%ALNUM:host) (%ISOTIME:date) (%IP4) bar", {
+    #     'test': "{freddy} ",
+    #     "test1": " {host} at",
+    #     'test3': "{date} {__3}"})
+    # s = "foo 12:34:45 foobar 2021-06-12T12:23:45+03:00 12.34.56.78 bar"
+    # m = c.match(s)
+    # print(c.emit(m, 'foo'))
+    s1 = 'May 29 01:35:07 killchain sshd[9776]: Accepted keyboard-interactive/pam for harm from ::1 port 39330 ssh2'
+    r1 = '(%SYSLOG_TIMESTAMP:timestamp) (%NAME:host).*: Accepted (%STR:access) for (%NAME:username) from (%IP:addr) '
+    e1 = {
+             "timestamp": "{timestamp}",
+             "username": "{username}",
+             "access": "{access}",
+             "ip_address": "{addr}",
+             "port": "{port}",
+             "protocol": "{protocol}",
+             "type": "connect"
+         },
+    c1 = RegexParser(r1, e1, [])
+    m = c1.match(s1)
+    print(m)
+    print(c1.emit(m, 'faa'))
+
     # print(o, f)
     # res = re.search(o, s)
     # print(res)

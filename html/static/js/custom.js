@@ -1,25 +1,27 @@
 
 var g_name= '';
 var g_type = '';
+var g_search = '';
 var max_datapoints = 120;
 
 
-function handle_request(name, type)
+function handle_request(name, type, search)
 {
-    console.log(name, type)
+    console.log(name, type, search)
     g_name = name;
     g_type = type;
-        var period = 'today';
-        if ($("#daily").is(":checked")) {period = 'today';}
-        else if ($("#hourly").is(":checked")) {period = 'hour';}
-        else if ($("#yesterday").is(":checked")) {period = 'yesterday';}
-        else if ($("#weekly").is(":checked")) {period = 'week';}
-        else if ($("#monthly").is(":checked")) {period = 'month';}
-        console.log(period);
+    g_search = search;
+   var period = 'today';
+    if ($("#daily").is(":checked")) {period = 'today';}
+    else if ($("#hourly").is(":checked")) {period = 'hour';}
+    else if ($("#yesterday").is(":checked")) {period = 'yesterday';}
+    else if ($("#weekly").is(":checked")) {period = 'week';}
+    else if ($("#monthly").is(":checked")) {period = 'month';}
+    console.log(period);
     $.ajax({
         url: script_root + '/data/',
         type: 'POST',
-        data:  JSON.stringify({'name': name, "type": type, 'period': period}),
+        data:  JSON.stringify({'name': name, "type": type, 'period': period, 'search': search}),
         cache: false,
         contentType: "application/json;charset=UTF-8",
 
@@ -48,8 +50,12 @@ function set_log_handlers()
         handle_request(name, type)
     });
     $("[name^='timeperiod").click(function(event) {
-       handle_request(g_name, g_type);
+       handle_request(g_name, g_type, g_search);
     });
+    $("#searchbutton").click(function(event) {
+        handle_request(g_name, g_type, $("#searchbar").val())
+    });
+
 }
 
 
@@ -63,5 +69,5 @@ $( document ).ready(function() {
 
     set_log_handlers();
 
-    handle_request('users', "ssh");
+    handle_request('users', "ssh", '');
 });

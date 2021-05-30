@@ -28,6 +28,26 @@
 </script>
 
 <div id="maindiv" class="container-fluid max-height no-overflow">
+    <nav class="navbar navbar-fixed-top">
+    <div>
+        <h2 id="header"></h2>
+        <!-- Button trigger modal
+        <button type="button" id="hidefeeds" class="btn btn-secondary btn-sm"><span class="left_menu"><i class="fas fa-angle-double-left"></i></span><span class="right_menu hidden"><i class="fas fa-angle-double-right"></i></span></button>
+        <button type="button" class="btn btn-secondary btn-sm" id="addfeedbutton">Add Feed</button>
+        <button type="button" id="uploadopml" class="btn btn-secondary btn-sm">Import OPML</button>
+        <button type="button" id="editcategory" class="btn btn-secondary btn-sm">Categories</button>
+        &nbsp; &nbsp;
+        <button type="button" id="markread" class="btn btn-secondary btn-sm">Mark read</button> -->
+    </div>
+    <div class="navbar-right">
+    <div class="input-group input-group-sm">
+        <input id="searchbar" class="form-control bg-dark border-darkish"  type="text" placeholder="Search">
+         <span class="input-group-btn border-darkish">
+        <button type="button" id="searchbutton" class="btn btn-secondary btn-sm border-darkish">Search</button></span>
+    </div>
+    </div>
+</nav>
+
     <div class="row max-height">
         <div class="col-3 scrollable bottom_margin" id="logtypes">
             <ul class="list-unstyled components" id="log_list">
@@ -52,7 +72,6 @@
         </div>
 
         <div class="col scrollable bottom_margin" id="itemstablediv">
-            <h2 id="header"></h2>
             <div>
             <input type="radio" class="btn-check" name="timeperiod" id="hourly" autocomplete="off" >
             <label class="btn btn-secondary" for="hourly">Last Hour</label>
