@@ -10,7 +10,7 @@
 {% for k in d %}
     <td><span title="{{d[k]}}">{{ d[k]| truncate(80) }}</span>
     {% if k == 'ip_address' %}
-        {% set flag = flags[k] %}
+        {% set flag = flags[d[k]] %}
         {% if flag != '' %}
             <img src="{{ url_for('static', filename='img/flags/' ~ flag ~ '.png') }}">
         {% endif %}
