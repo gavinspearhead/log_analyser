@@ -95,10 +95,8 @@ def get_ssh_data(name, period, search):
                          "ips": {"$addToSet": "$ip_address"}}},
              {"$sort": {"total": -1}}
              ]
-        print(q)
         res = col.aggregate(q)
         for x in res:
-            print(x)
             row = {'username': x['_id']['username'], 'type': x['_id']['type'], 'count': x['total'],
                    'ips': ", ".join(x['ips'])}
             rv.append(row)
@@ -154,7 +152,6 @@ def get_ssh_data(name, period, search):
              ])
         for x in res:
             ip_addr = x['_id']['ip_address']
-            print(geoip_db.lookup(ip_addr))
             row = {'ip_address': ip_addr, 'count': x['total'], 'type': x['_id']['type'], 'users': ", ".join(x['users'])}
             rv.append(row)
     elif name == 'new_users':
@@ -200,7 +197,6 @@ def get_ssh_data(name, period, search):
             for ip in new_users[u]:
                 row = {'username': u, 'ip_address': ip, 'count': new_users[u][ip][0], 'types': new_users[u][ip][1]}
                 rv.append(row)
-        # print('aouea')
         # print(rv)
     else:
         raise ValueError(name)
@@ -315,7 +311,6 @@ def data():
     rtype = request.json.get('type', '').strip()
     period = request.json.get('period', '').strip()
     search = request.json.get('search', '').strip()
-    print(search)
     if rtype == 'ssh':
         res, keys = get_ssh_data(name, period, search)
     elif rtype == 'apache':
@@ -336,7 +331,6 @@ def data():
 
         # Force every thing to string so we can truncate stuff in the template
         res2.append({k: str(v) for k, v in x.items()})
-    print(flags)
     rhtml = render_template("data_table.html", data=res2, keys=keys, flags=flags)
     return json.dumps({'success': True, 'rhtml': rhtml}), 200, {'ContentType': 'application/json'}
 
