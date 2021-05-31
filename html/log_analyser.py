@@ -60,17 +60,34 @@ def get_period_mask(period):
 def get_search_mask_ssh(search):
     try:
         ipaddress.ip_address(search)
-        search_q = {"ip_address": search}
+        return {"ip_address": search}
     except ValueError:
-        search_q = {"username": {"$regex": re.escape(search)}}
+       pass
+
+    try:
+        t_search = search.replace("*", "1", 2)
+        ipaddress.ip_address(t_search)
+        t_search = search.replace(".", "[.]", 2)
+        t_search = t_search.replace("*", ".*", 2)
+        return {"ip_address": {"$regex": t_search}}
+    except ValueError:
         pass
-    return search_q
+
+    return {"username": {"$regex": re.escape(search)}}
 
 
 def get_search_mask_apache(search):
     try:
         ipaddress.ip_address(search)
         return {"ip_address": search}
+    except ValueError:
+        pass
+    try:
+        t_search = search.replace("*", "1", 2)
+        ipaddress.ip_address(t_search)
+        t_search = search.replace(".", "[.]", 2)
+        t_search = t_search.replace("*", ".*", 2)
+        return {"ip_address": {"$regex": t_search}}
     except ValueError:
         pass
     if search.isnumeric():
