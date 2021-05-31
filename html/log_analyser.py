@@ -239,7 +239,7 @@ def get_apache_data(name, period, search):
              ])
         keys = ['ip address', 'count']
         for x in res:
-            row = {'code': x['_id'], 'count': x['total']}
+            row = {'ip_address': x['_id'], 'count': x['total']}
             rv.append(row)
     elif name == 'urls':
         res = col.aggregate(
