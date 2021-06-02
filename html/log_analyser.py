@@ -19,7 +19,7 @@ from output import MongoConnector
 output_file_name = "loganalyser.output"
 config_path = os.path.dirname(__file__)
 app = Flask(__name__)
-geoip_db = geoip.open_database(os.path.join(os.path.dirname(__file__),'data/GeoLite2-Country.mmdb'))
+geoip_db = geoip.open_database(os.path.join(os.path.dirname(__file__), 'data/GeoLite2-Country.mmdb'))
 
 
 def get_mongo_connection():
@@ -57,39 +57,45 @@ def get_period_mask(period):
         raise ValueError("Unknown period {}".format(period))
 
 
-def get_search_mask_ssh(search):
+def match_ip_address(search):
     try:
         ipaddress.ip_address(search)
         return {"ip_address": search}
     except ValueError:
-       pass
+        pass
 
     try:
         t_search = search.replace("*", "1", 2)
-        ipaddress.ip_address(t_search)
+        ipaddress.IPv4Address(t_search)
         t_search = search.replace(".", "[.]", 2)
         t_search = t_search.replace("*", ".*", 2)
         return {"ip_address": {"$regex": t_search}}
     except ValueError:
         pass
 
+    try:
+        t_search = search.replace("*", "1", 2)
+        ipaddress.IPv6Address(t_search)
+        t_search = search.replace(".", "[.]", 2)
+        t_search = t_search.replace("*", ".*", 2)
+        return {"ip_address": {"$regex": t_search}}
+    except ValueError:
+        pass
+    return None
+
+
+def get_search_mask_ssh(search):
+    s = match_ip_address(search)
+    if s is not None:
+        return s
     return {"username": {"$regex": re.escape(search)}}
 
 
 def get_search_mask_apache(search):
-    try:
-        ipaddress.ip_address(search)
-        return {"ip_address": search}
-    except ValueError:
-        pass
-    try:
-        t_search = search.replace("*", "1", 2)
-        ipaddress.ip_address(t_search)
-        t_search = search.replace(".", "[.]", 2)
-        t_search = t_search.replace("*", ".*", 2)
-        return {"ip_address": {"$regex": t_search}}
-    except ValueError:
-        pass
+    s = match_ip_address(search)
+    if s is not None:
+        return s
+
     if search.isnumeric():
         return {"code": search}
 

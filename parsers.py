@@ -1,4 +1,5 @@
 import datetime
+import logging
 import re
 import time
 import dateutil.parser
@@ -21,7 +22,7 @@ class TimestampParsers:
 
     def __init__(self):
         self._apache_pattern = re.compile(r'\[(\d+)/([a-zA-Z]+)/(\d+):(\d+):(\d+):(\d+)\s([+-]?\d+)]')
-        self._syslog_pattern = re.compile(r'([A-Za-z]+)\s(\d+)\s(\d+):(\d+):(\d+)')
+        self._syslog_pattern = re.compile(r'([A-Za-z]+)\s+(\d+)\s+(\d+):(\d+):(\d+)')
 
     def parse_syslog_timestamp(self, timestr):
         matches = self._syslog_pattern.search(timestr)
@@ -42,7 +43,7 @@ class TimestampParsers:
             timestr = "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}{:s}".format(year, mon, day, hour, mn, sec, tz)
             # print(timestr)
         except Exception as e:
-            print("Invalid Date", e)
+            logging.info("Invalid Date {} {}".format(timestr, e))
             return ""
         return timestr
 
@@ -65,7 +66,7 @@ class TimestampParsers:
             timestr = "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}{:+05d}".format(year, mon, day, hour, mn, sec, tz)
             # print(timestr)
         except Exception as e:
-            print("Invalid Date", e)
+            logging.info("Invalid Date {}".format(e))
             return ""
         return timestr
 
@@ -93,7 +94,7 @@ class RegexParser(LogParser):
         'TIME': ('\\d{1,2}[:.]\\d{1,2}(?:[:.]\\d{1,2}(?:[.]\\d+)?)?', str),
         'AUTH_DATE': ('[a-zA-Z]+ \\d{1,2}', str),
         'APACHE_TIMESTAMP': ('\\[\\d+/[a-zA-Z]+/\\d+:\\d+:\\d+:\\d+\\s[+-]?\\d+]', parse_apache_timestamp),
-        'SYSLOG_TIMESTAMP': ('[A-Za-z]+\\s\\d+\\s\\d+:\\d+:\\d+', parse_syslog_timestamp),
+        'SYSLOG_TIMESTAMP': ('[A-Za-z]+\\s+\\d+\\s+\\d+:\\d+:\\d+', parse_syslog_timestamp),
         'ISOTIME': (
             '\\d{4}-[01]\\d-[0-3]\\dT[0-2]\\d:[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:[+-][0-2]\\d:[0-5]\\d|Z)?', str),
         'DATE': ('\\d{4}-[01]\\d-[0-3]\\dT[0-2]\\d', str),
@@ -103,6 +104,7 @@ class RegexParser(LogParser):
     def __init__(self, reg_ex: str, format_str, transform):
         super().__init__()
         self._pattern, self._filters = self.parse_regexp(reg_ex)
+        # print(self._pattern)
         self._compiled_pattern = re.compile(self._pattern)
         self._format_str = format_str
         self._transform = transform
@@ -156,18 +158,20 @@ class RegexParser(LogParser):
                 else:
                     out += line[pos]
                     pos += 1
-            except IndexError:
-                print('error')
+            except IndexError as e:
+                logging.info('error {}'.format(e))
         # print(out, filters)
         return out, filters
 
     def match(self, line):
-        x = self._compiled_pattern.search(line)
-        if x is None:
+        res = self._compiled_pattern.search(line)
+        # print(line, res)
+        if res is None:
             return False
-        return list(x.groups())
+        return list(res.groups())
 
-    def _guess_type(self, rv):
+    @staticmethod
+    def _guess_type(rv):
         try:
             return dateutil.parser.isoparse(rv)
         except ValueError:
@@ -189,7 +193,7 @@ class RegexParser(LogParser):
                 v = val[1](matches[val[0]])
                 vals[idx] = v
             except TypeError:
-                print('Error: {} is not a {}'.format(matches[val[0]], val[1]))
+                logging.info('Error: {} is not a {}'.format(matches[val[0]], val[1]))
 
         for idx, val in self._format_str.items():
             try:
@@ -203,6 +207,7 @@ class RegexParser(LogParser):
     def _transform_value(self, rv, idx):
         if idx in self._transform:
             if self._transform[idx] == 'date':
+                # print(rv)
                 return dateutil.parser.isoparse(rv)
             elif self._transform[idx] == 'int':
                 return int(rv)
