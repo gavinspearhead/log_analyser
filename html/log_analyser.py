@@ -254,15 +254,26 @@ def get_apache_data(name, period, search):
         for x in res:
             row = {'method': x['_id'], 'count': x['total']}
             rv.append(row)
+    elif name == 'protocol':
+        res = col.aggregate(
+            [{"$match": {"$and": [{"name": "apache_access"}, mask, search_q]}},
+             {"$group": {"_id": {"protocol": "$protocol", "protocol_version": "$protocol_version"}, "total": {"$sum": 1}}},
+             {"$sort": {"total": -1}}
+             ])
+        keys = ['Protocol', 'version', 'count']
+        for x in res:
+            row = {'protocol': x['_id']['protocol'], 'protocol_version': x['_id']['protocol_version'], 'count': x['total']}
+            rv.append(row)
     elif name == 'ip_addresses':
         res = col.aggregate(
             [{"$match": {"$and": [{"name": "apache_access"}, mask, search_q]}},
-             {"$group": {"_id": "$ip_address", "total": {"$sum": 1}}},
+             {"$group": {"_id": "$ip_address", "total": {"$sum": 1},
+              'usernames': {"$addToSet":  "$username"} }},
              {"$sort": {"total": -1}}
              ])
-        keys = ['ip address', 'count']
+        keys = ['ip address', 'count', 'users']
         for x in res:
-            row = {'ip_address': x['_id'], 'count': x['total']}
+            row = {'ip_address': x['_id'], 'count': x['total'], 'users': ",".join(x['usernames'])}
             rv.append(row)
     elif name == 'urls':
         res = col.aggregate(
