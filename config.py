@@ -45,7 +45,7 @@ class State:
         for fl in self._state:
             if fl['path'] == path:
                 return fl['inode'], fl['device']
-        return None, None, None
+        return None, None
 
 
 # print(parse_state("loganalyser.state"))
