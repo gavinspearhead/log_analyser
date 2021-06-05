@@ -4,6 +4,15 @@ var g_type = '';
 var g_search = '';
 var max_datapoints = 120;
 
+function set_ip_click_handler() {
+    $(".ip_addr").unbind("click");
+    $(".ip_addr").click(function(event) {
+        window.open('https://dnschecker.org/ip-whois-lookup.php?query=' + encodeURIComponent($(this).text()));
+//        console.log('http://www.whois.com/whois/' + encodeURIComponent($(this).text()));
+        console.log($(this).text());
+
+    });
+    }
 
 function handle_request(name, type, search)
 {
@@ -30,6 +39,7 @@ function handle_request(name, type, search)
         $('#itemstable').html(res.rhtml);
         document.title = ("Log Analyser - " + type + " " + name +  " " + period).replace("_", " ");
         $("#header").text((type + ": " + name).replace("_", " "));
+        set_ip_click_handler();
     });
     return false;
 }
@@ -55,7 +65,10 @@ function set_log_handlers()
     $("#searchbutton").click(function(event) {
         handle_request(g_name, g_type, $("#searchbar").val())
     });
+       console.log('aoeua1');
 
+
+       console.log('aoeua2');
 }
 
 
