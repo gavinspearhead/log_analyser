@@ -116,10 +116,15 @@ function load_graph(canvas_id, type, name, period)
             annotateLabel: "<%=v2+': '+v1+' '+v3%>",
             annotateDisplay: true,
             yAxisMinimumInterval:1,
-            scaleStartValue : 0,
+//            scaleStartValue : 0,
+            forceGraphMin : 0,
+            graphMin:0,
+//            scaleOverride : true,
+//            showXLabels: true,
+//            showYAxisMin: true,
+            scaleSteps : 1,
+  scaleStepWidth : 1,
 
-            showXLabels: true,
-            showYAxisMin: true,
 //            yAxisUnit: res.unit,
             yAxisUnitFontSize: 16,
         };
@@ -139,12 +144,6 @@ function load_graph(canvas_id, type, name, period)
         var data = {
            labels: res.fields,
            datasets: data_sets
-//            datasets: [{
-//                fillColor: colours[0],
-//                strokeColor: colours[0],
-//                data: res.data,
-//                title: type
-//            }]
         }
         console.log(data);
          new Chart(document.getElementById(canvas_id).getContext("2d")).StackedBar(data, options);
