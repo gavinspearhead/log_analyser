@@ -65,10 +65,6 @@ function set_log_handlers()
     $("#searchbutton").click(function(event) {
         handle_request(g_name, g_type, $("#searchbar").val())
     });
-       console.log('aoeua1');
-
-
-       console.log('aoeua2');
 }
 
 

@@ -102,7 +102,30 @@ def get_search_mask_apache(search):
     return {"path": {"$regex": re.escape(search)}}
 
 
-def get_ssh_data(name, period, search):
+def get_raw_data(indata, field1, field2, field3):
+    field1_values = list(set([x[field1] for x in indata]))
+    field1_values.sort()
+    if field2 is not None:
+        field2_values = list(set([x[field2] for x in indata]))
+        field2_values.sort()
+    data = {}
+    for t in field1_values:
+        data[t] = {}
+        if field2 is not None:
+            for u in field2_values:
+                data[t][u] = 0
+    for x in indata:
+        if field2 is not None:
+            data[x[field1]][x[field2]] = x[field3]
+        else:
+            data[x[field1]] = x[field3]
+
+    rv = data
+    keys = list(field1_values)
+    return rv, keys
+
+
+def get_ssh_data(name, period, search, raw=False):
     col = get_mongo_connection()
     rv = []
     keys = []
@@ -123,6 +146,9 @@ def get_ssh_data(name, period, search):
             row = {'username': x['_id']['username'], 'type': x['_id']['type'], 'count': x['total'],
                    'ips': ", ".join(x['ips'])}
             rv.append(row)
+        if raw:
+            rv, keys = get_raw_data(rv, 'type', 'username', 'count')
+
     elif name == 'time_users':
         if time_mask == 'day':
             time_mask = 'dayOfMonth'
@@ -145,6 +171,8 @@ def get_ssh_data(name, period, search):
                    'username': x['_id']['username'],
                    'type': x['_id']['type'], 'total': x['total'], 'ips': ", ".join(x['ips'])}
             rv.append(row)
+        if raw:
+            rv, keys = get_raw_data(rv, 'username', 'time', 'total')
     elif name == 'time_ips':
         if time_mask == 'day':
             time_mask = 'dayOfMonth'
@@ -165,6 +193,8 @@ def get_ssh_data(name, period, search):
                    'ip_address': x['_id']['ip_address'], 'type': x['_id']['type'],
                    'total': x['total'], 'users': ", ".join(x['usernames'])}
             rv.append(row)
+        if raw:
+            rv, keys = get_raw_data(rv, 'ip_address', 'time', 'total')
     elif name == 'ip_addresses':
         keys = ['IP Addresses', 'type', 'count', 'users']
         res = col.aggregate(
@@ -177,6 +207,8 @@ def get_ssh_data(name, period, search):
             ip_addr = x['_id']['ip_address']
             row = {'ip_address': ip_addr, 'count': x['total'], 'type': x['_id']['type'], 'users': ", ".join(x['users'])}
             rv.append(row)
+        if raw:
+            rv, keys = get_raw_data(rv, 'type', 'ip_address','count')
     elif name == 'new_users':
         keys = ['username', 'ip address', 'count', 'types']
         users = dict()
@@ -226,7 +258,7 @@ def get_ssh_data(name, period, search):
     return rv, keys
 
 
-def get_apache_data(name, period, search):
+def get_apache_data(name, period, search, raw):
     col = get_mongo_connection()
     rv = []
     keys = []
@@ -244,6 +276,8 @@ def get_apache_data(name, period, search):
         for x in res:
             row = {'code': x['_id'], 'count': x['total']}
             rv.append(row)
+        if raw:
+            rv, keys = get_raw_data(rv, 'code', None, 'count')
     elif name == 'method':
         res = col.aggregate(
             [{"$match": {"$and": [{"name": "apache_access"}, mask, search_q]}},
@@ -254,27 +288,35 @@ def get_apache_data(name, period, search):
         for x in res:
             row = {'method': x['_id'], 'count': x['total']}
             rv.append(row)
+        if raw:
+            rv, keys = get_raw_data(rv, 'method', None, 'count')
     elif name == 'protocol':
         res = col.aggregate(
             [{"$match": {"$and": [{"name": "apache_access"}, mask, search_q]}},
-             {"$group": {"_id": {"protocol": "$protocol", "protocol_version": "$protocol_version"}, "total": {"$sum": 1}}},
+             {"$group": {"_id": {"protocol": "$protocol", "protocol_version": "$protocol_version"},
+                         "total": {"$sum": 1}}},
              {"$sort": {"total": -1}}
              ])
         keys = ['Protocol', 'version', 'count']
         for x in res:
-            row = {'protocol': x['_id']['protocol'], 'protocol_version': x['_id']['protocol_version'], 'count': x['total']}
+            row = {'protocol': x['_id']['protocol'], 'protocol_version': x['_id']['protocol_version'],
+                   'count': x['total']}
             rv.append(row)
+        if raw:
+            rv, keys = get_raw_data(rv, 'protocol', None, 'count')
     elif name == 'ip_addresses':
         res = col.aggregate(
             [{"$match": {"$and": [{"name": "apache_access"}, mask, search_q]}},
              {"$group": {"_id": "$ip_address", "total": {"$sum": 1},
-              'usernames': {"$addToSet":  "$username"} }},
+                         'usernames': {"$addToSet": "$username"}}},
              {"$sort": {"total": -1}}
              ])
         keys = ['ip address', 'count', 'users']
         for x in res:
             row = {'ip_address': x['_id'], 'count': x['total'], 'users': ",".join(x['usernames'])}
             rv.append(row)
+        if raw:
+            rv, keys = get_raw_data(rv, 'ip_address', None, 'count')
     elif name == 'urls':
         res = col.aggregate(
             [{"$match": {"$and": [{"name": "apache_access"}, mask, search_q]}},
@@ -305,6 +347,8 @@ def get_apache_data(name, period, search):
                    'ip_address': x['_id']['ip_address'],
                    'total': x['total'], 'codes': ", ".join(x['codes'])}
             rv.append(row)
+        if raw:
+            rv, keys = get_raw_data(rv, 'time', 'ip_address', 'total')
     elif name == 'time_urls':
         if time_mask == 'day':
             time_mask = 'dayOfMonth'
@@ -334,6 +378,8 @@ def get_apache_data(name, period, search):
         for x in res:
             row = {'ip_address': x['_id']['ip_address'], 'size': x['total']}
             rv.append(row)
+        if raw:
+            rv, keys = get_raw_data(rv, 'ip_address', None, 'size')
     else:
         raise ValueError("Invalid item: {}".format(name))
     return rv, keys
@@ -345,28 +391,66 @@ def data():
     rtype = request.json.get('type', '').strip()
     period = request.json.get('period', '').strip()
     search = request.json.get('search', '').strip()
+    raw = request.json.get('raw', False)
     if rtype == 'ssh':
-        res, keys = get_ssh_data(name, period, search)
+        res, keys = get_ssh_data(name, period, search, raw)
     elif rtype == 'apache':
-        res, keys = get_apache_data(name, period, search)
+        res, keys = get_apache_data(name, period, search, raw)
     else:
         raise ValueError("Unknown type: {}".format(rtype))
-    res2 = []
-    flags = dict()
-    for x in res:
+    if raw:
+        keys = list(res.keys())
+        print(keys)
+        if keys != [] and keys[0] in res and type(res[keys[0]]) == dict:
+            fields = list(res[keys[0]].keys())
+            res = [[y for y in x.values()] for x in res.values()]
+        else:
+            fields = keys
+            res = [[x for x in res.values()]]
+        return json.dumps(
+            {'success': True, "data": res, "labels": keys, "fields": fields,
+             "title": "{} {}".format(rtype, name)}), 200, {
+                   'ContentType': 'application/json'}
+    else:
+        res2 = []
+        flags = dict()
+        for x in res:
+            for k, v in x.items():
+                if k == 'ip_address' and k not in flags:
+                    try:
+                        flag = geoip_db.lookup(v).country.lower()
+                        flags[v] = flag
+                    except AttributeError:
+                        flags[v] = ''
 
-        for k, v in x.items():
-            if k == 'ip_address' and k not in flags:
-                try:
-                    flag = geoip_db.lookup(v).country.lower()
-                    flags[v] = flag
-                except AttributeError:
-                    flags[v] = ''
+            # Force every thing to string so we can truncate stuff in the template
+            res2.append({k: str(v) for k, v in x.items()})
 
-        # Force every thing to string so we can truncate stuff in the template
-        res2.append({k: str(v) for k, v in x.items()})
-    rhtml = render_template("data_table.html", data=res2, keys=keys, flags=flags)
-    return json.dumps({'success': True, 'rhtml': rhtml}), 200, {'ContentType': 'application/json'}
+        rhtml = render_template("data_table.html", data=res2, keys=keys, flags=flags)
+        return json.dumps({'success': True, 'rhtml': rhtml}), 200, {'ContentType': 'application/json'}
+
+
+data_types = {
+    "ssh_users": ("ssh", "users"),
+    "ssh_time_users": ("ssh", "time_users"),
+    "ssh_time_ips": ("ssh", "time_ips"),
+    "ssh_ipaddresses": ("ssh", "ip_addresses"),
+    "ssh_ips": ("ssh", "ip_addresses"),
+    "apache_ipaddresses": ("apache", "ip_addresses"),
+    "apache_time_ips": ("apache", "time_ips"),
+    "apache_codes": ("apache", "codes"),
+    "apache_method": ("apache", "method"),
+    "apache_protocol": ("apache", "protocol"),
+    "apache_size": ("apache", "size_ip"),
+}
+
+
+@app.route('/dashboard/')
+def dashboard():
+    try:
+        return render_template("dashboard.html", data_types=data_types)
+    except Exception as e:
+        return json.dumps({'success': False, "message": str(e)}), 200, {'ContentType': 'application/json'}
 
 
 @app.route('/')
