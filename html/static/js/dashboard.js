@@ -128,8 +128,8 @@ function load_graph(canvas_id, type, name, period)
         for (var i = 0 ; i < res.data.length; i++) {
             data_sets.push(
             {
-                fillColor: colours[i],
-                strokeColor: colours[i],
+                fillColor: colours[i % colours.length],
+                strokeColor: colours[i % colours.length],
                 data: res.data[i],
                 title: res.labels[i]
             }
