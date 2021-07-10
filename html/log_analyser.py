@@ -348,7 +348,7 @@ def get_apache_data(name, period, search, raw):
                    'total': x['total'], 'codes': ", ".join(x['codes'])}
             rv.append(row)
         if raw:
-            rv, keys = get_raw_data(rv, 'time', 'ip_address', 'total')
+            rv, keys = get_raw_data(rv, 'ip_address', 'time', 'total')
     elif name == 'time_urls':
         if time_mask == 'day':
             time_mask = 'dayOfMonth'
