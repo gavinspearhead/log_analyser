@@ -303,7 +303,7 @@ def get_apache_data(name, period, search, raw):
                    'count': x['total']}
             rv.append(row)
         if raw:
-            rv, keys = get_raw_data(rv, 'protocol', None, 'count')
+            rv, keys = get_raw_data(rv, 'protocol', 'protocol_version', 'count')
     elif name == 'ip_addresses':
         res = col.aggregate(
             [{"$match": {"$and": [{"name": "apache_access"}, mask, search_q]}},
