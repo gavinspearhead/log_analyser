@@ -105,10 +105,10 @@ def get_search_mask_apache(search):
 
 def get_raw_data(indata, field1, field2, field3):
     field1_values = list(set([x[field1] for x in indata]))
-    natsorted(field1_values)
+    field1_values = natsorted(field1_values)
     if field2 is not None:
         field2_values = list(set([x[field2] for x in indata]))
-        natsorted(field2_values)
+        field2_values= natsorted(field2_values)
     data_set = {}
     for t in field1_values:
         data_set[t] = {}
