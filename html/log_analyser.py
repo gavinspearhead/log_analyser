@@ -119,7 +119,7 @@ def get_raw_data(indata, field1, field2, field3):
         if field2 is not None:
             data_set[x[field1]][x[field2]] += x[field3]
         else:
-            data_set[x[field1]] += x[field3]
+            data_set[x[field1]] = x[field3]
 
     rv = data_set
     keys = list(field1_values)
