@@ -82,6 +82,16 @@ function set_log_handlers()
 }
 
 
+function fmtChartJSPerso(n, p)
+{
+        if (p.length > 12) {
+                var s =p;
+                var l =p.length;
+                return s.slice(0,5) + "..." + s.slice(l-5, l);
+            }
+    return p;
+}
+
 function load_graph(canvas_id, type, name, period)
 {
 //    var x= get_period();
@@ -113,6 +123,8 @@ function load_graph(canvas_id, type, name, period)
             responsive: true,
             legend: true,
             highLight: true,
+            xScaleLabelsMinimumWidth: 10,
+            fmtXLabel: "fn",
             annotateLabel: "<%=v2+': '+v1+' '+v3%>",
             annotateDisplay: true,
             yAxisMinimumInterval:1,
@@ -141,6 +153,7 @@ function load_graph(canvas_id, type, name, period)
             )
         }
 
+
         var data = {
            labels: res.fields,
            datasets: data_sets
@@ -150,6 +163,8 @@ function load_graph(canvas_id, type, name, period)
     });
     return false;
 }
+
+
 
 function load_all_graphs()
 {
@@ -162,7 +177,6 @@ function load_all_graphs()
     else if ($("#monthly").is(":checked")) {period = 'month';}
     $("canvas").each(function() {
         load_graph($(this).attr('id'), $(this).attr("data-type"), $(this).attr("data-name"), period);
-
     })
     for (let i = 0; i < types.length; i++) {
     }

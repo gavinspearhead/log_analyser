@@ -108,19 +108,19 @@ def get_raw_data(indata, field1, field2, field3):
     if field2 is not None:
         field2_values = list(set([x[field2] for x in indata]))
         field2_values.sort()
-    data = {}
+    data_set = {}
     for t in field1_values:
-        data[t] = {}
+        data_set[t] = {}
         if field2 is not None:
             for u in field2_values:
-                data[t][u] = 0
+                data_set[t][u] = 0
     for x in indata:
         if field2 is not None:
-            data[x[field1]][x[field2]] = x[field3]
+            data_set[x[field1]][x[field2]] = x[field3]
         else:
-            data[x[field1]] = x[field3]
+            data_set[x[field1]] = x[field3]
 
-    rv = data
+    rv = data_set
     keys = list(field1_values)
     return rv, keys
 
@@ -208,7 +208,7 @@ def get_ssh_data(name, period, search, raw=False):
             row = {'ip_address': ip_addr, 'count': x['total'], 'type': x['_id']['type'], 'users': ", ".join(x['users'])}
             rv.append(row)
         if raw:
-            rv, keys = get_raw_data(rv, 'type', 'ip_address','count')
+            rv, keys = get_raw_data(rv, 'type', 'ip_address', 'count')
     elif name == 'new_users':
         keys = ['username', 'ip address', 'count', 'types']
         users = dict()
@@ -400,7 +400,6 @@ def data():
         raise ValueError("Unknown type: {}".format(rtype))
     if raw:
         keys = list(res.keys())
-        print(keys)
         if keys != [] and keys[0] in res and type(res[keys[0]]) == dict:
             fields = list(res[keys[0]].keys())
             res = [[y for y in x.values()] for x in res.values()]
