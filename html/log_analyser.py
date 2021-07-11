@@ -9,6 +9,7 @@ import pytz
 import geoip
 import ipaddress
 
+from natsort import natsorted
 from flask import Flask, render_template, request
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -104,10 +105,10 @@ def get_search_mask_apache(search):
 
 def get_raw_data(indata, field1, field2, field3):
     field1_values = list(set([x[field1] for x in indata]))
-    field1_values.sort()
+    natsorted(field1_values)
     if field2 is not None:
         field2_values = list(set([x[field2] for x in indata]))
-        field2_values.sort()
+        natsorted(field2_values)
     data_set = {}
     for t in field1_values:
         data_set[t] = {}
@@ -341,11 +342,14 @@ def get_apache_data(name, period, search, raw):
             {"$sort": {'_id.time': 1, 'total': -1}}])
         for x in res:
             extra_time = "-" + str(x['month'][0]) if time_mask == 'dayOfMonth' else ''
-            extra_time2 = str(x['hour'][0]) + ":" if time_mask == 'minute' else ""
+            extra_time2 = str(x['hour'][0]) + ":" if time_mask == 'minute' else ''
             keys = [time_mask, 'ip address', 'total', 'codes']
-            row = {'time': "{}{} {}".format(extra_time2, x['_id']['time'], extra_time),
-                   'ip_address': x['_id']['ip_address'],
-                   'total': x['total'], 'codes': ", ".join(x['codes'])}
+            row = {
+                'time': "{}{} {}".format(extra_time2, x['_id']['time'], extra_time),
+                'ip_address': x['_id']['ip_address'],
+                'total': x['total'],
+                'codes': ", ".join(x['codes'])
+            }
             rv.append(row)
         if raw:
             rv, keys = get_raw_data(rv, 'ip_address', 'time', 'total')
@@ -406,10 +410,8 @@ def data():
         else:
             fields = keys
             res = [[x for x in res.values()]]
-        return json.dumps(
-            {'success': True, "data": res, "labels": keys, "fields": fields,
-             "title": "{} {}".format(rtype, name)}), 200, {
-                   'ContentType': 'application/json'}
+        return json.dumps({'success': True, "data": res, "labels": keys, "fields": fields,
+                           "title": "{} {}".format(rtype, name)}), 200, {'ContentType': 'application/json'}
     else:
         res2 = []
         flags = dict()
