@@ -108,7 +108,7 @@ def get_raw_data(indata, field1, field2, field3):
     field1_values = natsorted(field1_values)
     if field2 is not None:
         field2_values = list(set([x[field2] for x in indata]))
-        field2_values= natsorted(field2_values)
+        field2_values = natsorted(field2_values)
     data_set = {}
     for t in field1_values:
         data_set[t] = {}
@@ -117,9 +117,9 @@ def get_raw_data(indata, field1, field2, field3):
                 data_set[t][u] = 0
     for x in indata:
         if field2 is not None:
-            data_set[x[field1]][x[field2]] = x[field3]
+            data_set[x[field1]][x[field2]] += x[field3]
         else:
-            data_set[x[field1]] = x[field3]
+            data_set[x[field1]] += x[field3]
 
     rv = data_set
     keys = list(field1_values)
@@ -170,7 +170,9 @@ def get_ssh_data(name, period, search, raw=False):
             keys = [time_mask, 'username', 'type', 'total', 'ips']
             row = {'time': "{} {} {}".format(extra_time2, x['_id']['time'], extra_time),
                    'username': x['_id']['username'],
-                   'type': x['_id']['type'], 'total': x['total'], 'ips': ", ".join(x['ips'])}
+                   'type': x['_id']['type'],
+                   'total': x['total'],
+                   'ips': ", ".join(x['ips'])}
             rv.append(row)
         if raw:
             rv, keys = get_raw_data(rv, 'username', 'time', 'total')
