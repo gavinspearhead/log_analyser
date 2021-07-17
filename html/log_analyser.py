@@ -115,8 +115,10 @@ def get_search_mask_apache(search):
 
 
 def get_raw_data(indata, field1, field2, field3):
-    field1_values = list(set([x[field1] for x in indata]))
+    field1_values = list(set([x[field1] for x in indata ]))
+    print(field1_values)
     field1_values = natsorted(field1_values)
+    print(field1_values)
     if field2 is not None:
         field2_values = list(set([x[field2] for x in indata]))
         field2_values = natsorted(field2_values)
@@ -192,7 +194,7 @@ def get_ssh_data(name, period, search, raw=False):
                          'month': {"$addToSet": {"$month": "$timestamp"}}}},
              {"$sort": {'_id.time': 1, "total": -1}}
              ])
-        rv = prepare_time_output(time_mask, intervals, { 'time': None, 'username': None, 'type': None, 'total': 0, 'ips': "" })
+        rv = prepare_time_output(time_mask, intervals, {'time': None, 'username': "", 'type': None, 'total': 0, 'ips': "" })
         for x in res:
             # print(x, time_mask, intervals)
             extra_time = "-" + str(x['month'][0]) if time_mask == 'dayOfMonth' else ""
@@ -217,7 +219,7 @@ def get_ssh_data(name, period, search, raw=False):
                          'month': {"$addToSet": {"$month": "$timestamp"}}}},
              {"$sort": {'_id.time': 1, "total": -1}}
              ])
-        rv = prepare_time_output(time_mask, intervals, { 'time': None, 'ip_address': None, 'type': None, 'total': 0, 'users': "" })
+        rv = prepare_time_output(time_mask, intervals, { 'time': None, 'ip_address': "", 'type': None, 'total': 0, 'users': "" })
         for x in res:
             extra_time = "-" + str(x['month'][0]) if time_mask == 'dayOfMonth' else ''
             extra_time2 = str(x['hour'][0]) + ":" if time_mask == 'minute' else ""
@@ -375,7 +377,7 @@ def get_apache_data(name, period, search, raw):
                 'hour': {"$addToSet": {"$hour": "$timestamp"}},
                 'month': {"$addToSet": {"$month": "$timestamp"}}}},
             {"$sort": {'_id.time': 1, 'total': -1}}])
-        rv = prepare_time_output(time_mask, intervals, { 'time': None, 'ip_address': None, 'total': 0, 'codes': "" })
+        rv = prepare_time_output(time_mask, intervals, { 'time': None, 'ip_address': "", 'total': 0, 'codes': "" })
         for x in res:
             extra_time = "-" + str(x['month'][0]) if time_mask == 'dayOfMonth' else ''
             extra_time2 = str(x['hour'][0]) + ":" if time_mask == 'minute' else ''
@@ -401,7 +403,7 @@ def get_apache_data(name, period, search, raw):
                 'hour': {"$addToSet": {"$hour": "$timestamp"}},
                 'month': {"$addToSet": {"$month": "$timestamp"}}}},
             {"$sort": {'_id.time': 1, 'total': -1}}])
-        rv = prepare_time_output(time_mask, intervals, { 'time': None, 'path': None, 'total': 0, 'ips': "" })
+        rv = prepare_time_output(time_mask, intervals, { 'time': None, 'path': "", 'total': 0, 'ips': "" })
         for x in res:
             extra_time = "-" + str(x['month'][0]) if time_mask == 'dayOfMonth' else ''
             extra_time2 = str(x['hour'][0]) + ":" if time_mask == 'minute' else ""
