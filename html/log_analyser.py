@@ -5,6 +5,8 @@ import json
 import os.path
 import re
 import sys
+from copy import deepcopy
+
 import pytz
 import geoip
 import ipaddress
@@ -37,23 +39,32 @@ def get_period_mask(period):
     if period == 'today':
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         today_end = now.replace(hour=23, minute=59, second=59, microsecond=999999)
-        return today_start, today_end, 'hour'
+        intervals = list(range(0, 24))
+        return today_start, today_end, 'hour', intervals
     elif period == 'hour':
         today_start = now - datetime.timedelta(hours=1)
         today_end = now
-        return today_start, today_end, 'minute'
+        intervals = list([((today_start + datetime.timedelta(minutes=x)).hour,
+                           (today_start + datetime.timedelta(minutes=x)).minute) for x in range(60)])
+        # print(intervals)
+        return today_start, today_end, 'minute', intervals
     elif period == 'yesterday':
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0) - datetime.timedelta(days=1)
         today_end = now.replace(hour=23, minute=59, second=59, microsecond=0) - datetime.timedelta(days=1)
-        return today_start, today_end, 'hour'
+        intervals = list(range(0, 24))
+        return today_start, today_end, 'hour', intervals
     elif period == 'week':
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0) - datetime.timedelta(weeks=1)
         today_end = now.replace(hour=23, minute=59, second=59, microsecond=0)
-        return today_start, today_end, 'day'
+        intervals = list(
+            [((today_start + datetime.timedelta(days=x)).day, (today_start + datetime.timedelta(days=x)).month) for x in
+             range(8)])
+        return today_start, today_end, 'day', intervals
     elif period == 'month':
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0) - datetime.timedelta(weeks=4)
         today_end = now.replace(hour=23, minute=59, second=59, microsecond=0)
-        return today_start, today_end, 'week'
+        intervals = list([(today_start + datetime.timedelta(weeks=x)).isocalendar()[1] for x in range(5)])
+        return today_start, today_end, 'week', intervals
     else:
         raise ValueError("Unknown period {}".format(period))
 
@@ -123,7 +134,26 @@ def get_raw_data(indata, field1, field2, field3):
 
     rv = data_set
     keys = list(field1_values)
+    # print(rv, keys)
     return rv, keys
+
+
+def prepare_time_output(time_mask, intervals, template):
+    rv = []
+    if time_mask == 'minute':
+        f_str = "{}:{}"
+    elif time_mask == 'dayOfMonth':
+        f_str = "{}-{}"
+    else:
+        f_str = "{}"
+    for i in intervals:
+        if type(i) == int:
+            t = f_str.format(i)
+        else:
+            t = f_str.format(i[0], i[1])
+        template['time'] = t
+        rv.append(deepcopy(template))
+    return rv
 
 
 def get_ssh_data(name, period, search, raw=False):
@@ -132,8 +162,10 @@ def get_ssh_data(name, period, search, raw=False):
     keys = []
     mask_range = get_period_mask(period)
     search_q = get_search_mask_ssh(search)
-
     time_mask = mask_range[2]
+    if time_mask == 'day':
+        time_mask = 'dayOfMonth'
+    intervals = mask_range[3]
     mask = {"$and": [{"timestamp": {"$gte": mask_range[0]}}, {"timestamp": {"$lte": mask_range[1]}}]}
     if name == 'users':
         keys = ['username', 'type', 'count', 'ips']
@@ -151,8 +183,6 @@ def get_ssh_data(name, period, search, raw=False):
             rv, keys = get_raw_data(rv, 'type', 'username', 'count')
 
     elif name == 'time_users':
-        if time_mask == 'day':
-            time_mask = 'dayOfMonth'
         res = col.aggregate(
             [{"$match": {"$and": [{"name": "auth_ssh"}, mask, search_q]}},
              {"$group": {"_id": {"username": "$username", "type": "$type", "time": {"$" + time_mask: "$timestamp"}},
@@ -162,23 +192,22 @@ def get_ssh_data(name, period, search, raw=False):
                          'month': {"$addToSet": {"$month": "$timestamp"}}}},
              {"$sort": {'_id.time': 1, "total": -1}}
              ])
-
+        rv = prepare_time_output(time_mask, intervals, { 'time': None, 'username': None, 'type': None, 'total': 0, 'ips': "" })
         for x in res:
+            # print(x, time_mask, intervals)
             extra_time = "-" + str(x['month'][0]) if time_mask == 'dayOfMonth' else ""
             extra_time2 = str(x['hour'][0]) + ":" if time_mask == 'minute' else ""
-
             keys = [time_mask, 'username', 'type', 'total', 'ips']
-            row = {'time': "{} {} {}".format(extra_time2, x['_id']['time'], extra_time),
+            row = {'time': "{}{}{}".format(extra_time2, x['_id']['time'], extra_time),
                    'username': x['_id']['username'],
                    'type': x['_id']['type'],
                    'total': x['total'],
                    'ips': ", ".join(x['ips'])}
             rv.append(row)
         if raw:
+            # print(rv)
             rv, keys = get_raw_data(rv, 'username', 'time', 'total')
     elif name == 'time_ips':
-        if time_mask == 'day':
-            time_mask = 'dayOfMonth'
         res = col.aggregate(
             [{"$match": {"$and": [{"name": "auth_ssh"}, mask, search_q]}},
              {"$group": {"_id": {"ip_address": "$ip_address", "type": "$type", "time": {"$" + time_mask: "$timestamp"}},
@@ -188,11 +217,12 @@ def get_ssh_data(name, period, search, raw=False):
                          'month': {"$addToSet": {"$month": "$timestamp"}}}},
              {"$sort": {'_id.time': 1, "total": -1}}
              ])
+        rv = prepare_time_output(time_mask, intervals, { 'time': None, 'ip_address': None, 'type': None, 'total': 0, 'users': "" })
         for x in res:
             extra_time = "-" + str(x['month'][0]) if time_mask == 'dayOfMonth' else ''
             extra_time2 = str(x['hour'][0]) + ":" if time_mask == 'minute' else ""
             keys = [time_mask, 'IP Addresses', 'type', 'total', 'usernames']
-            row = {'time': "{}{} {}".format(extra_time2, x['_id']['time'], extra_time),
+            row = {'time': "{}{}{}".format(extra_time2, x['_id']['time'], extra_time),
                    'ip_address': x['_id']['ip_address'], 'type': x['_id']['type'],
                    'total': x['total'], 'users': ", ".join(x['usernames'])}
             rv.append(row)
@@ -267,6 +297,9 @@ def get_apache_data(name, period, search, raw):
     keys = []
     mask = get_period_mask(period)
     time_mask = mask[2]
+    if time_mask == 'day':
+        time_mask = 'dayOfMonth'
+    intervals = mask[3]
     mask = {"$and": [{"timestamp": {"$gte": mask[0]}}, {"timestamp": {"$lte": mask[1]}}]}
     search_q = get_search_mask_apache(search)
     if name == 'codes':
@@ -342,6 +375,7 @@ def get_apache_data(name, period, search, raw):
                 'hour': {"$addToSet": {"$hour": "$timestamp"}},
                 'month': {"$addToSet": {"$month": "$timestamp"}}}},
             {"$sort": {'_id.time': 1, 'total': -1}}])
+        rv = prepare_time_output(time_mask, intervals, { 'time': None, 'ip_address': None, 'total': 0, 'codes': "" })
         for x in res:
             extra_time = "-" + str(x['month'][0]) if time_mask == 'dayOfMonth' else ''
             extra_time2 = str(x['hour'][0]) + ":" if time_mask == 'minute' else ''
@@ -367,11 +401,12 @@ def get_apache_data(name, period, search, raw):
                 'hour': {"$addToSet": {"$hour": "$timestamp"}},
                 'month': {"$addToSet": {"$month": "$timestamp"}}}},
             {"$sort": {'_id.time': 1, 'total': -1}}])
+        rv = prepare_time_output(time_mask, intervals, { 'time': None, 'path': None, 'total': 0, 'ips': "" })
         for x in res:
             extra_time = "-" + str(x['month'][0]) if time_mask == 'dayOfMonth' else ''
             extra_time2 = str(x['hour'][0]) + ":" if time_mask == 'minute' else ""
             keys = [time_mask, 'path', 'total', 'ips']
-            row = {'time': "{}{} {}".format(extra_time2, x['_id']['time'], extra_time), 'path': x['_id']['path'],
+            row = {'time': "{}{}{}".format(extra_time2, x['_id']['time'], extra_time), 'path': x['_id']['path'],
                    'total': x['total'], 'ips': ", ".join(x['ips'])}
             rv.append(row)
     elif name == "size_ip":

@@ -65,7 +65,8 @@ function load_graph(canvas_id, type, name, period)
         };
         if (res.labels.length == 0 || res.data.length == 0) { return }
         var data_sets = [];
-        for (var i = 0 ; i < res.data.length; i++) {
+        for (var i = 0; i < res.data.length; i++) {
+            console.log(i, res.data[i], res.labels[i])
             data_sets.push( {
                 fillColor: colours[i % colours.length],
                 strokeColor: colours[i % colours.length],
@@ -73,7 +74,9 @@ function load_graph(canvas_id, type, name, period)
                 title: res.labels[i]
             })
         }
-
+        if (res.data.length == 1) {
+            options.annotateLabel = "<%=v2+': '+v3%>"
+        }
         var data = {
            labels: res.fields,
            datasets: data_sets
@@ -88,7 +91,7 @@ function load_graph(canvas_id, type, name, period)
 
 function load_all_graphs()
 {
-    var types = simple_types;
+//    var types = simple_types;
     var period = 'today';
     if ($("#daily").is(":checked")) {period = 'today';}
     else if ($("#hourly").is(":checked")) {period = 'hour';}
@@ -98,8 +101,8 @@ function load_all_graphs()
     $("canvas").each(function() {
         load_graph($(this).attr('id'), $(this).attr("data-type"), $(this).attr("data-name"), period);
     })
-    for (let i = 0; i < types.length; i++) {
-    }
+//    for (let i = 0; i < types.length; i++) {
+//    }
 }
 
 $( document ).ready(function() {
