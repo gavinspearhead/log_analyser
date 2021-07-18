@@ -115,7 +115,7 @@ def get_search_mask_apache(search):
 
 
 def get_raw_data(indata, field1, field2, field3):
-    field1_values = list(set([x[field1] for x in indata ]))
+    field1_values = list(set([x[field1] for x in indata]))
     print(field1_values)
     field1_values = natsorted(field1_values)
     print(field1_values)
@@ -194,7 +194,9 @@ def get_ssh_data(name, period, search, raw=False):
                          'month': {"$addToSet": {"$month": "$timestamp"}}}},
              {"$sort": {'_id.time': 1, "total": -1}}
              ])
-        rv = prepare_time_output(time_mask, intervals, {'time': None, 'username': "", 'type': None, 'total': 0, 'ips': "" })
+        if raw:
+            rv = prepare_time_output(time_mask, intervals,
+                                     {'time': None, 'username': "", 'type': None, 'total': 0, 'ips': ""})
         for x in res:
             # print(x, time_mask, intervals)
             extra_time = "-" + str(x['month'][0]) if time_mask == 'dayOfMonth' else ""
@@ -219,7 +221,9 @@ def get_ssh_data(name, period, search, raw=False):
                          'month': {"$addToSet": {"$month": "$timestamp"}}}},
              {"$sort": {'_id.time': 1, "total": -1}}
              ])
-        rv = prepare_time_output(time_mask, intervals, { 'time': None, 'ip_address': "", 'type': None, 'total': 0, 'users': "" })
+        if raw:
+            rv = prepare_time_output(time_mask, intervals,
+                                     {'time': None, 'ip_address': "", 'type': None, 'total': 0, 'users': ""})
         for x in res:
             extra_time = "-" + str(x['month'][0]) if time_mask == 'dayOfMonth' else ''
             extra_time2 = str(x['hour'][0]) + ":" if time_mask == 'minute' else ""
@@ -244,6 +248,45 @@ def get_ssh_data(name, period, search, raw=False):
             rv.append(row)
         if raw:
             rv, keys = get_raw_data(rv, 'type', 'ip_address', 'count')
+    elif name == 'new_ips':
+        keys = ['ip address', 'count', 'types']
+        ips = dict()
+        res = col.aggregate(
+            [{"$match": {"$and": [{"name": "auth_ssh"}, {"type": "connect"}]}},
+             {"$group": {"_id": {"ip_address": "$ip_address"}, "total": {"$sum": 1},
+                         "oldest": {"$min": "$timestamp"}}},
+             {"$sort": {"total": -1}}
+             ])
+        for x in res:
+            ip = x['_id']['ip_address']
+            t = x['total']
+            o = pytz.UTC.localize(x['oldest'])
+            if ip not in ips:
+                ips[ip] = (t, o)
+        # print(users)
+        res = col.aggregate(
+            [{"$match": {"$and": [{"name": "auth_ssh"}, mask, search_q]}},
+             {"$group": {
+                 "_id": {"ip_address": "$ip_address"},
+                 "total": {"$sum": 1},
+                 'types': {"$addToSet": "$type"}}},
+             {"$sort": {"total": -1}}
+             ])
+        new_ips = dict()
+        # mask_range[0] = pytz.UTC.localize(mask_range[0])
+        for x in res:
+            ip = x['_id']['ip_address']
+            ts = x['total']
+            ty = ", ".join(x['types'])
+
+            if ip not in ips or (ips[ip][0] < (2 * ts)) or ips[ip][1] >= mask_range[0]:
+                if ip not in new_ips:
+                    new_ips[ip] = (ts, ty)
+
+        for ip in new_ips:
+            row = {'ip_address': ip, 'count': new_ips[ip][0], 'types': new_ips[ip][1]}
+            rv.append(row)
+        # print(rv)
     elif name == 'new_users':
         keys = ['username', 'ip address', 'count', 'types']
         users = dict()
@@ -297,12 +340,12 @@ def get_apache_data(name, period, search, raw):
     col = get_mongo_connection()
     rv = []
     keys = []
-    mask = get_period_mask(period)
-    time_mask = mask[2]
+    mask_range = get_period_mask(period)
+    time_mask = mask_range[2]
     if time_mask == 'day':
         time_mask = 'dayOfMonth'
-    intervals = mask[3]
-    mask = {"$and": [{"timestamp": {"$gte": mask[0]}}, {"timestamp": {"$lte": mask[1]}}]}
+    intervals = mask_range[3]
+    mask = {"$and": [{"timestamp": {"$gte": mask_range[0]}}, {"timestamp": {"$lte": mask_range[1]}}]}
     search_q = get_search_mask_apache(search)
     if name == 'codes':
         res = col.aggregate(
@@ -355,6 +398,46 @@ def get_apache_data(name, period, search, raw):
             rv.append(row)
         if raw:
             rv, keys = get_raw_data(rv, 'ip_address', None, 'count')
+    elif name == 'new_ips':
+        keys = ['ip address', 'count', 'types']
+        ips = dict()
+        res = col.aggregate(
+            [{"$match": {"$and": [{"name": "apache_access"} ]}},
+             {"$group": {"_id": {"ip_address": "$ip_address"}, "total": {"$sum": 1},
+                         "oldest": {"$min": "$timestamp"}}},
+             {"$sort": {"total": -1}}
+             ])
+        for x in res:
+            ip = x['_id']['ip_address']
+            t = x['total']
+            o = pytz.UTC.localize(x['oldest'])
+            if ip not in ips:
+                ips[ip] = (t, o)
+        # print("IPs", ips)
+        res = col.aggregate(
+            [{"$match": {"$and": [{"name": "apache_access"}, mask, search_q]}},
+             {"$group": {
+                 "_id": {"ip_address": "$ip_address"},
+                 "total": {"$sum": 1},
+                 'users': {"$addToSet": "$username"}}},
+             {"$sort": {"total": -1}}
+             ])
+        new_ips = dict()
+        # mask_range[0] = pytz.UTC.localize(mask_range[0])
+        for x in res:
+            ip = x['_id']['ip_address']
+            ts = x['total']
+            ty = ", ".join(x['users'])
+            if ip not in ips or (ips[ip][0] < (2 * ts)) or ips[ip][1] >= mask_range[0]:
+                if ip not in new_ips:
+                    new_ips[ip] = (ts, ty)
+
+        for ip in new_ips:
+            row = {'ip_address': ip, 'count': new_ips[ip][0], 'types': new_ips[ip][1]}
+            rv.append(row)
+        # print(rv)
+
+
     elif name == 'urls':
         res = col.aggregate(
             [{"$match": {"$and": [{"name": "apache_access"}, mask, search_q]}},
@@ -377,7 +460,8 @@ def get_apache_data(name, period, search, raw):
                 'hour': {"$addToSet": {"$hour": "$timestamp"}},
                 'month': {"$addToSet": {"$month": "$timestamp"}}}},
             {"$sort": {'_id.time': 1, 'total': -1}}])
-        rv = prepare_time_output(time_mask, intervals, { 'time': None, 'ip_address': "", 'total': 0, 'codes': "" })
+        if raw:
+            rv = prepare_time_output(time_mask, intervals, {'time': None, 'ip_address': "", 'total': 0, 'codes': ""})
         for x in res:
             extra_time = "-" + str(x['month'][0]) if time_mask == 'dayOfMonth' else ''
             extra_time2 = str(x['hour'][0]) + ":" if time_mask == 'minute' else ''
@@ -403,7 +487,8 @@ def get_apache_data(name, period, search, raw):
                 'hour': {"$addToSet": {"$hour": "$timestamp"}},
                 'month': {"$addToSet": {"$month": "$timestamp"}}}},
             {"$sort": {'_id.time': 1, 'total': -1}}])
-        rv = prepare_time_output(time_mask, intervals, { 'time': None, 'path': "", 'total': 0, 'ips': "" })
+        if raw:
+            rv = prepare_time_output(time_mask, intervals, {'time': None, 'path': "", 'total': 0, 'ips': ""})
         for x in res:
             extra_time = "-" + str(x['month'][0]) if time_mask == 'dayOfMonth' else ''
             extra_time2 = str(x['hour'][0]) + ":" if time_mask == 'minute' else ""
@@ -460,7 +545,8 @@ def data():
                     try:
                         flag = geoip_db.lookup(v).country.lower()
                         flags[v] = flag
-                    except AttributeError:
+                    except (AttributeError, ValueError):
+                        print(v)
                         flags[v] = ''
 
             # Force every thing to string so we can truncate stuff in the template
