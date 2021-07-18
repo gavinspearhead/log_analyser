@@ -4,8 +4,8 @@
     "database": "logs",
     "collection": "logs",
     "username": "loganaliser",
-    "password": "S2ytTULCBmEQYZrxF0sC",
-    "hostname": "killchain",
+    "password": "",
+    "hostname": "",
     "port": "",
     "auth_db": "logs"
 },
