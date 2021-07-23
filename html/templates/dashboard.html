@@ -42,6 +42,31 @@
 
             <input type="radio" class="btn-check" name="timeperiod" id="monthly" autocomplete="off">
             <label class="btn btn-secondary" for="monthly">Month</label>
+
+            <input type="radio" class="btn-check dropdown-toggle" name="timeperiod" id="custom" autocomplete="off">
+            <label class="btn btn-secondary" for="custom">Custom</label>
+            <div id="custom_timepicker" class="dropdown-menu bg-dark" aria-labelledby="custom">
+                <div class="container bg-dark">
+                    <div class="row bg-dark">
+                        <div class="col align-self-end bg-dark border">
+                            <div class="bg-dark" id="timepicker">
+                                <br>
+                                <div class="input-group input-group-sm pull-right bg-dark" id="time_selector1">
+                                    <div class="input-group-prepend"><span class="input-group-text btn-secondary">From</span></div>
+                                    <input type="datetime-local" name="from_timestamp" id="from_date" class="pull-right bg-dark">
+                                </div>
+                                <div class="input-group input-group-sm mr-auto pull-right bg-dark" id="time_selector2">
+                                    <div class="input-group-prepend"><span class="input-group-text btn-secondary">To</span></div>
+                                    <input type="datetime-local" name="to_timestamp" id="to_date" class="bg-dark">
+                                </div>
+                                <br>
+                                <button class="submit_custom btn-sm btn-secondary " id="submit_custom" type="button">Submit</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </nav>
 <div class="col scrollable bottom_margin" id="itemstablediv">

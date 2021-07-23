@@ -7,6 +7,7 @@ import re
 import sys
 from copy import deepcopy
 
+import dateutil.parser
 import pytz
 import geoip
 import ipaddress
@@ -34,12 +35,14 @@ def get_mongo_connection():
     return col
 
 
-def get_period_mask(period):
+def get_period_mask(period, to_time=None, from_time=None):
     now = datetime.datetime.now(pytz.UTC)
+    # print(period)
     if period == 'today':
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         today_end = now.replace(hour=23, minute=59, second=59, microsecond=999999)
         intervals = list(range(0, 24))
+        # print(today_start, today_end, 'hour', intervals)
         return today_start, today_end, 'hour', intervals
     elif period == 'hour':
         today_start = now - datetime.timedelta(hours=1)
@@ -65,6 +68,42 @@ def get_period_mask(period):
         today_end = now.replace(hour=23, minute=59, second=59, microsecond=0)
         intervals = list([(today_start + datetime.timedelta(weeks=x)).isocalendar()[1] for x in range(5)])
         return today_start, today_end, 'week', intervals
+    elif period == 'custom':
+        today_start = (dateutil.parser.isoparse(from_time).astimezone(pytz.UTC))
+        today_end = (dateutil.parser.isoparse(to_time).astimezone(pytz.UTC))
+        t_delta = int((today_end - today_start).total_seconds())
+        # print('oauaue', t_delta)
+        if t_delta <= 1:
+            t_delta = 1
+        if t_delta <= 60:
+            p = 'second'
+            intervals = list([(today_start + datetime.timedelta(seconds= x)).second for x in range(t_delta)])
+        elif t_delta <= 3600:
+            t = t_delta // 60
+            p = 'minute'
+
+            intervals = list([(today_start + datetime.timedelta(seconds=60* x)).minute for x in range(t)])
+            # print(t, intervals, 'aoeuauuuXXX')
+        elif t_delta <= 24 * 3600:
+            t = t_delta // 3600
+            p = 'hour'
+            intervals = list([(today_start + datetime.timedelta(seconds=3600 * x)).hour for x in range(t)])
+        elif t_delta <= 7 * 24 * 3600:
+            p = 'week'
+            t = t_delta // (3600 * 24)
+            try:
+                intervals = list([(today_start + datetime.timedelta(seconds=3600 * 24 * x)).day for x in range(t)])
+            except TypeError as e:
+                # print(t)
+                raise e
+            # print(t, intervals)
+        elif t_delta <= 28 * 24 * 3600:
+            t = t_delta // (3600 * 24 * 28)
+            p = 'month'
+            intervals = list([(today_start + datetime.timedelta(seconds=3600*24*28 * x)).isocalendar()[1] for x in range(t)])
+        # intervals = list([str(today_start + datetime.timedelta(seconds=t_delta * x)) for x in range(25)])
+        # print(today_start, today_end, p, intervals, t_delta, 'aoYYYYYYY', t)
+        return today_start, today_end, p, intervals
     else:
         raise ValueError("Unknown period {}".format(period))
 
@@ -116,9 +155,9 @@ def get_search_mask_apache(search):
 
 def get_raw_data(indata, field1, field2, field3):
     field1_values = list(set([x[field1] for x in indata]))
-    print(field1_values)
+    # print(field1_values)
     field1_values = natsorted(field1_values)
-    print(field1_values)
+    # print(field1_values)
     if field2 is not None:
         field2_values = list(set([x[field2] for x in indata]))
         field2_values = natsorted(field2_values)
@@ -142,27 +181,26 @@ def get_raw_data(indata, field1, field2, field3):
 
 def prepare_time_output(time_mask, intervals, template):
     rv = []
-    if time_mask == 'minute':
-        f_str = "{}:{}"
-    elif time_mask == 'dayOfMonth':
-        f_str = "{}-{}"
-    else:
-        f_str = "{}"
     for i in intervals:
-        if type(i) == int:
-            t = f_str.format(i)
+        if type(i) == int or type(i) == str:
+            t = '{}'.format(i)
         else:
+            if time_mask == 'minute':
+                f_str = "{}:{}"
+            elif time_mask == 'dayOfMonth':
+                f_str = "{}-{}"
+            # print('aoeuaue', i)
             t = f_str.format(i[0], i[1])
         template['time'] = t
         rv.append(deepcopy(template))
     return rv
 
 
-def get_ssh_data(name, period, search, raw=False):
+def get_ssh_data(name, period, search, raw=False, to_time=None, from_time=None):
     col = get_mongo_connection()
     rv = []
     keys = []
-    mask_range = get_period_mask(period)
+    mask_range = get_period_mask(period, to_time, from_time)
     search_q = get_search_mask_ssh(search)
     time_mask = mask_range[2]
     if time_mask == 'day':
@@ -336,11 +374,11 @@ def get_ssh_data(name, period, search, raw=False):
     return rv, keys
 
 
-def get_apache_data(name, period, search, raw):
+def get_apache_data(name, period, search, raw, to_time=None, from_time=None):
     col = get_mongo_connection()
     rv = []
     keys = []
-    mask_range = get_period_mask(period)
+    mask_range = get_period_mask(period, to_time, from_time)
     time_mask = mask_range[2]
     if time_mask == 'day':
         time_mask = 'dayOfMonth'
@@ -402,7 +440,7 @@ def get_apache_data(name, period, search, raw):
         keys = ['ip address', 'count', 'types']
         ips = dict()
         res = col.aggregate(
-            [{"$match": {"$and": [{"name": "apache_access"} ]}},
+            [{"$match": {"$and": [{"name": "apache_access"}]}},
              {"$group": {"_id": {"ip_address": "$ip_address"}, "total": {"$sum": 1},
                          "oldest": {"$min": "$timestamp"}}},
              {"$sort": {"total": -1}}
@@ -436,7 +474,6 @@ def get_apache_data(name, period, search, raw):
             row = {'ip_address': ip, 'count': new_ips[ip][0], 'types': new_ips[ip][1]}
             rv.append(row)
         # print(rv)
-
 
     elif name == 'urls':
         res = col.aggregate(
@@ -519,11 +556,15 @@ def data():
     rtype = request.json.get('type', '').strip()
     period = request.json.get('period', '').strip()
     search = request.json.get('search', '').strip()
+    to_time = request.json.get("to", '')
+    from_time = request.json.get("from", '')
+    # print(from_time)
+
     raw = request.json.get('raw', False)
     if rtype == 'ssh':
-        res, keys = get_ssh_data(name, period, search, raw)
+        res, keys = get_ssh_data(name, period, search, raw, to_time, from_time)
     elif rtype == 'apache':
-        res, keys = get_apache_data(name, period, search, raw)
+        res, keys = get_apache_data(name, period, search, raw, to_time, from_time)
     else:
         raise ValueError("Unknown type: {}".format(rtype))
     if raw:
@@ -546,7 +587,7 @@ def data():
                         flag = geoip_db.lookup(v).country.lower()
                         flags[v] = flag
                     except (AttributeError, ValueError):
-                        print(v)
+                        # print(v)
                         flags[v] = ''
 
             # Force every thing to string so we can truncate stuff in the template

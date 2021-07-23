@@ -52,18 +52,35 @@ function fmtChartJSPerso(n, p)
     return p;
 }
 
-function load_graph(canvas_id, type, name, period)
+function load_graph(canvas_id, type, name, period, to,from)
 {
     $.ajax({
         url: script_root + '/data/',
         type: 'POST',
-        data:  JSON.stringify({'type': type, 'period': period, 'name': name, 'raw': true} ),
+        data:  JSON.stringify({'type': type, 'period': period, 'name': name, 'raw': true, 'to': to, 'from':from} ),
         cache: false,
         contentType: "application/json;charset=UTF-8",
     }).done(function(data) {
         var res = JSON.parse(data);
 //        console.log (res);
-        var options= {
+    var pieoptions= {
+            graphTitle: res.title,
+            graphTitleFontSize: 16,
+            canvasBorders: true,
+            canvasBordersWidth: 1,
+            animation : false,
+            responsive: true,
+            legend: true,
+            highLight: true,
+            fmtXLabel: "fn",
+            annotateLabel: "<%=v2+': '+v1+' '+v3%>",
+            annotateDisplay: true,
+            yAxisUnitFontSize: 16,
+            inGraphDataShow : true,
+      spaceBetweenBar : 5,
+
+        };
+        var baroptions= {
             graphTitle: res.title,
             graphTitleFontSize: 16,
             canvasBorders: true,
@@ -85,7 +102,17 @@ function load_graph(canvas_id, type, name, period)
             scaleStepWidth : 1,
             yAxisUnitFontSize: 16,
         };
-        if (res.labels.length == 0 || res.data.length == 0) { return }
+        if (res.labels.length == 0 || res.data.length == 0) {
+            var data_sets =
+            {
+                labels : [''],
+                datasets: [{ data: [0]}]
+            }
+
+            console.log(data_sets.datasets);
+            new Chart(document.getElementById(canvas_id).getContext("2d")).Pie(data_sets, pieoptions);
+            console.log('aempty'); return;
+         }
         var data_sets = [];
         for (var i = 0; i < res.data.length; i++) {
             //console.log(i, res.data[i], res.labels[i])
@@ -96,15 +123,32 @@ function load_graph(canvas_id, type, name, period)
                 title: res.labels[i]
             })
         }
-        if (res.data.length == 1) {
-            options.annotateLabel = "<%=v2+': '+v3%>"
-        }
         var data = {
            labels: res.fields,
            datasets: data_sets
         }
+        if (res.data.length == 1) {
+//            console.log('a', data.datasets[0].data);
+//            var datasets2 = [];
+//            for (var i = 0 ; i < data.datasets[0].data.length; i++) {
+//                var x = [data.datasets[0].data[i]];
+//                console.log(x)
+//                datasets2.push({
+//                    fillColor: colours[i % colours.length],
+//                    strokeColor: colours[i % colours.length],
+//                    data: x,
+//                    title: data.labels[i]
+//                });
+//            }
+//            data.datasets = datasets2;
+
+            console.log('b', data);
+            pieoptions.annotateLabel = "<%=v2+': '+v3%>"
+            new Chart(document.getElementById(canvas_id).getContext("2d")).Bar(data, pieoptions);
+        } else {
         //console.log(data);
-         new Chart(document.getElementById(canvas_id).getContext("2d")).StackedBar(data, options);
+             new Chart(document.getElementById(canvas_id).getContext("2d")).StackedBar(data, baroptions);
+         }
     });
     return false;
 }
@@ -114,13 +158,20 @@ function load_all_graphs()
 {
 //    var types = simple_types;
     var period = 'today';
+    var to = null;
+    var from = null;
     if ($("#daily").is(":checked")) {period = 'today';}
     else if ($("#hourly").is(":checked")) {period = 'hour';}
     else if ($("#yesterday").is(":checked")) {period = 'yesterday';}
     else if ($("#weekly").is(":checked")) {period = 'week';}
     else if ($("#monthly").is(":checked")) {period = 'month';}
+    else if ($("#custom").is(":checked")) {
+        period = 'custom';
+        from = $("#from_date").val();
+        to = $("#to_date").val();
+    }
     $("canvas").each(function() {
-        load_graph($(this).attr('id'), $(this).attr("data-type"), $(this).attr("data-name"), period);
+        load_graph($(this).attr('id'), $(this).attr("data-type"), $(this).attr("data-name"), period, to, from);
     })
 //    for (let i = 0; i < types.length; i++) {
 //    }
@@ -129,13 +180,27 @@ function load_all_graphs()
 $( document ).ready(function() {
        
 //    add_items_lock = 0
+    $('.dropdown-toggle').dropdown()
+
     $('body').css('background-image', 'url("' + script_root + '/static/img/background.gif")');
     $('body').css('background-size', 'contain');
+    $("#custom").click(function() {
+        $("#custom").prop("checked", true);
+//         $('#timepicker').toggleClass('d-none');
+     });
 
     $("[name^='timeperiod").click(function(event) {
        load_all_graphs()
     });
-    calculate_height()
+    calculate_height();
+
+    $("#submit_custom").click(function() {
+        $("#custom").prop("checked", true);
+//        $('#timepicker').toggleClass('d-none');
+        $('#custom').dropdown('toggle');
+        load_all_graphs();
+    });
+
     $('#itemstablediv').scrollTop(0);
     load_all_graphs();
 });
