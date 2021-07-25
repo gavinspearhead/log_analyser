@@ -50,7 +50,7 @@ def get_period_mask(period, to_time=None, from_time=None, tz=pytz.UTC):
         today_end = now
         intervals = list([((today_start + datetime.timedelta(minutes=x)).hour,
                            (today_start + datetime.timedelta(minutes=x)).minute) for x in range(60)])
-        print(intervals)
+        # print(intervals)
         return today_start, today_end, 'minute', intervals
     elif period == 'yesterday':
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0) - datetime.timedelta(days=1)
@@ -180,9 +180,9 @@ def get_raw_data(indata, field1, field2, field3):
 
 def prepare_time_output(time_mask, intervals, template):
     rv = []
-    print(time_mask)
+    # print(time_mask)
     for i in intervals:
-        print(i, type(i))
+        # print(i, type(i))
         if type(i) == int or type(i) == str:
             t = '{}'.format(i)
         else:
