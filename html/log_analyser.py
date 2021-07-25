@@ -6,6 +6,7 @@ import os.path
 import re
 import sys
 from copy import deepcopy
+import tzlocal
 
 import dateutil.parser
 import pytz
@@ -35,8 +36,8 @@ def get_mongo_connection():
     return col
 
 
-def get_period_mask(period, to_time=None, from_time=None):
-    now = datetime.datetime.now(pytz.UTC)
+def get_period_mask(period, to_time=None, from_time=None, tz=pytz.UTC):
+    now = datetime.datetime.now(tz)
     # print(period)
     if period == 'today':
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -49,7 +50,7 @@ def get_period_mask(period, to_time=None, from_time=None):
         today_end = now
         intervals = list([((today_start + datetime.timedelta(minutes=x)).hour,
                            (today_start + datetime.timedelta(minutes=x)).minute) for x in range(60)])
-        # print(intervals)
+        print(intervals)
         return today_start, today_end, 'minute', intervals
     elif period == 'yesterday':
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0) - datetime.timedelta(days=1)
@@ -60,30 +61,31 @@ def get_period_mask(period, to_time=None, from_time=None):
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0) - datetime.timedelta(weeks=1)
         today_end = now.replace(hour=23, minute=59, second=59, microsecond=0)
         intervals = list(
-            [((today_start + datetime.timedelta(days=x)).day, (today_start + datetime.timedelta(days=x)).month) for x in
+            [((today_start + datetime.timedelta(days=x)).month, (today_start + datetime.timedelta(days=x)).day) for x in
              range(8)])
         return today_start, today_end, 'day', intervals
     elif period == 'month':
-        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0) - datetime.timedelta(weeks=4)
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0) - datetime.timedelta(days=31)
         today_end = now.replace(hour=23, minute=59, second=59, microsecond=0)
-        intervals = list([(today_start + datetime.timedelta(weeks=x)).isocalendar()[1] for x in range(5)])
-        return today_start, today_end, 'week', intervals
+        intervals = list(
+            [((today_start + datetime.timedelta(days=x)).month, (today_start + datetime.timedelta(days=x)).day) for x in
+             range(31)])
+
+        # [(today_start + datetime.timedelta(weeks=x)).day for x in range(31)])
+        return today_start, today_end, 'day', intervals
     elif period == 'custom':
         today_start = (dateutil.parser.isoparse(from_time).astimezone(pytz.UTC))
         today_end = (dateutil.parser.isoparse(to_time).astimezone(pytz.UTC))
         t_delta = int((today_end - today_start).total_seconds())
-        # print('oauaue', t_delta)
         if t_delta <= 1:
             t_delta = 1
         if t_delta <= 60:
             p = 'second'
-            intervals = list([(today_start + datetime.timedelta(seconds= x)).second for x in range(t_delta)])
+            intervals = list([(today_start + datetime.timedelta(seconds=x)).second for x in range(t_delta)])
         elif t_delta <= 3600:
             t = t_delta // 60
             p = 'minute'
-
-            intervals = list([(today_start + datetime.timedelta(seconds=60* x)).minute for x in range(t)])
-            # print(t, intervals, 'aoeuauuuXXX')
+            intervals = list([(today_start + datetime.timedelta(seconds=60 * x)).minute for x in range(t)])
         elif t_delta <= 24 * 3600:
             t = t_delta // 3600
             p = 'hour'
@@ -100,9 +102,8 @@ def get_period_mask(period, to_time=None, from_time=None):
         elif t_delta <= 28 * 24 * 3600:
             t = t_delta // (3600 * 24 * 28)
             p = 'month'
-            intervals = list([(today_start + datetime.timedelta(seconds=3600*24*28 * x)).isocalendar()[1] for x in range(t)])
-        # intervals = list([str(today_start + datetime.timedelta(seconds=t_delta * x)) for x in range(25)])
-        # print(today_start, today_end, p, intervals, t_delta, 'aoYYYYYYY', t)
+            intervals = list(
+                [(today_start + datetime.timedelta(seconds=3600 * 24 * 28 * x)).isocalendar()[1] for x in range(t)])
         return today_start, today_end, p, intervals
     else:
         raise ValueError("Unknown period {}".format(period))
@@ -155,9 +156,7 @@ def get_search_mask_apache(search):
 
 def get_raw_data(indata, field1, field2, field3):
     field1_values = list(set([x[field1] for x in indata]))
-    # print(field1_values)
     field1_values = natsorted(field1_values)
-    # print(field1_values)
     if field2 is not None:
         field2_values = list(set([x[field2] for x in indata]))
         field2_values = natsorted(field2_values)
@@ -181,26 +180,38 @@ def get_raw_data(indata, field1, field2, field3):
 
 def prepare_time_output(time_mask, intervals, template):
     rv = []
+    print(time_mask)
     for i in intervals:
+        print(i, type(i))
         if type(i) == int or type(i) == str:
             t = '{}'.format(i)
         else:
             if time_mask == 'minute':
-                f_str = "{}:{}"
-            elif time_mask == 'dayOfMonth':
-                f_str = "{}-{}"
-            # print('aoeuaue', i)
+                f_str = "{:02}:{:02}"
+            elif time_mask == 'dayOfMonth' or time_mask == 'week':
+                f_str = "{:02}-{:02}"
             t = f_str.format(i[0], i[1])
         template['time'] = t
         rv.append(deepcopy(template))
     return rv
 
 
+def format_time(time_mask, month, hour, time_val):
+    if time_mask == 'dayOfMonth' or time_mask == 'week':
+        time_str = "{:02}-{:02}".format(month, time_val)
+    elif time_mask == 'minute':
+        time_str = "{:02}:{:02}".format(hour, time_val)
+    else:
+        time_str = "{}".format(time_val)
+    return time_str
+
+
 def get_ssh_data(name, period, search, raw=False, to_time=None, from_time=None):
+    local_tz = str(tzlocal.get_localzone())
     col = get_mongo_connection()
     rv = []
     keys = []
-    mask_range = get_period_mask(period, to_time, from_time)
+    mask_range = get_period_mask(period, to_time, from_time, pytz.timezone(local_tz))
     search_q = get_search_mask_ssh(search)
     time_mask = mask_range[2]
     if time_mask == 'day':
@@ -225,50 +236,56 @@ def get_ssh_data(name, period, search, raw=False, to_time=None, from_time=None):
     elif name == 'time_users':
         res = col.aggregate(
             [{"$match": {"$and": [{"name": "auth_ssh"}, mask, search_q]}},
-             {"$group": {"_id": {"username": "$username", "type": "$type", "time": {"$" + time_mask: "$timestamp"}},
+             {"$group": {"_id": {"username": "$username", "type": "$type",
+                                 "time": {"$" + time_mask: {"date": "$timestamp", "timezone": local_tz}},
+                                 "month": {"$month": {"date": "$timestamp", "timezone": local_tz}}
+                                 },
                          "total": {"$sum": 1},
                          "ips": {"$addToSet": "$ip_address"},
-                         'hour': {"$addToSet": {"$hour": "$timestamp"}},
-                         'month': {"$addToSet": {"$month": "$timestamp"}}}},
-             {"$sort": {'_id.time': 1, "total": -1}}
+                         'hour': {"$addToSet": {"$hour": {"date": "$timestamp", "timezone": local_tz}}},
+                         # 'month': {"$addToSet": {"$month": {"date": "$timestamp", "timezone": local_tz}}}
+                         }},
+             {"$sort": {'_id.month': 1, '_id.time': 1, "total": -1}}
              ])
         if raw:
             rv = prepare_time_output(time_mask, intervals,
                                      {'time': None, 'username': "", 'type': None, 'total': 0, 'ips': ""})
         for x in res:
-            # print(x, time_mask, intervals)
-            extra_time = "-" + str(x['month'][0]) if time_mask == 'dayOfMonth' else ""
-            extra_time2 = str(x['hour'][0]) + ":" if time_mask == 'minute' else ""
+            time_str = format_time(time_mask, x['_id']['month'], x['hour'][0], x['_id']['time'])
+
             keys = [time_mask, 'username', 'type', 'total', 'ips']
-            row = {'time': "{}{}{}".format(extra_time2, x['_id']['time'], extra_time),
-                   'username': x['_id']['username'],
-                   'type': x['_id']['type'],
-                   'total': x['total'],
-                   'ips': ", ".join(x['ips'])}
+            row = {
+                "time": time_str,
+                'username': x['_id']['username'],
+                'type': x['_id']['type'],
+                'total': x['total'],
+                'ips': ", ".join(x['ips'])}
             rv.append(row)
         if raw:
-            # print(rv)
             rv, keys = get_raw_data(rv, 'username', 'time', 'total')
     elif name == 'time_ips':
         res = col.aggregate(
             [{"$match": {"$and": [{"name": "auth_ssh"}, mask, search_q]}},
-             {"$group": {"_id": {"ip_address": "$ip_address", "type": "$type", "time": {"$" + time_mask: "$timestamp"}},
+             {"$group": {"_id": {"ip_address": "$ip_address", "type": "$type",
+                                 "time": {"$" + time_mask: {"date": "$timestamp", "timezone": local_tz}},
+                                 "month": {"$month": {"date": "$timestamp", "timezone": local_tz}},
+                                 },
                          "total": {"$sum": 1},
                          "usernames": {"$addToSet": "$username"},
-                         'hour': {"$addToSet": {"$hour": "$timestamp"}},
-                         'month': {"$addToSet": {"$month": "$timestamp"}}}},
-             {"$sort": {'_id.time': 1, "total": -1}}
+                         'hour': {"$addToSet": {"$hour": {"date": "$timestamp", "timezone": local_tz}}},
+                         'month': {"$addToSet": {"$month": {"date": "$timestamp", "timezone": local_tz}}}}},
+             {"$sort": {'_id.month': 1, '_id.time': 1, "total": -1}}
              ])
         if raw:
             rv = prepare_time_output(time_mask, intervals,
                                      {'time': None, 'ip_address': "", 'type': None, 'total': 0, 'users': ""})
         for x in res:
-            extra_time = "-" + str(x['month'][0]) if time_mask == 'dayOfMonth' else ''
-            extra_time2 = str(x['hour'][0]) + ":" if time_mask == 'minute' else ""
+            time_str = format_time(time_mask, x['_id']['month'], x['hour'][0], x['_id']['time'])
             keys = [time_mask, 'IP Addresses', 'type', 'total', 'usernames']
-            row = {'time': "{}{}{}".format(extra_time2, x['_id']['time'], extra_time),
-                   'ip_address': x['_id']['ip_address'], 'type': x['_id']['type'],
-                   'total': x['total'], 'users': ", ".join(x['usernames'])}
+            row = {
+                'time': time_str,
+                'ip_address': x['_id']['ip_address'], 'type': x['_id']['type'],
+                'total': x['total'], 'users': ", ".join(x['usernames'])}
             rv.append(row)
         if raw:
             rv, keys = get_raw_data(rv, 'ip_address', 'time', 'total')
@@ -301,7 +318,6 @@ def get_ssh_data(name, period, search, raw=False, to_time=None, from_time=None):
             o = pytz.UTC.localize(x['oldest'])
             if ip not in ips:
                 ips[ip] = (t, o)
-        # print(users)
         res = col.aggregate(
             [{"$match": {"$and": [{"name": "auth_ssh"}, mask, search_q]}},
              {"$group": {
@@ -311,7 +327,6 @@ def get_ssh_data(name, period, search, raw=False, to_time=None, from_time=None):
              {"$sort": {"total": -1}}
              ])
         new_ips = dict()
-        # mask_range[0] = pytz.UTC.localize(mask_range[0])
         for x in res:
             ip = x['_id']['ip_address']
             ts = x['total']
@@ -324,7 +339,6 @@ def get_ssh_data(name, period, search, raw=False, to_time=None, from_time=None):
         for ip in new_ips:
             row = {'ip_address': ip, 'count': new_ips[ip][0], 'types': new_ips[ip][1]}
             rv.append(row)
-        # print(rv)
     elif name == 'new_users':
         keys = ['username', 'ip address', 'count', 'types']
         users = dict()
@@ -342,7 +356,6 @@ def get_ssh_data(name, period, search, raw=False, to_time=None, from_time=None):
             if u not in users:
                 users[u] = dict()
             users[u][ip] = (t, o)
-        # print(users)
         res = col.aggregate(
             [{"$match": {"$and": [{"name": "auth_ssh"}, mask, search_q]}},
              {"$group": {
@@ -352,7 +365,6 @@ def get_ssh_data(name, period, search, raw=False, to_time=None, from_time=None):
              {"$sort": {"total": -1}}
              ])
         new_users = dict()
-        # mask_range[0] = pytz.UTC.localize(mask_range[0])
         for x in res:
             u = x['_id']['username']
             ip = x['_id']['ip_address']
@@ -368,17 +380,17 @@ def get_ssh_data(name, period, search, raw=False, to_time=None, from_time=None):
             for ip in new_users[u]:
                 row = {'username': u, 'ip_address': ip, 'count': new_users[u][ip][0], 'types': new_users[u][ip][1]}
                 rv.append(row)
-        # print(rv)
     else:
         raise ValueError(name)
     return rv, keys
 
 
 def get_apache_data(name, period, search, raw, to_time=None, from_time=None):
+    local_tz = str(tzlocal.get_localzone())
     col = get_mongo_connection()
     rv = []
     keys = []
-    mask_range = get_period_mask(period, to_time, from_time)
+    mask_range = get_period_mask(period, to_time, from_time, pytz.timezone(local_tz))
     time_mask = mask_range[2]
     if time_mask == 'day':
         time_mask = 'dayOfMonth'
@@ -451,7 +463,6 @@ def get_apache_data(name, period, search, raw, to_time=None, from_time=None):
             o = pytz.UTC.localize(x['oldest'])
             if ip not in ips:
                 ips[ip] = (t, o)
-        # print("IPs", ips)
         res = col.aggregate(
             [{"$match": {"$and": [{"name": "apache_access"}, mask, search_q]}},
              {"$group": {
@@ -461,7 +472,6 @@ def get_apache_data(name, period, search, raw, to_time=None, from_time=None):
              {"$sort": {"total": -1}}
              ])
         new_ips = dict()
-        # mask_range[0] = pytz.UTC.localize(mask_range[0])
         for x in res:
             ip = x['_id']['ip_address']
             ts = x['total']
@@ -473,7 +483,6 @@ def get_apache_data(name, period, search, raw, to_time=None, from_time=None):
         for ip in new_ips:
             row = {'ip_address': ip, 'count': new_ips[ip][0], 'types': new_ips[ip][1]}
             rv.append(row)
-        # print(rv)
 
     elif name == 'urls':
         res = col.aggregate(
@@ -491,20 +500,22 @@ def get_apache_data(name, period, search, raw, to_time=None, from_time=None):
         res = col.aggregate([
             {"$match": {"$and": [{"name": "apache_access"}, mask, search_q]}},
             {"$group": {
-                "_id": {"time": {"$" + time_mask: "$timestamp"}, "ip_address": "$ip_address"},
+                "_id": {"time": {"$" + time_mask: {"date": "$timestamp", "timezone": local_tz}},
+                        "month": {"$month": {"date": "$timestamp", "timezone": local_tz}},
+                        "ip_address": "$ip_address"},
                 "total": {"$sum": 1},
                 "codes": {"$addToSet": "$code"},
-                'hour': {"$addToSet": {"$hour": "$timestamp"}},
-                'month': {"$addToSet": {"$month": "$timestamp"}}}},
-            {"$sort": {'_id.time': 1, 'total': -1}}])
+                'hour': {"$addToSet": {"$hour": {"date": "$timestamp", "timezone": local_tz}}},
+                # 'month': {"$addToSet": {"$month": {"date": "$timestamp", "timezone": local_tz}}}
+                }},
+            {"$sort": {'_id.month': 1, '_id.time': 1, 'total': -1}}])
         if raw:
             rv = prepare_time_output(time_mask, intervals, {'time': None, 'ip_address': "", 'total': 0, 'codes': ""})
         for x in res:
-            extra_time = "-" + str(x['month'][0]) if time_mask == 'dayOfMonth' else ''
-            extra_time2 = str(x['hour'][0]) + ":" if time_mask == 'minute' else ''
+            time_str = format_time(time_mask, x['_id']['month'], x['hour'][0], x['_id']['time'])
             keys = [time_mask, 'ip address', 'total', 'codes']
             row = {
-                'time': "{}{} {}".format(extra_time2, x['_id']['time'], extra_time),
+                'time': time_str,
                 'ip_address': x['_id']['ip_address'],
                 'total': x['total'],
                 'codes': ", ".join(x['codes'])
@@ -518,20 +529,25 @@ def get_apache_data(name, period, search, raw, to_time=None, from_time=None):
         res = col.aggregate([
             {"$match": {"$and": [{"name": "apache_access"}, mask, search_q]}},
             {"$group": {
-                "_id": {"time": {"$" + time_mask: "$timestamp"}, "path": "$path"},
+                "_id": {"time": {"$" + time_mask: {"date": "$timestamp", "timezone": local_tz}},
+                        "month": {"$month": {"date": "$timestamp", "timezone": local_tz}},
+                        "path": "$path"},
                 "total": {"$sum": 1},
                 "ips": {"$addToSet": "$ip_address"},
-                'hour': {"$addToSet": {"$hour": "$timestamp"}},
-                'month': {"$addToSet": {"$month": "$timestamp"}}}},
-            {"$sort": {'_id.time': 1, 'total': -1}}])
+                'hour': {"$addToSet": {"$hour": {"date": "$timestamp", "timezone": local_tz}}},
+                # 'month': {"$addToSet": {"$month": {"date": "$timestamp", "timezone": local_tz}}}
+            }},
+            {"$sort": {'_id.month': 1, '_id.time': 1, 'total': -1}}])
         if raw:
             rv = prepare_time_output(time_mask, intervals, {'time': None, 'path': "", 'total': 0, 'ips': ""})
         for x in res:
-            extra_time = "-" + str(x['month'][0]) if time_mask == 'dayOfMonth' else ''
-            extra_time2 = str(x['hour'][0]) + ":" if time_mask == 'minute' else ""
+            time_str = format_time(time_mask, x['_id']['month'], x['hour'][0], x['_id']['time'])
             keys = [time_mask, 'path', 'total', 'ips']
-            row = {'time': "{}{}{}".format(extra_time2, x['_id']['time'], extra_time), 'path': x['_id']['path'],
-                   'total': x['total'], 'ips': ", ".join(x['ips'])}
+            row = {
+                'time': time_str,
+                'path': x['_id']['path'],
+                'total': x['total'],
+                'ips': ", ".join(x['ips'])}
             rv.append(row)
     elif name == "size_ip":
         res = col.aggregate(
