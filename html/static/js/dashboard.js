@@ -52,7 +52,7 @@ function fmtChartJSPerso(n, p)
     return p;
 }
 
-function load_graph(canvas_id, type, name, period, to,from)
+function load_graph(canvas_id, type, name, period, to,from, title)
 {
     $.ajax({
         url: script_root + '/data/',
@@ -64,13 +64,13 @@ function load_graph(canvas_id, type, name, period, to,from)
         var res = JSON.parse(data);
 //        console.log (res);
     var pieoptions= {
-            graphTitle: res.title,
+            graphTitle: title,
             graphTitleFontSize: 16,
             canvasBorders: true,
             canvasBordersWidth: 1,
             animation : false,
             responsive: true,
-            legend: true,
+            legend: false,
             highLight: true,
             fmtXLabel: "fn",
             annotateLabel: "<%=v2+': '+v1+' '+v3%>",
@@ -81,7 +81,7 @@ function load_graph(canvas_id, type, name, period, to,from)
 
         };
         var baroptions= {
-            graphTitle: res.title,
+            graphTitle: title,
             graphTitleFontSize: 16,
             canvasBorders: true,
             canvasBordersWidth: 1,
@@ -89,7 +89,7 @@ function load_graph(canvas_id, type, name, period, to,from)
             barValueSpacing:0,
             animation : false,
             responsive: true,
-            legend: true,
+            legend: false,
             highLight: true,
             xScaleLabelsMinimumWidth: 10,
             fmtXLabel: "fn",
@@ -171,7 +171,7 @@ function load_all_graphs()
         to = $("#to_date").val();
     }
     $("canvas").each(function() {
-        load_graph($(this).attr('id'), $(this).attr("data-type"), $(this).attr("data-name"), period, to, from);
+        load_graph($(this).attr('id'), $(this).attr("data-type"), $(this).attr("data-name"), period, to, from, $(this).attr("data-title"),);
     })
 //    for (let i = 0; i < types.length; i++) {
 //    }

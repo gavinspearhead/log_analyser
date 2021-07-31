@@ -33,7 +33,6 @@ function handle_request(name, type, search)
         data:  JSON.stringify({'name': name, "type": type, 'period': period, 'search': search}),
         cache: false,
         contentType: "application/json;charset=UTF-8",
-
     }).done(function(data) {
         var res = JSON.parse(data);
         $('#itemstable').html(res.rhtml);

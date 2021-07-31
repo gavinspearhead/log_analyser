@@ -5,6 +5,7 @@ import json
 import os.path
 import re
 import sys
+import traceback
 from copy import deepcopy
 import tzlocal
 
@@ -319,7 +320,7 @@ def get_ssh_data(name, period, search, raw=False, to_time=None, from_time=None):
             if ip not in ips:
                 ips[ip] = (t, o)
         res = col.aggregate(
-            [{"$match": {"$and": [{"name": "auth_ssh"}, mask, search_q]}},
+            [{"$match": {"$and": [{"name": "auth_ssh"}, {"type": "connect"}, mask, search_q]}},
              {"$group": {
                  "_id": {"ip_address": "$ip_address"},
                  "total": {"$sum": 1},
@@ -357,7 +358,7 @@ def get_ssh_data(name, period, search, raw=False, to_time=None, from_time=None):
                 users[u] = dict()
             users[u][ip] = (t, o)
         res = col.aggregate(
-            [{"$match": {"$and": [{"name": "auth_ssh"}, mask, search_q]}},
+            [{"$match": {"$and": [{"name": "auth_ssh"}, {"type": "connect"}, mask, search_q]}},
              {"$group": {
                  "_id": {"username": "$username", "ip_address": "$ip_address"},
                  "total": {"$sum": 1},
@@ -591,8 +592,7 @@ def data():
         else:
             fields = keys
             res = [[x for x in res.values()]]
-        return json.dumps({'success': True, "data": res, "labels": keys, "fields": fields,
-                           "title": "{} {}".format(rtype, name)}), 200, {'ContentType': 'application/json'}
+        return json.dumps({'success': True, "data": res, "labels": keys, "fields": fields}), 200, {'ContentType': 'application/json'}
     else:
         res2 = []
         flags = dict()
@@ -613,25 +613,48 @@ def data():
         return json.dumps({'success': True, 'rhtml': rhtml}), 200, {'ContentType': 'application/json'}
 
 
-data_types = {
-    "ssh_users": ("ssh", "users"),
-    "ssh_time_users": ("ssh", "time_users"),
-    "ssh_time_ips": ("ssh", "time_ips"),
-    "ssh_ipaddresses": ("ssh", "ip_addresses"),
-    "ssh_ips": ("ssh", "ip_addresses"),
-    "apache_ipaddresses": ("apache", "ip_addresses"),
-    "apache_time_ips": ("apache", "time_ips"),
-    "apache_codes": ("apache", "codes"),
-    "apache_method": ("apache", "method"),
-    "apache_protocol": ("apache", "protocol"),
-    "apache_size": ("apache", "size_ip"),
+dashboard_data_types = {
+    "ssh_users": ("ssh", "users", "SSH Users"),
+    "ssh_time_users": ("ssh", "time_users", "SSH Users Per time"),
+    "ssh_time_ips": ("ssh", "time_ips", "SSH IPs per time"),
+    "ssh_ipaddresses": ("ssh", "ip_addresses", "SSH IP Addresses"),
+    # "ssh_ips": ("ssh", "ip_addresses"),
+    "apache_ipaddresses": ("apache", "ip_addresses", "Apache IP addresses"),
+    "apache_time_ips": ("apache", "time_ips", "Apache IPs per time"),
+    "apache_codes": ("apache", "codes", "Apache Response codes"),
+    "apache_method": ("apache", "method", "Apache HTTP methods"),
+    "apache_protocol": ("apache", "protocol", "Apache Protocols"),
+    "apache_size": ("apache", "size_ip", "Apache Volume per IP"),
+}
+
+main_data_types = {
+    'ssh': {
+        "ssh_users": ("ssh", "users", "Users"),
+        "ssh_new_users": ("ssh", "new_users", "SSH New Users"),
+        "ssh_time_users": ("ssh", "time_users", "Users Per time"),
+        "ssh_time_ips": ("ssh", "time_ips", "IPs per time"),
+        "ssh_ipaddresses": ("ssh", "ip_addresses", "IP Addresses"),
+        "ssh_new_ips": ("ssh", "new_ips", "New IP Addresses"),
+    },
+    "apache": {
+        # "ssh_ips": ("ssh", "ip_addresses"),
+        "apache_ipaddresses": ("apache", "ip_addresses", "IP addresses"),
+        "apache_new_ips": ("apache", "ip_addresses", "New IP addresses"),
+        "apache_time_ips": ("apache", "time_ips", "IPs per time"),
+        "apache_codes": ("apache", "codes", "Response codes"),
+        "apache_method": ("apache", "method", "HTTP methods"),
+        "apache_protocol": ("apache", "protocol", "Protocols and versions"),
+        "apache_urls": ("apache", "urls", "URLs"),
+        "apache_time_urls": ("apache", "time_urls", "URLs per time"),
+        "apache_size": ("apache", "size_ip", "Volume per IP"),
+    }
 }
 
 
 @app.route('/dashboard/')
 def dashboard():
     try:
-        return render_template("dashboard.html", data_types=data_types)
+        return render_template("dashboard.html", data_types=dashboard_data_types)
     except Exception as e:
         return json.dumps({'success': False, "message": str(e)}), 200, {'ContentType': 'application/json'}
 
@@ -639,13 +662,13 @@ def dashboard():
 @app.route('/')
 def homepage():
     try:
-        return render_template("main.html")
+        return render_template("main.html", data_types=main_data_types)
     except Exception as e:
+        traceback.print_exc()
         return json.dumps({'success': False, "message": str(e)}), 200, {'ContentType': 'application/json'}
 
 
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser(description="RSS update daemon")
     parser.add_argument("-c", '--config', help="Config File Directory", default="", metavar="FILE")
     args = parser.parse_args()

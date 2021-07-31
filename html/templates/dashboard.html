@@ -76,7 +76,7 @@
     <div class="row no-gutters">
         {% for k in data_types %}
             <div class="col-md-auto" id="canvas_div_{{x}}">
-                <canvas id="canvas_{{k}}" height="480" width="640" data-type="{{data_types[k][0]}}" data-name="{{data_types[k][1]}}"></canvas>
+                <canvas id="canvas_{{k}}" height="480" width="640" data-type="{{data_types[k][0]}}" data-name="{{data_types[k][1]}}" data-title="{{data_types[k][2]}}"></canvas>
             </div>
         {% endfor %}
     </div>
