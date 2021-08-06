@@ -615,14 +615,14 @@ def data():
 
 dashboard_data_types = {
     "ssh_users": ("ssh", "users", "SSH Users"),
-    "ssh_time_users": ("ssh", "time_users", "SSH Users Per time"),
+    "ssh_time_users": ("ssh", "time_users", "SSH Users per Time"),
     "ssh_time_ips": ("ssh", "time_ips", "SSH IPs per time"),
     "ssh_ipaddresses": ("ssh", "ip_addresses", "SSH IP Addresses"),
     # "ssh_ips": ("ssh", "ip_addresses"),
-    "apache_ipaddresses": ("apache", "ip_addresses", "Apache IP addresses"),
-    "apache_time_ips": ("apache", "time_ips", "Apache IPs per time"),
+    "apache_ipaddresses": ("apache", "ip_addresses", "Apache IP Addresses"),
+    "apache_time_ips": ("apache", "time_ips", "Apache IPs per Time"),
     "apache_codes": ("apache", "codes", "Apache Response codes"),
-    "apache_method": ("apache", "method", "Apache HTTP methods"),
+    "apache_method": ("apache", "method", "Apache HTTP Methods"),
     "apache_protocol": ("apache", "protocol", "Apache Protocols"),
     "apache_size": ("apache", "size_ip", "Apache Volume per IP"),
 }
@@ -631,21 +631,21 @@ main_data_types = {
     'ssh': {
         "ssh_users": ("ssh", "users", "Users"),
         "ssh_new_users": ("ssh", "new_users", "SSH New Users"),
-        "ssh_time_users": ("ssh", "time_users", "Users Per time"),
-        "ssh_time_ips": ("ssh", "time_ips", "IPs per time"),
+        "ssh_time_users": ("ssh", "time_users", "Users per Time"),
+        "ssh_time_ips": ("ssh", "time_ips", "IPs per Time"),
         "ssh_ipaddresses": ("ssh", "ip_addresses", "IP Addresses"),
         "ssh_new_ips": ("ssh", "new_ips", "New IP Addresses"),
     },
     "apache": {
         # "ssh_ips": ("ssh", "ip_addresses"),
-        "apache_ipaddresses": ("apache", "ip_addresses", "IP addresses"),
-        "apache_new_ips": ("apache", "ip_addresses", "New IP addresses"),
-        "apache_time_ips": ("apache", "time_ips", "IPs per time"),
-        "apache_codes": ("apache", "codes", "Response codes"),
-        "apache_method": ("apache", "method", "HTTP methods"),
-        "apache_protocol": ("apache", "protocol", "Protocols and versions"),
+        "apache_ipaddresses": ("apache", "ip_addresses", "IP Addresses"),
+        "apache_new_ips": ("apache", "new_ips", "New IP Addresses"),
+        "apache_time_ips": ("apache", "time_ips", "IPs per Time"),
+        "apache_codes": ("apache", "codes", "Response Codes"),
+        "apache_method": ("apache", "method", "HTTP Methods"),
+        "apache_protocol": ("apache", "protocol", "Protocols and Versions"),
         "apache_urls": ("apache", "urls", "URLs"),
-        "apache_time_urls": ("apache", "time_urls", "URLs per time"),
+        "apache_time_urls": ("apache", "time_urls", "URLs per Time"),
         "apache_size": ("apache", "size_ip", "Volume per IP"),
     }
 }
@@ -669,7 +669,7 @@ def homepage():
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="RSS update daemon")
+    parser = argparse.ArgumentParser(description="Log anaylyser")
     parser.add_argument("-c", '--config', help="Config File Directory", default="", metavar="FILE")
     args = parser.parse_args()
     if args.config:
