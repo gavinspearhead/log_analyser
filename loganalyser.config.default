@@ -10,6 +10,7 @@
      "emit":
 	     {
 	        "host": "{host}",
+	        "hostname": "$hostname",
 	        "timestamp": "{timestamp}",
              "username": "{username}",
              "access": "{access}",
@@ -32,6 +33,7 @@
 	     "emit":
 	     {
 	        "host": "{host}",
+	        "hostname": "$hostname",
 	         "timestamp": "{timestamp}",
              "username": "{username}",
              "access": "{access}",
@@ -52,6 +54,7 @@
 	     "emit":
 	     {
 	        "host": "{host}",
+	        "hostname": "$hostname",
 	        "timestamp": "{timestamp}",
             "username": "{username}",
 	        "ip_address": "{addr}",
@@ -77,7 +80,7 @@
          "regex": "(%IP:addr) (%STR:unknown) (%NAME:username) (%APACHE_TIMESTAMP:date) \\\"(%ALPHA:cmd) (%STR:path) (%WORD:protocol)/(%VERSION:ver)\\\" (%NUM:code) (%NUM:size)",
          "emit":
              {
-	         "host": "$hostname",
+	        "hostname": "$hostname",
              "ip_address": "{addr}",
              "unknown": "{unknown}",
              "username": "{username}",

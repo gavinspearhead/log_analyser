@@ -399,6 +399,8 @@ def get_apache_data(name, period, search, raw, to_time=None, from_time=None, hos
         time_mask = 'dayOfMonth'
     intervals = mask_range[3]
     mask = {"$and": [{"timestamp": {"$gte": mask_range[0]}}, {"timestamp": {"$lte": mask_range[1]}}]}
+    if host not in ["*", '']:
+        mask['$and'].append({"hostname": {"$regex": host, "$options": "i"}})
     search_q = get_search_mask_apache(search)
     if name == 'codes':
         res = col.aggregate(
@@ -578,7 +580,7 @@ def data():
     to_time = request.json.get("to", '')
     from_time = request.json.get("from", '')
     host = request.json.get("host", '').strip()
-    print("host:", host)
+    # print("host:", host)
 
     raw = request.json.get('raw', False)
     if rtype == 'ssh':
@@ -681,7 +683,7 @@ def homepage():
     try:
         return render_template("main.html", data_types=main_data_types)
     except Exception as e:
-        traceback.print_exc()
+        # traceback.print_exc()
         return json.dumps({'success': False, "message": str(e)}), 200, {'ContentType': 'application/json'}
 
 

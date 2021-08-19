@@ -226,6 +226,9 @@ $( document ).ready(function() {
         load_all_graphs();
     });
 
+    $("#host_selector").change(function() { load_all_graphs(); })
+
+
     $('#itemstablediv').scrollTop(0);
     load_all_graphs();
 });
