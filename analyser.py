@@ -1,7 +1,4 @@
-import datetime
-
 import dateutil.parser
-from pymongo import MongoClient
 from config import Outputs
 from output import MongoConnector
 import dateutil.parser

@@ -58,6 +58,9 @@ class StdOutput(AbstractOutput):
     def connect(self):
         pass
 
+    def count(self, condition):
+        return -1
+
 
 class MongoConnector:
     def __init__(self, config):
@@ -96,7 +99,7 @@ class MongoOutput(AbstractOutput):
             self._collection.insert_many(self._buffer)
             self._buffer = []
         except Exception as e:
-            print(e)
+            logging.warning(str(e))
             self.connect()
         finally:
             self._lock.release()
@@ -108,6 +111,9 @@ class MongoOutput(AbstractOutput):
     def cleanup(self, name, retention):
         upper_limit = datetime.datetime.now() - datetime.timedelta(days=retention)
         self._collection.delete_many({"$and": [{"name": name}, {"timestamp": {"$lte": upper_limit}}]})
+
+    def count(self, condition):
+        return self._collection.count(condition)
 
 
 def factory(config):

@@ -1,7 +1,6 @@
 "use strict";
 
 var colours = [
-
 '#d43d51',
 '#dd584a',
 '#e27147',
@@ -52,12 +51,12 @@ function fmtChartJSPerso(n, p)
     return p;
 }
 
-function load_graph(canvas_id, type, name, period, to,from, title)
+function load_graph(canvas_id, type, name, period, to,from, title, host)
 {
     $.ajax({
         url: script_root + '/data/',
         type: 'POST',
-        data:  JSON.stringify({'type': type, 'period': period, 'name': name, 'raw': true, 'to': to, 'from':from} ),
+        data:  JSON.stringify({'type': type, 'period': period, 'name': name, 'raw': true, 'to': to, 'from':from, 'host': host} ),
         cache: false,
         contentType: "application/json;charset=UTF-8",
     }).done(function(data) {
@@ -77,8 +76,10 @@ function load_graph(canvas_id, type, name, period, to,from, title)
             annotateDisplay: true,
             yAxisUnitFontSize: 16,
             inGraphDataShow : true,
-      spaceBetweenBar : 5,
-
+            spaceBetweenBar : 5,
+            scaleFontColor: "#ddd",
+            graphTitleFontColor: "#bbb",
+            inGraphDataFontColor:"#ccc"
         };
         var baroptions= {
             graphTitle: title,
@@ -101,6 +102,8 @@ function load_graph(canvas_id, type, name, period, to,from, title)
             scaleSteps : 1,
             scaleStepWidth : 1,
             yAxisUnitFontSize: 16,
+            scaleFontColor: "#ddd",
+            graphTitleFontColor: "#bbb",
         };
         if (res.labels.length == 0 || res.data.length == 0) {
             var data_sets =
@@ -160,6 +163,9 @@ function load_all_graphs()
     var period = 'today';
     var to = null;
     var from = null;
+    var host = $("#host_selector").find(":selected").val()
+    console.log(host, 'aoeuauae@##');
+
     if ($("#daily").is(":checked")) {period = 'today';}
     else if ($("#hourly").is(":checked")) {period = 'hour';}
     else if ($("#yesterday").is(":checked")) {period = 'yesterday';}
@@ -171,15 +177,34 @@ function load_all_graphs()
         to = $("#to_date").val();
     }
     $("canvas").each(function() {
-        load_graph($(this).attr('id'), $(this).attr("data-type"), $(this).attr("data-name"), period, to, from, $(this).attr("data-title"),);
+        load_graph($(this).attr('id'), $(this).attr("data-type"), $(this).attr("data-name"), period, to, from,
+                   $(this).attr("data-title"), host);
     })
-//    for (let i = 0; i < types.length; i++) {
-//    }
+}
+
+
+function set_hosts(selected)
+{
+        console.log('hosts 1');
+  $.ajax({
+        url: script_root + '/hosts/',
+        type: 'POST',
+        data:  JSON.stringify({'selected': selected} ),
+        cache: false,
+        contentType: "application/json;charset=UTF-8",
+    }).done(function(data) {
+        console.log('hosts');
+        var res = JSON.parse(data);
+        console.log(res)
+        $('#host_selector').html(res.html);
+    });
 }
 
 $( document ).ready(function() {
        
 //    add_items_lock = 0
+
+    set_hosts()
     $('.dropdown-toggle').dropdown()
 
     $('body').css('background-image', 'url("' + script_root + '/static/img/background.gif")');

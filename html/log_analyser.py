@@ -207,7 +207,7 @@ def format_time(time_mask, month, hour, time_val):
     return time_str
 
 
-def get_ssh_data(name, period, search, raw=False, to_time=None, from_time=None):
+def get_ssh_data(name, period, search, raw=False, to_time=None, from_time=None, host="*"):
     local_tz = str(tzlocal.get_localzone())
     col = get_mongo_connection()
     rv = []
@@ -219,6 +219,8 @@ def get_ssh_data(name, period, search, raw=False, to_time=None, from_time=None):
         time_mask = 'dayOfMonth'
     intervals = mask_range[3]
     mask = {"$and": [{"timestamp": {"$gte": mask_range[0]}}, {"timestamp": {"$lte": mask_range[1]}}]}
+    if host not in ["*", '']:
+        mask['$and'].append({"hostname": {"$regex": host, "$options": "i"}})
     if name == 'users':
         keys = ['username', 'type', 'count', 'ips']
         q = [{"$match": {"$and": [{"name": "auth_ssh"}, mask, search_q]}},
@@ -386,7 +388,7 @@ def get_ssh_data(name, period, search, raw=False, to_time=None, from_time=None):
     return rv, keys
 
 
-def get_apache_data(name, period, search, raw, to_time=None, from_time=None):
+def get_apache_data(name, period, search, raw, to_time=None, from_time=None, host="*"):
     local_tz = str(tzlocal.get_localzone())
     col = get_mongo_connection()
     rv = []
@@ -508,7 +510,7 @@ def get_apache_data(name, period, search, raw, to_time=None, from_time=None):
                 "codes": {"$addToSet": "$code"},
                 'hour': {"$addToSet": {"$hour": {"date": "$timestamp", "timezone": local_tz}}},
                 # 'month': {"$addToSet": {"$month": {"date": "$timestamp", "timezone": local_tz}}}
-                }},
+            }},
             {"$sort": {'_id.month': 1, '_id.time': 1, 'total': -1}}])
         if raw:
             rv = prepare_time_output(time_mask, intervals, {'time': None, 'ip_address': "", 'total': 0, 'codes': ""})
@@ -575,13 +577,14 @@ def data():
     search = request.json.get('search', '').strip()
     to_time = request.json.get("to", '')
     from_time = request.json.get("from", '')
-    # print(from_time)
+    host = request.json.get("host", '').strip()
+    print("host:", host)
 
     raw = request.json.get('raw', False)
     if rtype == 'ssh':
-        res, keys = get_ssh_data(name, period, search, raw, to_time, from_time)
+        res, keys = get_ssh_data(name, period, search, raw, to_time, from_time, host)
     elif rtype == 'apache':
-        res, keys = get_apache_data(name, period, search, raw, to_time, from_time)
+        res, keys = get_apache_data(name, period, search, raw, to_time, from_time, host)
     else:
         raise ValueError("Unknown type: {}".format(rtype))
     if raw:
@@ -592,7 +595,8 @@ def data():
         else:
             fields = keys
             res = [[x for x in res.values()]]
-        return json.dumps({'success': True, "data": res, "labels": keys, "fields": fields}), 200, {'ContentType': 'application/json'}
+        return json.dumps({'success': True, "data": res, "labels": keys, "fields": fields}), 200, {
+            'ContentType': 'application/json'}
     else:
         res2 = []
         flags = dict()
@@ -649,6 +653,19 @@ main_data_types = {
         "apache_size": ("apache", "size_ip", "Volume per IP"),
     }
 }
+
+
+@app.route('/hosts/', methods=['POST'])
+def hosts():
+    try:
+        selected = request.json.get('selected', '').strip()
+        col = get_mongo_connection()
+        res = col.distinct("hostname")
+        res = list(set([x.lower() for x in res]))
+        html = render_template('hosts_list.html', hosts=res, selected=selected)
+        return json.dumps({'success': True, 'html': html}), 200, {'ContentType': 'application/json'}
+    except Exception as e:
+        return json.dumps({'success': False, "message": str(e)}), 200, {'ContentType': 'application/json'}
 
 
 @app.route('/dashboard/')

@@ -2,7 +2,13 @@ import datetime
 import logging
 import re
 import time
+import socket
+
 import dateutil.parser
+import netifaces as ni
+
+from matches import is_new
+from local_ip import is_local_address
 
 
 class LogParser:
@@ -13,6 +19,9 @@ class LogParser:
         raise NotImplemented
 
     def emit(self, matches, name):
+        raise NotImplemented
+
+    def notify(self, matches, name):
         raise NotImplemented
 
 
@@ -76,6 +85,36 @@ parse_apache_timestamp = _P.parse_apache_timestamp
 parse_syslog_timestamp = _P.parse_syslog_timestamp
 
 
+def get_own_ip(ip_version=4):
+    interfaces = ni.interfaces()
+    addr = None
+    for i in interfaces:
+        if i != "lo":
+            try:
+                if ip_version == 4:
+                    addr = ni.ifaddresses(i)[ni.AF_INET][0]['addr']
+                elif ip_version == 6:
+                    addr = ni.ifaddresses(i)[ni.AF_INET6][0]['addr']
+                else:
+                    raise KeyError
+                break
+            except KeyError:
+                pass
+    return addr
+
+
+def load_data_set():
+    r = dict()
+    r['$fqdn'] = socket.getfqdn()
+    r['$hostname'] = socket.gethostname().lower()
+    r['$host_ip'] = get_own_ip(4)
+    r['$host_ipv6'] = get_own_ip(6)
+    return r
+
+
+data_conversion = load_data_set()
+
+
 class RegexParser(LogParser):
     _patterns = {
         "IP": ('(?:\\d+\\.\\d+\\.\\d+\\.\\d+)|(?:(?:[a-fA-F0-9]{0,4}:){0,7}(?:[a-fA-F0-9]{0,4}))', str),
@@ -101,13 +140,16 @@ class RegexParser(LogParser):
         '%': ('%', str)
     }
 
-    def __init__(self, reg_ex: str, format_str, transform):
+    def __init__(self, reg_ex: str, format_str, transform, notify, notifiers, output):
         super().__init__()
         self._pattern, self._filters = self.parse_regexp(reg_ex)
         # print(self._pattern)
         self._compiled_pattern = re.compile(self._pattern)
         self._format_str = format_str
         self._transform = transform
+        self._notify = notify
+        self._notifiers = notifiers
+        self._output = output
 
     def __str__(self):
         return self._pattern + " : " + self._format_str
@@ -197,12 +239,69 @@ class RegexParser(LogParser):
 
         for idx, val in self._format_str.items():
             try:
+                val = self.parameter_expand(val)
                 rv = val.format(**vals)
                 res[idx] = self._transform_value(rv, idx)
             except KeyError:
                 continue
         res['name'] = name
+        # print(res)
         return res
+
+    def notify(self, matches, name):
+        res = self.emit(matches, name)
+        if self._notify != {}:
+            if self._match_notify_conditions(res, self._notify['condition']):
+                try:
+                    text = ", ".join(["{}: {}".format(x, y) for x, y in res.items()])
+                    self._notifiers.get_notify(self._notify['name'])['handler'].send_msg(text)
+                except KeyError:
+                    logging.warning("Can't send message")
+        return None
+
+    def _match_notify_conditions(self, matches, conditions):
+        # print(matches)
+        # print(conditions)
+        res = False
+        for condition in conditions:
+            # print('cond', condition)
+            res2 = len(condition) > 0
+            for clause in condition:
+                # print('claus1e', clause)
+                if clause in matches:
+                    # print('clause', clause, matches[clause])
+                    if condition[clause] == 'new':
+                        # print('is_new')
+                        if is_new(self._output, matches['name'], clause, matches[clause]):
+                            # print('new ', clause)
+                            res2 = res2 and True
+                        else:
+                            res2 = False
+                    elif condition[clause] == 'all':
+                        res2 = res2 and True
+                    elif condition[clause] == 'local':
+                        try:
+                            res2 = res2 and is_local_address(matches[clause])
+                        except ValueError:
+                            # only for IP addresses
+                            res2 = False
+                    elif condition[clause] == 'nonlocal':
+                        try:
+                            res2 = res2 and not is_local_address(matches['name'])
+                        except ValueError:
+                            # only for IP addresses
+                            res2 = False
+                    else:
+                        res2 = False
+            res = res or res2
+            if res:
+                break
+        # print(res)
+        if res:
+            matches['notify'] = "{} {}".format(matches[clause], clause)
+            return matches
+        else:
+            return None
 
     def _transform_value(self, rv, idx):
         if idx in self._transform:
@@ -227,8 +326,15 @@ class RegexParser(LogParser):
 
         return rv
 
+    @staticmethod
+    def parameter_expand(val):
+        matches = re.findall(r"([$]\w+)", val)
+        for m in matches:
+            val = val.replace(m, data_conversion.get(m, '-'))
+        return val
 
-if __name__ == '__main__':
+
+# if __name__ == '__main__':
     # c = RegexParser("(%TIME)", "XX {0} YY")
     # x = c.match("10:34:23.a12343 oeauoeu")
     # print(x, )
@@ -241,21 +347,21 @@ if __name__ == '__main__':
     # s = "foo 12:34:45 foobar 2021-06-12T12:23:45+03:00 12.34.56.78 bar"
     # m = c.match(s)
     # print(c.emit(m, 'foo'))
-    s1 = 'May 29 01:35:07 killchain sshd[9776]: Accepted keyboard-interactive/pam for harm from ::1 port 39330 ssh2'
-    r1 = '(%SYSLOG_TIMESTAMP:timestamp) (%NAME:host).*: Accepted (%STR:access) for (%NAME:username) from (%IP:addr) '
-    e1 = {
-             "timestamp": "{timestamp}",
-             "username": "{username}",
-             "access": "{access}",
-             "ip_address": "{addr}",
-             "port": "{port}",
-             "protocol": "{protocol}",
-             "type": "connect"
-         },
-    c1 = RegexParser(r1, e1, [])
-    m = c1.match(s1)
-    print(m)
-    print(c1.emit(m, 'faa'))
+    # s1 = 'May 29 01:35:07 killchain sshd[9776]: Accepted keyboard-interactive/pam for harm from ::1 port 39330 ssh2'
+    # r1 = '(%SYSLOG_TIMESTAMP:timestamp) (%NAME:host).*: Accepted (%STR:access) for (%NAME:username) from (%IP:addr) '
+    # e1 = {
+    #          "timestamp": "{timestamp}",
+    #          "username": "{username}",
+    #          "access": "{access}",
+    #          "ip_address": "{addr}",
+    #          "port": "{port}",
+    #          "protocol": "{protocol}",
+    #          "type": "connect"
+    #      },
+    # c1 = RegexParser(r1, e1, [])
+    # m = c1.match(s1)
+    # print(m)
+    # print(c1.emit(m, 'faa'))
 
     # print(o, f)
     # res = re.search(o, s)

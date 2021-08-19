@@ -9,6 +9,7 @@
      "regex": "(%SYSLOG_TIMESTAMP:timestamp) (%NAME:host).*: Accepted (%STR:access) for (%NAME:username) from (%IP:addr) port (%NUM:port) (%WORD:protocol)",
      "emit":
 	     {
+	        "host": "{host}",
 	        "timestamp": "{timestamp}",
              "username": "{username}",
              "access": "{access}",
@@ -20,12 +21,17 @@
         "transform": {
             "timestamp": "date",
             "port": "int"
+	     },
+	     "notify": {
+	        "name": "telegram",
+	        "condition": [ {"ip_address": "nonlocal"}, {"username": "all"} ]
 	     }
     },
     {
      "regex": "(%SYSLOG_TIMESTAMP:timestamp) (%NAME:host).*: Failed (%STR:access) for (?:invalid user )?(%NAME:username) from (%IP:addr) port (%NUM:port) (%NAME:protocol)",
 	     "emit":
 	     {
+	        "host": "{host}",
 	         "timestamp": "{timestamp}",
              "username": "{username}",
              "access": "{access}",
@@ -37,14 +43,15 @@
         "transform": {
             "timestamp": "date",
             "port": "int"
-        }
-
+        },
+	     "notify": {
+	     }
      },
      {
-
      "regex": "(%SYSLOG_TIMESTAMP:timestamp) (%NAME:host).*: Disconnected from user (%NAME:username) (%IP:addr) port (%NUM:port)",
 	     "emit":
 	     {
+	        "host": "{host}",
 	        "timestamp": "{timestamp}",
             "username": "{username}",
 	        "ip_address": "{addr}",
@@ -54,7 +61,9 @@
         "transform": {
             "timestamp": "date",
             "port": "int"
-        }
+        },
+        "notify": {
+	    }
      }
      ]
 },
@@ -68,6 +77,7 @@
          "regex": "(%IP:addr) (%STR:unknown) (%NAME:username) (%APACHE_TIMESTAMP:date) \\\"(%ALPHA:cmd) (%STR:path) (%WORD:protocol)/(%VERSION:ver)\\\" (%NUM:code) (%NUM:size)",
          "emit":
              {
+	         "host": "$hostname",
              "ip_address": "{addr}",
              "unknown": "{unknown}",
              "username": "{username}",
@@ -83,8 +93,12 @@
         "transform": {
             "timestamp": "date",
             "size": "int"
-             }
-         }
+         },
+        "notify" : {
+	        "name": "telegram",
+	        "condition": [ {"ip_address": "nonlocal"}, {"username": "new"}]
+	    }
+	    }
      ]
  }
 ]

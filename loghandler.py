@@ -140,6 +140,7 @@ class FileHandler:
             if m:
                 # print(self._output_engine)
                 self._output_engine.write(p.emit(m, self._name))
+                p.notify(m, self._name)
 
     def _process_line(self, line):
         logging.debug(line)

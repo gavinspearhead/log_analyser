@@ -45,7 +45,7 @@
 
             <input type="radio" class="btn-check dropdown-toggle" name="timeperiod" id="custom" autocomplete="off">
             <label class="btn btn-secondary" for="custom">Custom</label>
-            <div id="custom_timepicker" class="dropdown-menu bg-dark" aria-labelledby="custom">
+        <div id="custom_timepicker" class="dropdown-menu bg-dark" aria-labelledby="custom">
                 <div class="container bg-dark">
                     <div class="row bg-dark">
                         <div class="col align-self-end bg-dark border">
@@ -66,13 +66,18 @@
                     </div>
                 </div>
             </div>
-
         </div>
+        <form class="form-inline">
+                <div class="form-group">
+                    <label for="host_selector" class="control-label">Host:</label>
+                    <select id="host_selector" class="form-control form-control-sm bg-dark">
+                    </select>
+                </div>
+            </form>
+
     </nav>
 <div class="col scrollable bottom_margin" id="itemstablediv">
-
     <br>
-
     <div class="row no-gutters">
         {% for k in data_types %}
             <div class="col-md-auto" id="canvas_div_{{x}}">
@@ -82,9 +87,7 @@
     </div>
 </div>
 
-
 </div>
-
 
 <div id="alert_success_bar" class="hidden alert_bar alert_outer">
 <div class="alert alert-success alert-dismissable fade show" role="alert">

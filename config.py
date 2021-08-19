@@ -1,4 +1,7 @@
 import json
+import logging
+
+import telegram_send
 
 
 # State
@@ -17,24 +20,27 @@ class State:
         self._state = None
 
     def parse_state(self, filename):
+        # print('pasreSstate')
+        # print(filename)
         try:
             with open(filename, "r") as infile:
                 state = json.load(infile)
         except FileNotFoundError:
             state = []
         r_state = []
-        for s in state:
+        for state_entry in state:
             try:
-                for i in ['pos', 'path', 'inode', 'device']:
-                    if i not in s:
-                        raise ValueError('Unknown parameter {}'.format(i))
+                for parameter in ['pos', 'path', 'inode', 'device']:
+                    if parameter not in state_entry:
+                        raise ValueError('Unknown parameter {}'.format(parameter))
                     # else:
                     #     print(i, s[i])
-                r_state.append(s)
+                r_state.append(state_entry)
             except ValueError as e:
-                print(e)
+                logging.warning(str(e))
                 pass
         self._state = r_state
+        # print(self._state)
 
     def pos(self, path):
         for fl in self._state:
@@ -48,7 +54,69 @@ class State:
         return None, None
 
 
-# print(parse_state("loganalyser.state"))
+class Notify_handler:
+    def __init__(self, config):
+        self._config = config
+
+    def send_msg(self, msg):
+        raise NotImplementedError
+
+
+class Notify_signal(Notify_handler):
+    def __init__(self, config):
+        super().__init__(config)
+
+
+class Notify_mail(Notify_handler):
+    def __init__(self, config):
+        super().__init__(config)
+
+
+class Notify_telegram(Notify_handler):
+    def __init__(self, config):
+        super().__init__(config)
+
+    def send_msg(self, msg):
+        telegram_send.send(messages=[msg])
+
+
+class Notify:
+    def __init__(self):
+        self._notify = None
+
+    def get_notify(self, name):
+        for i in self._notify:
+            if i['name'] == name:
+                return i
+        return None
+
+    @staticmethod
+    def _factory(notify_type):
+        if notify_type == 'telegram':
+            return Notify_telegram
+        elif notify_type == 'signal':
+            return Notify_signal;
+        elif notify_type == 'mail':
+            return Notify_mail
+
+    def parse_notify(self, filename):
+        with open(filename, "r") as infile:
+            notify = json.load(infile)
+        r_config = []
+        for config_element in notify:
+            tmp = dict()
+            tmp['type'] = config_element['type']
+            tmp['name'] = config_element['name']
+            tmp['handler'] = self._factory(tmp['type'])(config_element)
+            r_config.append(tmp)
+
+        self._notify = r_config
+        # print(self._notify)
+
+    def send(self, notify_type, msg):
+        for i in self._notify:
+            if notify_type == i['type']:
+                i['handler'].send(msg)
 
 
 # Config
@@ -87,9 +155,16 @@ class Config:
                 filter['regex'] = t['regex']
                 filter['emit'] = t['emit']
                 filter['transform'] = t['transform'] if 'transform' in t else dict()
+                filter['notify'] = dict()
+                if 'notify' in t and 'condition' in t['notify'] and 'name' in t['notify']:
+                    # print(t['notify'])
+                    notify = dict()
+                    # print('//aoeua', t['notify'])
+                    notify['condition'] = t['notify']['condition']
+                    notify['name'] = t['notify']['name']
+                    filter['notify'] = notify
                 tmp['filter'].append(filter)
             r_config.append(tmp)
-
         self._config = r_config
 
     def get_retention(self, filename):

@@ -1,0 +1,4 @@
+<option value="*" {% if h == selected%}selected{%endif%}>All</option>
+{% for h in hosts %}
+<option value="{{h}}" {% if h == selected%}selected{%endif%}>{{h}}</option>
+{% endfor %}
