@@ -33,38 +33,42 @@ class TimestampParsers:
         self._apache_pattern = re.compile(r'\[(\d+)/([a-zA-Z]+)/(\d+):(\d+):(\d+):(\d+)\s([+-]?\d+)]')
         self._syslog_pattern = re.compile(r'([A-Za-z]+)\s+(\d+)\s+(\d+):(\d+):(\d+)')
 
-    def parse_syslog_timestamp(self, timestr):
-        matches = self._syslog_pattern.search(timestr)
+    def parse_syslog_timestamp(self, time_str):
+        matches = self._syslog_pattern.search(time_str)
         try:
             x = matches.groups()
             day = int(x[1])
-            mn = x[0].lower()
+            mnt = x[0].lower()
             # print(mn)
-            if mn in self.months:
-                mon = self.months[mn]
+            if mnt in self.months:
+                mon = self.months[mnt]
                 # print(mon)
+            else:
+                raise ValueError("Unknown month: {}".format(mnt))
             year = datetime.datetime.now().year
             hour = int(x[2])
             mn = int(x[3])
             sec = int(x[4])
             tz = time.strftime("%z", time.localtime())
             # print(year, mon, day, hour, mn, sec, tz)
-            timestr = "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}{:s}".format(year, mon, day, hour, mn, sec, tz)
-            # print(timestr)
+            time_str = "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}{:s}".format(year, mon, day, hour, mn, sec, tz)
+            # print(time_str)
         except Exception as e:
-            logging.info("Invalid Date {} {}".format(timestr, e))
+            logging.info("Invalid Date {} {}".format(time_str, e))
             return ""
-        return timestr
+        return time_str
 
-    def parse_apache_timestamp(self, timestr):
-        matches = self._apache_pattern.search(timestr)
+    def parse_apache_timestamp(self, time_str):
+        matches = self._apache_pattern.search(time_str)
         x = matches.groups()
         try:
             day = int(x[0])
-            mn = x[1].lower()
+            mnt = x[1].lower()
             # print(mn)
-            if mn in self.months:
-                mon = self.months[mn]
+            if mnt in self.months:
+                mon = self.months[mnt]
+            else:
+                raise ValueError("Unknown month: {}".format(mnt))
                 # print(mon)
             year = int(x[2])
             hour = int(x[3])
@@ -72,12 +76,11 @@ class TimestampParsers:
             sec = int(x[5])
             tz = int(x[6])
             # print(year, mon, day, hour, mn, sec, tz)
-            timestr = "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}{:+05d}".format(year, mon, day, hour, mn, sec, tz)
-            # print(timestr)
+            time_str = "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}{:+05d}".format(year, mon, day, hour, mn, sec, tz)
         except Exception as e:
             logging.info("Invalid Date {}".format(e))
             return ""
-        return timestr
+        return time_str
 
 
 _P = TimestampParsers()
@@ -87,20 +90,20 @@ parse_syslog_timestamp = _P.parse_syslog_timestamp
 
 def get_own_ip(ip_version=4):
     interfaces = ni.interfaces()
-    addr = None
+    address = None
     for i in interfaces:
         if i != "lo":
             try:
                 if ip_version == 4:
-                    addr = ni.ifaddresses(i)[ni.AF_INET][0]['addr']
+                    address = ni.ifaddresses(i)[ni.AF_INET][0]['addr']
                 elif ip_version == 6:
-                    addr = ni.ifaddresses(i)[ni.AF_INET6][0]['addr']
+                    address = ni.ifaddresses(i)[ni.AF_INET6][0]['addr']
                 else:
                     raise KeyError
                 break
             except KeyError:
                 pass
-    return addr
+    return address
 
 
 def load_data_set():
@@ -229,18 +232,18 @@ class RegexParser(LogParser):
 
     def emit(self, matches, name):
         res = dict()
-        vals = dict()
+        values = dict()
         for idx, val in self._filters.items():
             try:
                 v = val[1](matches[val[0]])
-                vals[idx] = v
+                values[idx] = v
             except TypeError:
                 logging.info('Error: {} is not a {}'.format(matches[val[0]], val[1]))
 
         for idx, val in self._format_str.items():
             try:
                 val = self.parameter_expand(val)
-                rv = val.format(**vals)
+                rv = val.format(**values)
                 res[idx] = self._transform_value(rv, idx)
             except KeyError:
                 continue
@@ -255,8 +258,8 @@ class RegexParser(LogParser):
                 try:
                     text = ", ".join(["{}: {}".format(x, y) for x, y in res.items()])
                     self._notifiers.get_notify(self._notify['name'])['handler'].send_msg(text)
-                except KeyError:
-                    logging.warning("Can't send message")
+                except (KeyError, ValueError) as e:
+                    logging.warning("Can't send message: {}".format(str(e)))
         return None
 
     def _match_notify_conditions(self, matches, conditions):
@@ -295,13 +298,10 @@ class RegexParser(LogParser):
                         res2 = False
             res = res or res2
             if res:
-                break
+                matches['notify'] = "{} {}".format(matches[clause], clause)
+                return matches
         # print(res)
-        if res:
-            matches['notify'] = "{} {}".format(matches[clause], clause)
-            return matches
-        else:
-            return None
+        return None
 
     def _transform_value(self, rv, idx):
         if idx in self._transform:
@@ -332,38 +332,3 @@ class RegexParser(LogParser):
         for m in matches:
             val = val.replace(m, data_conversion.get(m, '-'))
         return val
-
-
-# if __name__ == '__main__':
-    # c = RegexParser("(%TIME)", "XX {0} YY")
-    # x = c.match("10:34:23.a12343 oeauoeu")
-    # print(x, )
-    # x = c.match("[15/May/2021:23:45:15 +0200]")
-    # print(x, )
-    # c = RegexParser("foo (%TIME:freddy) (%ALNUM:host) (%ISOTIME:date) (%IP4) bar", {
-    #     'test': "{freddy} ",
-    #     "test1": " {host} at",
-    #     'test3': "{date} {__3}"})
-    # s = "foo 12:34:45 foobar 2021-06-12T12:23:45+03:00 12.34.56.78 bar"
-    # m = c.match(s)
-    # print(c.emit(m, 'foo'))
-    # s1 = 'May 29 01:35:07 killchain sshd[9776]: Accepted keyboard-interactive/pam for harm from ::1 port 39330 ssh2'
-    # r1 = '(%SYSLOG_TIMESTAMP:timestamp) (%NAME:host).*: Accepted (%STR:access) for (%NAME:username) from (%IP:addr) '
-    # e1 = {
-    #          "timestamp": "{timestamp}",
-    #          "username": "{username}",
-    #          "access": "{access}",
-    #          "ip_address": "{addr}",
-    #          "port": "{port}",
-    #          "protocol": "{protocol}",
-    #          "type": "connect"
-    #      },
-    # c1 = RegexParser(r1, e1, [])
-    # m = c1.match(s1)
-    # print(m)
-    # print(c1.emit(m, 'faa'))
-
-    # print(o, f)
-    # res = re.search(o, s)
-    # print(res)
-    # print(res.groups())

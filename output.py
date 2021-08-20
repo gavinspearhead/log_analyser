@@ -6,6 +6,25 @@ import threading
 from pymongo import MongoClient
 
 
+# Output config
+
+class Outputs:
+
+    def __init__(self):
+        self._outputs = []
+
+    def parse_outputs(self, filename):
+        with open(filename, "r") as infile:
+            outputs = json.load(infile)
+        self._outputs = outputs
+
+    def get_output(self, name):
+        for i in self._outputs:
+            if i['name'] == name:
+                return i
+        return None
+
+
 class AbstractOutput:
     DEFAULT_BUFFER_SIZE = 1
 
@@ -36,6 +55,23 @@ class AbstractOutput:
 
     def cleanup(self, name, retention):
         pass
+
+
+class IgnoreOutput(AbstractOutput):
+    def __init__(self, config):
+        super().__init__(config)
+
+    def write(self, data):
+        pass
+
+    def commit(self):
+        pass
+
+    def connect(self):
+        pass
+
+    def count(self, condition):
+        return -1
 
 
 class StdOutput(AbstractOutput):
@@ -121,5 +157,7 @@ def factory(config):
         return StdOutput
     elif config['type'] == 'mongo':
         return MongoOutput
+    elif config['type'] == 'ignore':
+        return IgnoreOutput
     else:
         raise NotImplemented(config['type'])

@@ -1,0 +1,26 @@
+[
+{
+    "name": "telegram",
+    "type": "telegram"
+},
+{
+    "name": "mail",
+    "type": "mail",
+    "smtp_host": "",
+    "smtp_port": "465",
+    "password": "",
+    "from_address": "",
+    "to_address": "",
+    "subject": "Log Notification"
+},
+{
+    "name": "jabber",
+    "type": "jabber",
+    "jabber_id": "",
+    "to_address": "",
+    "password": ""
+}
+
+
+
+]

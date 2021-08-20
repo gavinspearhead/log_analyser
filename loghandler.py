@@ -25,8 +25,9 @@ class LogHandler(FileSystemEventHandler):
         for files in self._file_list.values():
             files.flush_output()
 
-    def add_file(self, filename, pos=0, parsers=None, inode=None, dev=None, output=None, name=None, retention=None):
-        self._file_list[filename] = FileHandler(filename, pos, parsers, inode, dev, output, name, retention)
+    def add_file(self, filename, pos=0, parsers=None, inode=None, dev=None, output_type=None, name=None,
+                 retention=None):
+        self._file_list[filename] = FileHandler(filename, pos, parsers, inode, dev, output_type, name, retention)
 
     def match(self, event):
         for filename in self._file_list:
@@ -38,6 +39,7 @@ class LogHandler(FileSystemEventHandler):
         try:
             self.match(event).on_deleted(event)
         except AttributeError as e:
+            logging.debug(str(e))
             # print("error deletion", e, event, self)
             pass
 
@@ -45,6 +47,7 @@ class LogHandler(FileSystemEventHandler):
         try:
             self.match(event).on_modified(event)
         except AttributeError as e:
+            logging.debug(str(e))
             # print("error modified", e, event, self)
             pass
 
@@ -52,6 +55,7 @@ class LogHandler(FileSystemEventHandler):
         try:
             self.match(event).on_moved(event)
         except AttributeError as e:
+            logging.debug(str(e))
             # print("error moved", e, event)
             pass
 
@@ -59,6 +63,7 @@ class LogHandler(FileSystemEventHandler):
         try:
             self.match(event).on_created(event)
         except AttributeError as e:
+            logging.debug(str(e))
             # print("error created", e, event)
             pass
 
@@ -66,12 +71,13 @@ class LogHandler(FileSystemEventHandler):
         try:
             self.match(event).on_closed(event)
         except AttributeError as e:
+            logging.debug(str(e))
             # print("error closed", e, event)
             pass
 
 
 class FileHandler:
-    def __init__(self, filename, pos=0, parsers=None, inode=None, dev=None, output=None, name=None, retention=0):
+    def __init__(self, filename, pos=0, parsers=None, inode=None, dev=None, output_type=None, name=None, retention=0):
         self._pos = pos
         self._lock = threading.Lock()
         self._path = filename
@@ -80,7 +86,7 @@ class FileHandler:
         self._file = None
         self._inode = None
         self._dev = None
-        self._output = output
+        self._output = output_type
         self._output_engine = None
         self._line = ""
         self._parsers = parsers

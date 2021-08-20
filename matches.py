@@ -1,4 +1,3 @@
-from output import MongoConnector
 
 
 def apache_is_new_ipaddress(col, value):
@@ -46,5 +45,4 @@ def is_new(col, source, field, value):
         x = apache_is_new(col, field, value)
     else:
         x = False
-    # print('RESNEW', x)
     return x

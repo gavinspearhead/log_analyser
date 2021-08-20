@@ -19,8 +19,7 @@ from flask import Flask, render_template, request
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from config import Outputs
-from output import MongoConnector
+from output import MongoConnector, Outputs
 
 output_file_name = "loganalyser.output"
 config_path = os.path.dirname(__file__)
@@ -100,7 +99,8 @@ def get_period_mask(period, to_time=None, from_time=None, tz=pytz.UTC):
                 # print(t)
                 raise e
             # print(t, intervals)
-        elif t_delta <= 28 * 24 * 3600:
+        # elif t_delta <= 28 * 24 * 3600:
+        else:
             t = t_delta // (3600 * 24 * 28)
             p = 'month'
             intervals = list(
@@ -158,6 +158,7 @@ def get_search_mask_apache(search):
 def get_raw_data(indata, field1, field2, field3):
     field1_values = list(set([x[field1] for x in indata]))
     field1_values = natsorted(field1_values)
+    field2_values = []
     if field2 is not None:
         field2_values = list(set([x[field2] for x in indata]))
         field2_values = natsorted(field2_values)
@@ -191,6 +192,8 @@ def prepare_time_output(time_mask, intervals, template):
                 f_str = "{:02}:{:02}"
             elif time_mask == 'dayOfMonth' or time_mask == 'week':
                 f_str = "{:02}-{:02}"
+            else:
+                f_str = "{}{}"
             t = f_str.format(i[0], i[1])
         template['time'] = t
         rv.append(deepcopy(template))
