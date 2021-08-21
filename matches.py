@@ -8,9 +8,7 @@ def false_only_cache(fn):
     def wrapper(*args, **kwargs):
         key = args + tuple(sorted(kwargs.items()))
         if key in cache:
-            print('cache hit')
             return cache[key]
-        print('cache miss')
         result = fn(*args, **kwargs)
         if not result:
             cache[key] = result
