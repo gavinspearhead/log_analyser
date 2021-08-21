@@ -114,11 +114,11 @@ class FileHandler:
             self._inode = stat_info.st_ino
             self._dev = stat_info.st_dev
             self._file = open(self._path, "r")
-
             if inode != self._inode or dev != self._dev:
                 # we got the same file as before
                 # otherwise we start reading at 0, file may have been truncated or rotated
                 self._pos = 0
+            logging.debug("Starting at {}".format(self._pos))
             self._file.seek(self._pos)
             # print(self._path, "starting at :", self._file.tell())
             self._read_contents()

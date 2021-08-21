@@ -147,8 +147,8 @@ if __name__ == '__main__':
             for x in filters:
                 res.append(RegexParser(x['regex'], x['emit'], x['transform'], x['notify'], notify, output_conn))
 
-            observer.add(fl, pos, res, inode, dev, out, name, retention)
         try:
+            observer.add(fl, pos, res, inode, dev, out, name, retention)
             if os.path.isfile(pid_file):
                 print("File already running")
                 exit()
