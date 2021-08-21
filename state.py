@@ -1,3 +1,5 @@
+import json
+import logging
 
 # State
 # [
@@ -9,8 +11,6 @@
 #     'ctime': 1621087741.3265584
 # }
 # ]
-import json
-import logging
 
 
 class State:

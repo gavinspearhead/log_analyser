@@ -155,7 +155,7 @@ class RegexParser(LogParser):
         self._output = output
 
     def __str__(self):
-        return self._pattern + " : " + self._format_str
+        return "{} : {}".format(self._pattern, self._format_str)
 
     def _find_pattern(self, pattern):
         if pattern in self._patterns:
@@ -198,7 +198,7 @@ class RegexParser(LogParser):
                     s, tp = self._find_pattern(pattern)
                     filters[name] = (index, tp)
                     index += 1
-                    out += '(' + s + ')'
+                    out += '({})'.format(s)
                     pos += total_length + 2
                 else:
                     out += line[pos]
@@ -235,8 +235,7 @@ class RegexParser(LogParser):
         values = dict()
         for idx, val in self._filters.items():
             try:
-                v = val[1](matches[val[0]])
-                values[idx] = v
+                values[idx] = val[1](matches[val[0]])
             except TypeError:
                 logging.info('Error: {} is not a {}'.format(matches[val[0]], val[1]))
 

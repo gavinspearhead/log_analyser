@@ -1,3 +1,23 @@
+import functools
+
+
+def false_only_cache(fn):
+    cache = {}
+
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        key = args + tuple(sorted(kwargs.items()))
+        if key in cache:
+            print('cache hit')
+            return cache[key]
+        print('cache miss')
+        result = fn(*args, **kwargs)
+        if not result:
+            cache[key] = result
+
+        return result
+
+    return wrapper
 
 
 def apache_is_new_ipaddress(col, value):
@@ -9,11 +29,10 @@ def apache_is_new_username(col, value):
 
 
 def ssh_is_new_ipaddress(col, value):
-    x = col.count({"ip_address": value, "name": "auth_ssh"})
-    # print('count', x)
-    return x == 0
+    return 0 == col.count({"ip_address": value, "name": "auth_ssh"})
 
 
+@false_only_cache
 def ssh_is_new_username(col, value):
     return col.count({"username": value, "name": "auth_ssh"}) == 0
 
@@ -36,9 +55,8 @@ def ssh_is_new(col, field, value):
         return False
 
 
+@false_only_cache
 def is_new(col, source, field, value):
-    # print('GAR  ', col)
-    # print("IS_NWU", source, field, value)
     if source == "auth_ssh":
         x = ssh_is_new(col, field, value)
     elif source == 'apache_access':
