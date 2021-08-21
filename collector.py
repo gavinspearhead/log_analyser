@@ -130,28 +130,28 @@ if __name__ == '__main__':
         observer = LogObserver(state_file)
 
         local_ip.load_local_address(local_ip_file)
-
-        for fl in config.get_files():
-            pos = state.pos(fl)
-            inode, dev = state.id(fl)
-            filters = config.get_filter(fl)
-            name = config.get_name(fl)
-            retention = config.get_retention(fl)
-            out = output.get_output(config.get_output(fl))
-
-            res = []
-            # print(out)
-            output_conn = factory(out)(out)
-            output_conn.connect()
-            # print(output_conn)
-            for x in filters:
-                res.append(RegexParser(x['regex'], x['emit'], x['transform'], x['notify'], notify, output_conn))
-
+        if os.path.isfile(pid_file):
+            print("File already running")
+            exit()
         try:
-            observer.add(fl, pos, res, inode, dev, out, name, retention)
-            if os.path.isfile(pid_file):
-                print("File already running")
-                exit()
+            for fl in config.get_files():
+                pos = state.pos(fl)
+                inode, dev = state.id(fl)
+                filters = config.get_filter(fl)
+                name = config.get_name(fl)
+                retention = config.get_retention(fl)
+                out = output.get_output(config.get_output(fl))
+
+                res = []
+                # print(out)
+                output_conn = factory(out)(out)
+                output_conn.connect()
+                # print(output_conn)
+                for x in filters:
+                    res.append(RegexParser(x['regex'], x['emit'], x['transform'], x['notify'], notify, output_conn))
+
+                observer.add(fl, pos, res, inode, dev, out, name, retention)
+
             with open(pid_file, 'w') as f:
                 pid = str(os.getpid())
                 f.write(pid)
