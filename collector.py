@@ -25,7 +25,7 @@ pid_file_name = "loganalyser.pid"
 pid_path = '/tmp/'
 
 VERSION = "0.1"
-LOG_LEVEL = logging.DEBUG
+LOG_LEVEL = logging.INFO
 STATE_DUMP_TIMEOUT = 10
 
 
@@ -94,9 +94,9 @@ class LogObserver:
 
 if __name__ == '__main__':
     try:
-        logging.basicConfig(level=LOG_LEVEL)
         state_dump_timeout = STATE_DUMP_TIMEOUT
         parser = argparse.ArgumentParser(description="Log Collector")
+        parser.add_argument("-D", '--debug', help="Debug mode", action='store_true')
         parser.add_argument("-c", '--config', help="Config File Directory", default="", metavar="FILE")
         parser.add_argument("-d", '--dump_state_timeout', help="Timeout between periods dumping state", type=int,
                             default=STATE_DUMP_TIMEOUT, metavar="SECONDS")
@@ -106,6 +106,10 @@ if __name__ == '__main__':
             config_path = args.config
         if args.dump_state_timeout:
             state_dump_timeout = args.dump_state_timeout
+        if args.debug:
+            LOG_LEVEL = logging.DEBUG
+
+        logging.basicConfig(level=LOG_LEVEL)
         pid_file = os.path.join(pid_path, pid_file_name)
 
         config_file = os.path.join(config_path, config_file_name)
