@@ -30,6 +30,13 @@ var simple_types = [
     "apache_response",
     "apache_ips",
 ];
+function round(nr, dig)
+{
+    if (dig == undefined) dig = 0
+    var exp = 10 ** dig;
+    console.log( Math.round((nr+ Number.EPSILON) * exp)/exp);
+    return Math.round((nr+ Number.EPSILON) * exp)/exp;
+}
 
 
 function calculate_height()
@@ -41,14 +48,23 @@ function calculate_height()
     console.log(w_height, nb_height, res_height, b_height);
     $('#maindiv').height(res_height);
 }
-function fmtChartJSPerso(n, p)
+function fmtChartJSPerso(n, p, fmt)
 {
-    if (p.length > 15) {
-        var s =p;
-        var l =p.length;
-        return s.slice(0,5) + "..." + s.slice(l-5, l);
+    if (fmt == "text") {
+        if (p.length > 15) {
+            var s =p;
+            var l =p.length;
+            return s.slice(0,5) + "..." + s.slice(l-5, l);
+        }
+        return p;
+    } else if (fmt == 'number') {
+        if (p < 1024) return p;
+        if (p < 1024 * 1024 ) return (round(p / 1024, 1)).toString() + "K";
+        if (p < 1024 * 1024 * 1024 ) return (round(p / (1024 * 1024), 1)).toString() + "M";
+        if (p < 1024 * 1024  * 1024 * 1024 ) return  (round(p / (1024 * 1024 * 1024), 1 )).toString() + "G";
+        if (p < 1024 * 1024  * 1024 * 1024  * 1024) return  (round(p / (1024 * 1024 * 1024  * 1024),1)).toString() + "T";
+        return p;
     }
-    return p;
 }
 
 function load_graph(canvas_id, type, name, period, to,from, title, host)
@@ -71,7 +87,8 @@ function load_graph(canvas_id, type, name, period, to,from, title, host)
             responsive: true,
             legend: false,
             highLight: true,
-            fmtXLabel: "fn",
+            fmtXLabel: "text",
+            fmtYLabel:"number",
             annotateLabel: "<%=v2+': '+v1+' '+v3%>",
             annotateDisplay: true,
             yAxisUnitFontSize: 16,
@@ -93,7 +110,8 @@ function load_graph(canvas_id, type, name, period, to,from, title, host)
             legend: false,
             highLight: true,
             xScaleLabelsMinimumWidth: 10,
-            fmtXLabel: "fn",
+            fmtXLabel: "text",
+            fmtYLabel:"number",
             annotateLabel: "<%=v2+': '+v1+' '+v3%>",
             annotateDisplay: true,
             yAxisMinimumInterval:1,
