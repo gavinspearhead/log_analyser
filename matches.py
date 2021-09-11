@@ -12,9 +12,7 @@ def false_only_cache(fn):
         result = fn(*args, **kwargs)
         if not result:
             cache[key] = result
-
         return result
-
     return wrapper
 
 

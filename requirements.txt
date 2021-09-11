@@ -9,3 +9,4 @@ natsort~=7.1.1
 tzlocal~=2.1
 netifaces~=0.11.0
 xmpppy~=0.6.2
+humanfriendly~=9.2

@@ -92,6 +92,20 @@ class LogObserver:
         self._cleanup_threat.start()
 
 
+def pid_running(pid_file_name):
+    try:
+        with open(pid_file_name, "r") as fl:
+            s = int(fl.readline().strip())
+            if s > 0:
+                os.kill(s, 0)
+                return True
+    except (ValueError, FileNotFoundError, OSError):
+        return False
+    except (PermissionError):
+        return True
+    return False
+
+
 if __name__ == '__main__':
     try:
         state_dump_timeout = STATE_DUMP_TIMEOUT
@@ -131,8 +145,11 @@ if __name__ == '__main__':
 
         local_ip.load_local_address(local_ip_file)
         if os.path.isfile(pid_file):
-            print("File already running")
-            exit()
+            if pid_running(pid_file):
+                print("File already running")
+                exit()
+            else:
+                os.unlink(pid_file)
         try:
             for fl in config.get_files():
                 pos = state.pos(fl)

@@ -16,6 +16,7 @@ import ipaddress
 
 from natsort import natsorted
 from flask import Flask, render_template, request
+from humanfriendly import format_size
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -176,7 +177,6 @@ def get_raw_data(indata, field1, field2, field3):
 
     rv = data_set
     keys = list(field1_values)
-    # print(rv, keys)
     return rv, keys
 
 
@@ -291,7 +291,7 @@ def get_ssh_data(name, period, search, raw=False, to_time=None, from_time=None, 
             row = {
                 'time': time_str,
                 'ip_address': x['_id']['ip_address'], 'type': x['_id']['type'],
-                'total': x['total'], 'users': ", ".join(x['usernames'])}
+                'total': x['total'], 'users': ", ".join(sorted(x['usernames']))}
             rv.append(row)
         if raw:
             rv, keys = get_raw_data(rv, 'ip_address', 'time', 'total')
@@ -305,7 +305,7 @@ def get_ssh_data(name, period, search, raw=False, to_time=None, from_time=None, 
              ])
         for x in res:
             ip_addr = x['_id']['ip_address']
-            row = {'ip_address': ip_addr, 'count': x['total'], 'type': x['_id']['type'], 'users': ", ".join(x['users'])}
+            row = {'ip_address': ip_addr, 'count': x['total'], 'type': x['_id']['type'], 'users': ", ".join(sorted(x['users']))}
             rv.append(row)
         if raw:
             rv, keys = get_raw_data(rv, 'type', 'ip_address', 'count')
@@ -447,12 +447,15 @@ def get_apache_data(name, period, search, raw, to_time=None, from_time=None, hos
         res = col.aggregate(
             [{"$match": {"$and": [{"name": "apache_access"}, mask, search_q]}},
              {"$group": {"_id": "$ip_address", "total": {"$sum": 1},
-                         'usernames': {"$addToSet": "$username"}}},
+                         'usernames': {"$addToSet": "$username"},
+                         "codes": {"$addToSet": "$code"}
+                         }},
              {"$sort": {"total": -1}}
              ])
-        keys = ['ip address', 'count', 'users']
+        keys = ['ip address', 'count', 'users', 'codes']
         for x in res:
-            row = {'ip_address': x['_id'], 'count': x['total'], 'users': ",".join(x['usernames'])}
+            row = {'ip_address': x['_id'], 'count': x['total'], 'users': ",".join(sorted(x['usernames'])),
+                   'codes': ",".join(sorted(x['codes']))}
             rv.append(row)
         if raw:
             rv, keys = get_raw_data(rv, 'ip_address', None, 'count')
@@ -483,7 +486,7 @@ def get_apache_data(name, period, search, raw, to_time=None, from_time=None, hos
         for x in res:
             ip = x['_id']['ip_address']
             ts = x['total']
-            ty = ", ".join(x['users'])
+            ty = ", ".join(sorted(x['users']))
             if ip not in ips or (ips[ip][0] < (2 * ts)) or ips[ip][1] >= mask_range[0]:
                 if ip not in new_ips:
                     new_ips[ip] = (ts, ty)
@@ -526,7 +529,7 @@ def get_apache_data(name, period, search, raw, to_time=None, from_time=None, hos
                 'time': time_str,
                 'ip_address': x['_id']['ip_address'],
                 'total': x['total'],
-                'codes': ", ".join(x['codes'])
+                'codes': ", ".join(sorted(x['codes']))
             }
             rv.append(row)
         if raw:
@@ -563,12 +566,29 @@ def get_apache_data(name, period, search, raw, to_time=None, from_time=None, hos
              {"$group": {"_id": {"ip_address": "$ip_address"}, "total": {"$sum": "$size"}}},
              {"$sort": {"total": -1}}
              ])
-        keys = ['path', 'size']
+        keys = ['IP Address', 'size']
         for x in res:
             row = {'ip_address': x['_id']['ip_address'], 'size': x['total']}
             rv.append(row)
         if raw:
             rv, keys = get_raw_data(rv, 'ip_address', None, 'size')
+        else:
+            rv = [{'ip_address': x['ip_address'], 'size': format_size(x['size'])} for x in rv]
+
+    elif name == "size_user":
+        res = col.aggregate(
+            [{"$match": {"$and": [{"name": "apache_access"}, mask, search_q]}},
+             {"$group": {"_id": {"username": "$username"}, "total": {"$sum": "$size"}}},
+             {"$sort": {"total": -1}}
+             ])
+        keys = ['Username', 'size']
+        for x in res:
+            row = {'username': x['_id']['username'], 'size': x['total']}
+            rv.append(row)
+        if raw:
+            rv, keys = get_raw_data(rv, 'username', None, 'size')
+        else:
+            rv = [{'username': x['username'], 'size': format_size(x['size'])} for x in rv]
     else:
         raise ValueError("Invalid item: {}".format(name))
     return rv, keys
@@ -634,6 +654,7 @@ dashboard_data_types = {
     "apache_method": ("apache", "method", "Apache HTTP Methods"),
     "apache_protocol": ("apache", "protocol", "Apache Protocols"),
     "apache_size": ("apache", "size_ip", "Apache Volume per IP"),
+    "apache_users": ("apache", "size_user", "Volume per User"),
 }
 
 main_data_types = {
@@ -656,6 +677,7 @@ main_data_types = {
         "apache_urls": ("apache", "urls", "URLs"),
         "apache_time_urls": ("apache", "time_urls", "URLs per Time"),
         "apache_size": ("apache", "size_ip", "Volume per IP"),
+        "apache_users": ("apache", "size_user", "Volume per User"),
     }
 }
 
