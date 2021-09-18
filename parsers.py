@@ -255,7 +255,7 @@ class RegexParser(LogParser):
         if self._notify != {}:
             if self._match_notify_conditions(res, self._notify['condition']):
                 try:
-                    text = ", ".join(["{}: {}".format(x, y) for x, y in res.items()])
+                    text = "".join(["{}: {}\n".format(x, y) for x, y in res.items()])
                     self._notifiers.get_notify(self._notify['name'])['handler'].send_msg(text)
                 except (KeyError, ValueError) as e:
                     logging.warning("Can't send message: {}".format(str(e)))

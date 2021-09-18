@@ -52,8 +52,10 @@ class Notify_telegram(Notify_handler):
     def __init__(self, config):
         super().__init__(config)
         self._config_path = config.get('config_path', None)
+        self._subject = config.get('subject', "")
 
     def send_msg(self, msg):
+        msg = "{}:\n\n{}".format(self._subject, msg)
         telegram_send.send(messages=[msg], conf=self._config_path)
 
 

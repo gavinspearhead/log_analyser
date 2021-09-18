@@ -2,7 +2,8 @@
 {
     "name": "telegram",
     "type": "telegram",
-    'config_path': "/home/harm/.config/telegram-send.conf "
+    "config_path": "/home/username/.config/telegram-send.conf",
+    "subject": "Log Notification"
 },
 {
     "name": "mail",

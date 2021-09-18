@@ -1,5 +1,6 @@
 import os
 import threading
+import traceback
 import output
 import logging
 
@@ -37,6 +38,8 @@ class LogHandler(FileSystemEventHandler):
 
     def on_deleted(self, event):
         try:
+            if self.match(event) is None:
+                return
             self.match(event).on_deleted(event)
         except AttributeError as e:
             logging.debug(str(e))
@@ -45,14 +48,18 @@ class LogHandler(FileSystemEventHandler):
 
     def on_modified(self, event):
         try:
+            if self.match(event) is None:
+                return
             self.match(event).on_modified(event)
         except AttributeError as e:
             logging.debug(str(e))
+            # traceback.print_exc()
             # print("error modified", e, event, self)
-            pass
 
     def on_moved(self, event):
         try:
+            if self.match(event) is None:
+                return
             self.match(event).on_moved(event)
         except AttributeError as e:
             logging.debug(str(e))
@@ -61,6 +68,8 @@ class LogHandler(FileSystemEventHandler):
 
     def on_created(self, event):
         try:
+            if self.match(event) is None:
+                return
             self.match(event).on_created(event)
         except AttributeError as e:
             logging.debug(str(e))
@@ -69,6 +78,8 @@ class LogHandler(FileSystemEventHandler):
 
     def on_closed(self, event):
         try:
+            if self.match(event) is None:
+                return
             self.match(event).on_closed(event)
         except AttributeError as e:
             logging.debug(str(e))
