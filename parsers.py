@@ -289,7 +289,7 @@ class RegexParser(LogParser):
                             res2 = False
                     elif condition[clause] == 'nonlocal':
                         try:
-                            res2 = res2 and not is_local_address(matches['name'])
+                            res2 = res2 and not is_local_address(matches[clause])
                         except ValueError:
                             # only for IP addresses
                             res2 = False
