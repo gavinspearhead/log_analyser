@@ -51,9 +51,10 @@ class Notify_mail(Notify_handler):
 class Notify_telegram(Notify_handler):
     def __init__(self, config):
         super().__init__(config)
+        self._config_path = config.get('config_path', None)
 
     def send_msg(self, msg):
-        telegram_send.send(messages=[msg])
+        telegram_send.send(messages=[msg], conf=self._config_path)
 
 
 class Notify:

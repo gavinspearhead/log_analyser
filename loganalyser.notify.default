@@ -1,7 +1,8 @@
 [
 {
     "name": "telegram",
-    "type": "telegram"
+    "type": "telegram",
+    'config_path': "/home/harm/.config/telegram-send.conf "
 },
 {
     "name": "mail",
