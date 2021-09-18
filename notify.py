@@ -47,6 +47,7 @@ class Notify_mail(Notify_handler):
         except smtplib.SMTPException as e:
             raise ValueError(e)
 
+
 class Notify_telegram(Notify_handler):
     def __init__(self, config):
         super().__init__(config)

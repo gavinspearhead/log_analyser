@@ -279,7 +279,7 @@ class RegexParser(LogParser):
                             res2 = res2 and True
                         else:
                             res2 = False
-                    elif condition[clause] == 'all':
+                    elif condition[clause] == 'all' or condition[clause] == 'any':
                         res2 = res2 and True
                     elif condition[clause] == 'local':
                         try:
