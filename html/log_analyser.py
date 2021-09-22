@@ -8,7 +8,6 @@ import sys
 import traceback
 from copy import deepcopy
 import tzlocal
-
 import dateutil.parser
 import pytz
 import geoip
@@ -156,12 +155,12 @@ def get_search_mask_apache(search):
     return {"path": {"$regex": re.escape(search)}}
 
 
-def get_raw_data(indata, field1, field2, field3):
-    field1_values = list(set([x[field1] for x in indata]))
+def get_raw_data(in_data, field1, field2, field3):
+    field1_values = list(set([x[field1] for x in in_data]))
     field1_values = natsorted(field1_values)
     field2_values = []
     if field2 is not None:
-        field2_values = list(set([x[field2] for x in indata]))
+        field2_values = list(set([x[field2] for x in in_data]))
         field2_values = natsorted(field2_values)
     data_set = {}
     for t in field1_values:
@@ -169,7 +168,7 @@ def get_raw_data(indata, field1, field2, field3):
         if field2 is not None:
             for u in field2_values:
                 data_set[t][u] = 0
-    for x in indata:
+    for x in in_data:
         if field2 is not None:
             data_set[x[field1]][x[field2]] += x[field3]
         else:
@@ -311,7 +310,7 @@ def get_ssh_data(name, period, search, raw=False, to_time=None, from_time=None, 
             rv, keys = get_raw_data(rv, 'type', 'ip_address', 'count')
     elif name == 'new_ips':
         keys = ['ip address', 'count', 'types']
-        ips = dict()
+        ips = {}
         res = col.aggregate(
             [{"$match": {"$and": [{"name": "auth_ssh"}, {"type": "connect"}]}},
              {"$group": {"_id": {"ip_address": "$ip_address"}, "total": {"$sum": 1},
@@ -347,7 +346,7 @@ def get_ssh_data(name, period, search, raw=False, to_time=None, from_time=None, 
             rv.append(row)
     elif name == 'new_users':
         keys = ['username', 'ip address', 'count', 'types']
-        users = dict()
+        users = {}
         res = col.aggregate(
             [{"$match": {"$and": [{"name": "auth_ssh"}, {"type": "connect"}]}},
              {"$group": {"_id": {"username": "$username", "ip_address": "$ip_address"}, "total": {"$sum": 1},
@@ -360,7 +359,7 @@ def get_ssh_data(name, period, search, raw=False, to_time=None, from_time=None, 
             t = x['total']
             o = pytz.UTC.localize(x['oldest'])
             if u not in users:
-                users[u] = dict()
+                users[u] = {}
             users[u][ip] = (t, o)
         res = col.aggregate(
             [{"$match": {"$and": [{"name": "auth_ssh"}, {"type": "connect"}, mask, search_q]}},
@@ -370,7 +369,7 @@ def get_ssh_data(name, period, search, raw=False, to_time=None, from_time=None, 
                  'types': {"$addToSet": "$type"}}},
              {"$sort": {"total": -1}}
              ])
-        new_users = dict()
+        new_users = {}
         for x in res:
             u = x['_id']['username']
             ip = x['_id']['ip_address']
@@ -379,7 +378,7 @@ def get_ssh_data(name, period, search, raw=False, to_time=None, from_time=None, 
 
             if u not in users or ip not in users[u] or (users[u][ip][0] < (2 * ts)) or users[u][ip][1] >= mask_range[0]:
                 if u not in new_users:
-                    new_users[u] = dict()
+                    new_users[u] = {}
                 new_users[u][ip] = (ts, ty)
 
         for u in new_users:
@@ -461,7 +460,7 @@ def get_apache_data(name, period, search, raw, to_time=None, from_time=None, hos
             rv, keys = get_raw_data(rv, 'ip_address', None, 'count')
     elif name == 'new_ips':
         keys = ['ip address', 'count', 'types']
-        ips = dict()
+        ips = {}
         res = col.aggregate(
             [{"$match": {"$and": [{"name": "apache_access"}]}},
              {"$group": {"_id": {"ip_address": "$ip_address"}, "total": {"$sum": 1},
@@ -482,7 +481,7 @@ def get_apache_data(name, period, search, raw, to_time=None, from_time=None, hos
                  'users': {"$addToSet": "$username"}}},
              {"$sort": {"total": -1}}
              ])
-        new_ips = dict()
+        new_ips = {}
         for x in res:
             ip = x['_id']['ip_address']
             ts = x['total']
@@ -624,7 +623,7 @@ def data():
             'ContentType': 'application/json'}
     else:
         res2 = []
-        flags = dict()
+        flags ={}
         for x in res:
             for k, v in x.items():
                 if k == 'ip_address' and k not in flags:

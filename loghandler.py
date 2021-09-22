@@ -10,7 +10,7 @@ from watchdog.events import FileSystemEventHandler
 class LogHandler(FileSystemEventHandler):
     def __init__(self):
         super().__init__()
-        self._file_list = dict()
+        self._file_list = {}
 
     def dump_state(self):
         states = []
@@ -142,11 +142,12 @@ class FileHandler:
         self._output_engine.cleanup(self._name, self._retention)
 
     def dump_state(self):
-        self._lock.acquire()
-        _pos = self._pos
-        self._lock.release()
-        state = {"pos": _pos, "path": self._path, 'inode': self._inode, 'device': self._dev}
-        return state
+        with self._lock:
+            _pos = self._pos
+        # self._lock.acquire()
+        # _pos = self._pos
+        # self._lock.release()
+        return {"pos": _pos, "path": self._path, 'inode': self._inode, 'device': self._dev}
 
     def add_parser(self, parser):
         self._parsers.append(parser)

@@ -1,9 +1,7 @@
 import logging
 import smtplib
 import ssl
-
 import xmpp
-
 import telegram_send
 import json
 
@@ -42,7 +40,7 @@ class Notify_mail(Notify_handler):
                 if self._password != '':
                     server.login(self._mail_from, self._password)
                 message = "Subject: {}\n\n{}".format(self._subject, msg)
-                print(message)
+                # print(message)
                 server.sendmail(self._mail_from, self._mail_to, message)
         except smtplib.SMTPException as e:
             raise ValueError(e)
@@ -87,9 +85,10 @@ class Notify:
             notify = json.load(infile)
         r_config = []
         for config_element in notify:
-            tmp = dict()
-            tmp['type'] = config_element['type']
-            tmp['name'] = config_element['name']
+            tmp = {
+                'type': config_element['type'],
+                'name': config_element['name']
+            }
             tmp['handler'] = self._factory(tmp['type'])(config_element)
             r_config.append(tmp)
 

@@ -26,23 +26,24 @@ class Config:
             config = json.load(infile)
         r_config = []
         for config_element in config:
-            tmp = dict()
-            tmp['path'] = config_element['path']
-            tmp['name'] = config_element['name']
-            tmp['output'] = config_element['output']
-            tmp['retention'] = config_element['retention'] if 'retention' in config_element else None
-            tmp['filter'] = []
+            tmp = {
+                'path': config_element['path'],
+                'name': config_element['name'],
+                'output': config_element['output'],
+                'retention': config_element['retention'] if 'retention' in config_element else None, 'filter': []
+            }
             for t in config_element['filter']:
-                log_filter = dict()
-                log_filter['regex'] = t['regex']
-                log_filter['emit'] = t['emit']
-                log_filter['transform'] = t['transform'] if 'transform' in t else dict()
-                log_filter['notify'] = dict()
+                log_filter = {
+                    'regex': t['regex'],
+                    'emit': t['emit'],
+                    'transform': t['transform'] if 'transform' in t else {}, 'notify': {}
+                }
                 if 'notify' in t and 'condition' in t['notify'] and 'name' in t['notify']:
                     # print(t['notify'])
-                    notify = dict()
-                    notify['condition'] = t['notify']['condition']
-                    notify['name'] = t['notify']['name']
+                    notify = {
+                        'condition': t['notify']['condition'],
+                        'name': t['notify']['name']
+                    }
                     log_filter['notify'] = notify
                 tmp['filter'].append(log_filter)
             r_config.append(tmp)
@@ -80,4 +81,3 @@ class Config:
             if i['path'] == filename:
                 return i['output']
         return None
-

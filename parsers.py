@@ -3,15 +3,15 @@ import logging
 import re
 import time
 import socket
-
 import dateutil.parser
 import netifaces as ni
 
+from abc import ABC
 from matches import is_new
 from local_ip import is_local_address
 
 
-class LogParser:
+class LogParser(ABC):
     def __init__(self):
         pass
 
@@ -107,11 +107,12 @@ def get_own_ip(ip_version=4):
 
 
 def load_data_set():
-    r = dict()
-    r['$fqdn'] = socket.getfqdn()
-    r['$hostname'] = socket.gethostname().lower()
-    r['$host_ip'] = get_own_ip(4)
-    r['$host_ipv6'] = get_own_ip(6)
+    r = {
+        '$fqdn': socket.getfqdn(),
+        '$hostname': socket.gethostname().lower(),
+        '$host_ip': get_own_ip(4),
+        '$host_ipv6': get_own_ip(6)
+    }
     return r
 
 
@@ -187,7 +188,7 @@ class RegexParser(LogParser):
         # "foo (%BAR:name:param)
         pos = 0
         out = ""
-        filters = dict()
+        filters = {}
         index = 0
         while pos < len(line):
             try:
@@ -215,24 +216,24 @@ class RegexParser(LogParser):
             return False
         return list(res.groups())
 
-    @staticmethod
-    def _guess_type(rv):
-        try:
-            return dateutil.parser.isoparse(rv)
-        except ValueError:
-            pass
-
-        if rv.isnumeric():
-            return int(rv)
-        elif rv.lower() == 'true':
-            return True
-        elif rv.lower() == 'false':
-            return False
-        return rv
+    # @staticmethod
+    # def _guess_type(rv):
+    #     try:
+    #         return dateutil.parser.isoparse(rv)
+    #     except ValueError:
+    #         pass
+    #
+    #     if rv.isnumeric():
+    #         return int(rv)
+    #     elif rv.lower() == 'true':
+    #         return True
+    #     elif rv.lower() == 'false':
+    #         return False
+    #     return rv
 
     def emit(self, matches, name):
-        res = dict()
-        values = dict()
+        res = {}
+        values = {}
         for idx, val in self._filters.items():
             try:
                 values[idx] = val[1](matches[val[0]])
@@ -255,7 +256,7 @@ class RegexParser(LogParser):
         if self._notify != {}:
             if self._match_notify_conditions(res, self._notify['condition']):
                 try:
-                    text = "".join(["{}: {}\n".format(x, y) for x, y in res.items()])
+                    text = "".join(["{}: {}\n".format(x, y) for x, y in res.items() if x != 'notify'])
                     self._notifiers.get_notify(self._notify['name'])['handler'].send_msg(text)
                 except (KeyError, ValueError) as e:
                     logging.warning("Can't send message: {}".format(str(e)))

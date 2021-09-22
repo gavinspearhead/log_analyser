@@ -10,7 +10,7 @@ class Local_Addresses:
         self._ranges = ranges
 
     def is_local(self, address):
-        print(address, self._ranges)
+        # print(address, self._ranges)
         if ipaddress.ip_address(address).is_private:
             return True
         for i in self._ranges:

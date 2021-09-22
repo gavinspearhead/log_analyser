@@ -7,7 +7,6 @@ import logging
 import local_ip
 
 from watchdog.observers import Observer
-
 from output import factory, Outputs
 from config import Config
 from state import State
@@ -24,16 +23,16 @@ pid_file_name = "loganalyser.pid"
 
 pid_path = '/tmp/'
 
-VERSION = "0.1"
+VERSION = "0.2"
 LOG_LEVEL = logging.INFO
-STATE_DUMP_TIMEOUT = 10
+STATE_DUMP_TIMEOUT = 15
 
 
 class LogObserver:
     def __init__(self, state_file_handle):
         self._observer = Observer()
         self._lock = threading.Lock()
-        self._event_handlers = dict()
+        self._event_handlers = {}
         self._state_file = state_file_handle
         self._cleanup_threat = None
 
@@ -65,15 +64,15 @@ class LogObserver:
 
     def dump_state(self):
         logging.debug('dump_state')
-        state = []
+        current_state = []
         for eh in self._event_handlers.values():
-            state += eh.dump_state()
+            current_state += eh.dump_state()
         try:
-            logging.debug(json.dumps(state))
+            logging.debug(json.dumps(current_state))
             with open(self._state_file, 'w') as outfile:
-                json.dump(state, outfile)
-        except OSError as e:
-            logging.warning("Cannot write file {}: {}".format(self._state_file, str(e)))
+                json.dump(current_state, outfile)
+        except OSError as exc:
+            logging.warning("Cannot write file {}: {}".format(self._state_file, str(exc)))
 
     def flush_output(self):
         logging.debug('flushing output')
@@ -92,16 +91,16 @@ class LogObserver:
         self._cleanup_threat.start()
 
 
-def pid_running(pid_file_name):
+def pid_running(pid_filename):
     try:
-        with open(pid_file_name, "r") as fl:
-            s = int(fl.readline().strip())
+        with open(pid_filename, "r") as fn:
+            s = int(fn.readline().strip())
             if s > 0:
                 os.kill(s, 0)
                 return True
     except (ValueError, FileNotFoundError, OSError):
         return False
-    except (PermissionError):
+    except PermissionError:
         return True
     return False
 
@@ -155,8 +154,8 @@ if __name__ == '__main__':
                 pos = state.pos(fl)
                 inode, dev = state.id(fl)
                 filters = config.get_filter(fl)
-                name = config.get_name(fl)
-                retention = config.get_retention(fl)
+                log_name = config.get_name(fl)
+                retention_time = config.get_retention(fl)
                 out = output.get_output(config.get_output(fl))
 
                 res = []
@@ -167,7 +166,7 @@ if __name__ == '__main__':
                 for x in filters:
                     res.append(RegexParser(x['regex'], x['emit'], x['transform'], x['notify'], notify, output_conn))
 
-                observer.add(fl, pos, res, inode, dev, out, name, retention)
+                observer.add(fl, pos, res, inode, dev, out, log_name, retention_time)
 
             with open(pid_file, 'w') as f:
                 pid = str(os.getpid())
