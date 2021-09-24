@@ -3,7 +3,8 @@
     "name": "telegram",
     "type": "telegram",
     "config_path": "/home/username/.config/telegram-send.conf",
-    "subject": "Log Notification"
+    "subject": "Log Notification",
+    "limit": 60
 },
 {
     "name": "mail",
@@ -13,14 +14,16 @@
     "password": "",
     "from_address": "",
     "to_address": "",
-    "subject": "Log Notification"
+    "subject": "Log Notification",
+    "limit": 60
 },
 {
     "name": "jabber",
     "type": "jabber",
     "jabber_id": "",
     "to_address": "",
-    "password": ""
+    "password": "",
+    "limit": 60
 }
 
 

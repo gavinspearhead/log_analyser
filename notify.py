@@ -4,13 +4,25 @@ import ssl
 import xmpp
 import telegram_send
 import json
+import time
 
 
 class Notify_handler:
     def __init__(self, config):
         self._config = config
+        self._limit = int(config.get('limit', 0))  # rate limit
+        self._last_time = {}
 
-    def send_msg(self, msg):
+    def check_rate_limit(self, limit_type):
+        if self._limit == 0:
+            return False
+        now = int(time.time())
+        rv = limit_type in self._last_time and now - self._last_time[limit_type] < self._limit
+        if not rv:
+            self._last_time[limit_type] = now
+        return rv
+
+    def send_msg(self, msg, limit_type):
         raise NotImplementedError
 
 
@@ -18,7 +30,25 @@ class Notify_signal(Notify_handler):
     def __init__(self, config):
         super().__init__(config)
 
-    def send_msg(self, msg):
+    def send_msg(self, msg, limit_type):
+        raise NotImplementedError
+
+
+class Notify_jabber(Notify_handler):
+    def __init__(self, config):
+        super().__init__(config)
+        self._jabber_id = config.get('jabber_id', "")
+        self._send_to = config.get('to_address', "")
+        self._password = config.get('password', "")
+
+    def send_msg(self, msg, limit_type):
+        if self.check_rate_limit(limit_type):
+            return
+        jid = xmpp.protocol.JID(self._jabber_id)
+        connection = xmpp.Client(server=jid.getDomain())
+        connection.connect()
+        connection.auth(user=jid.getNode(), password=self._password, resource=jid.getResource())
+        connection.send(xmpp.protocol.Message(to=self._send_to, body=msg))
         raise NotImplementedError
 
 
@@ -33,14 +63,15 @@ class Notify_mail(Notify_handler):
         self._password = config.get('password', "")
         self._subject = config.get('subject', "Log Notification")
 
-    def send_msg(self, msg):
+    def send_msg(self, msg, limit_type):
+        if self.check_rate_limit(limit_type):
+            return
         context = ssl.create_default_context()
         try:
             with smtplib.SMTP_SSL(self._smtp_server, self._smtp_port, context=context) as server:
                 if self._password != '':
                     server.login(self._mail_from, self._password)
                 message = "Subject: {}\n\n{}".format(self._subject, msg)
-                # print(message)
                 server.sendmail(self._mail_from, self._mail_to, message)
         except smtplib.SMTPException as e:
             raise ValueError(e)
@@ -52,7 +83,9 @@ class Notify_telegram(Notify_handler):
         self._config_path = config.get('config_path', None)
         self._subject = config.get('subject', "")
 
-    def send_msg(self, msg):
+    def send_msg(self, msg, limit_type):
+        if self.check_rate_limit(limit_type):
+            return
         msg = "{}:\n\n{}".format(self._subject, msg)
         telegram_send.send(messages=[msg], conf=self._config_path)
 
@@ -95,26 +128,10 @@ class Notify:
         self._notify = r_config
         # print(self._notify)
 
-    def send(self, notify_type, msg):
+    def send(self, notify_type, msg, limit_type):
         for i in self._notify:
             try:
                 if notify_type == i['type']:
-                    i['handler'].send(msg)
+                    i['handler'].send(msg, limit_type)
             except Exception as e:
                 logging.info("Notifying failed: {}".format(str(e)))
-
-
-class Notify_jabber(Notify_handler):
-    def __init__(self, config):
-        super().__init__(config)
-        self._jabber_id = config.get('jabber_id', "")
-        self._send_to = config.get('to_address', "")
-        self._password = config.get('password', "")
-
-    def send_msg(self, msg):
-        jid = xmpp.protocol.JID(self._jabber_id)
-        connection = xmpp.Client(server=jid.getDomain())
-        connection.connect()
-        connection.auth(user=jid.getNode(), password=self._password, resource=jid.getResource())
-        connection.send(xmpp.protocol.Message(to=self._send_to, body=msg))
-        raise NotImplementedError

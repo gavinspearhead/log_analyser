@@ -25,7 +25,7 @@
 	     },
 	     "notify": {
 	        "name": "telegram",
-	        "condition": [ {"ip_address": "nonlocal"}, {"username": "all"} ]
+	        "condition": [ {"ip_address": "local", "username": "all"} ]
 	     }
     },
     {
@@ -99,7 +99,7 @@
          },
         "notify" : {
 	        "name": "telegram",
-	        "condition": [ {"ip_address": "nonlocal"}, {"username": "new"}]
+	        "condition": [ {"ip_address": ["nonlocal", "new"}, {"username": "new"}]
 	    }
 	    }
      ]

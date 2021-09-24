@@ -1,14 +1,18 @@
 import datetime
+import ipaddress
 import logging
+import operator
 import re
-import time
-import socket
 import dateutil.parser
-import netifaces as ni
+from util import load_data_set
+from time_parsers import parse_apache_timestamp, parse_syslog_timestamp
 
 from abc import ABC
+from dateutil.tz import tzoffset
 from matches import is_new
 from local_ip import is_local_address
+
+data_conversion = load_data_set()
 
 
 class LogParser(ABC):
@@ -23,100 +27,6 @@ class LogParser(ABC):
 
     def notify(self, matches, name):
         raise NotImplemented
-
-
-class TimestampParsers:
-    months = {"jan": 1, "feb": 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6, 'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10,
-              'nov': 11, 'dec': 12}
-
-    def __init__(self):
-        self._apache_pattern = re.compile(r'\[(\d+)/([a-zA-Z]+)/(\d+):(\d+):(\d+):(\d+)\s([+-]?\d+)]')
-        self._syslog_pattern = re.compile(r'([A-Za-z]+)\s+(\d+)\s+(\d+):(\d+):(\d+)')
-
-    def parse_syslog_timestamp(self, time_str):
-        matches = self._syslog_pattern.search(time_str)
-        try:
-            x = matches.groups()
-            day = int(x[1])
-            mnt = x[0].lower()
-            # print(mn)
-            if mnt in self.months:
-                mon = self.months[mnt]
-                # print(mon)
-            else:
-                raise ValueError("Unknown month: {}".format(mnt))
-            year = datetime.datetime.now().year
-            hour = int(x[2])
-            mn = int(x[3])
-            sec = int(x[4])
-            tz = time.strftime("%z", time.localtime())
-            # print(year, mon, day, hour, mn, sec, tz)
-            time_str = "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}{:s}".format(year, mon, day, hour, mn, sec, tz)
-            # print(time_str)
-        except Exception as e:
-            logging.info("Invalid Date {} {}".format(time_str, e))
-            return ""
-        return time_str
-
-    def parse_apache_timestamp(self, time_str):
-        matches = self._apache_pattern.search(time_str)
-        x = matches.groups()
-        try:
-            day = int(x[0])
-            mnt = x[1].lower()
-            # print(mn)
-            if mnt in self.months:
-                mon = self.months[mnt]
-            else:
-                raise ValueError("Unknown month: {}".format(mnt))
-                # print(mon)
-            year = int(x[2])
-            hour = int(x[3])
-            mn = int(x[4])
-            sec = int(x[5])
-            tz = int(x[6])
-            # print(year, mon, day, hour, mn, sec, tz)
-            time_str = "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}{:+05d}".format(year, mon, day, hour, mn, sec, tz)
-        except Exception as e:
-            logging.info("Invalid Date {}".format(e))
-            return ""
-        return time_str
-
-
-_P = TimestampParsers()
-parse_apache_timestamp = _P.parse_apache_timestamp
-parse_syslog_timestamp = _P.parse_syslog_timestamp
-
-
-def get_own_ip(ip_version=4):
-    interfaces = ni.interfaces()
-    address = None
-    for i in interfaces:
-        if i != "lo":
-            try:
-                if ip_version == 4:
-                    address = ni.ifaddresses(i)[ni.AF_INET][0]['addr']
-                elif ip_version == 6:
-                    address = ni.ifaddresses(i)[ni.AF_INET6][0]['addr']
-                else:
-                    raise KeyError
-                break
-            except KeyError:
-                pass
-    return address
-
-
-def load_data_set():
-    r = {
-        '$fqdn': socket.getfqdn(),
-        '$hostname': socket.gethostname().lower(),
-        '$host_ip': get_own_ip(4),
-        '$host_ipv6': get_own_ip(6)
-    }
-    return r
-
-
-data_conversion = load_data_set()
 
 
 class RegexParser(LogParser):
@@ -144,7 +54,7 @@ class RegexParser(LogParser):
         '%': ('%', str)
     }
 
-    def __init__(self, reg_ex: str, format_str, transform, notify, notifiers, output):
+    def __init__(self, reg_ex: str, format_str, transform, notify, notifiers, output, log_name):
         super().__init__()
         self._pattern, self._filters = self.parse_regexp(reg_ex)
         # print(self._pattern)
@@ -154,6 +64,7 @@ class RegexParser(LogParser):
         self._notify = notify
         self._notifiers = notifiers
         self._output = output
+        self._logname = log_name
 
     def __str__(self):
         return "{} : {}".format(self._pattern, self._format_str)
@@ -216,21 +127,6 @@ class RegexParser(LogParser):
             return False
         return list(res.groups())
 
-    # @staticmethod
-    # def _guess_type(rv):
-    #     try:
-    #         return dateutil.parser.isoparse(rv)
-    #     except ValueError:
-    #         pass
-    #
-    #     if rv.isnumeric():
-    #         return int(rv)
-    #     elif rv.lower() == 'true':
-    #         return True
-    #     elif rv.lower() == 'false':
-    #         return False
-    #     return rv
-
     def emit(self, matches, name):
         res = {}
         values = {}
@@ -256,11 +152,51 @@ class RegexParser(LogParser):
         if self._notify != {}:
             if self._match_notify_conditions(res, self._notify['condition']):
                 try:
-                    text = "".join(["{}: {}\n".format(x, y) for x, y in res.items() if x != 'notify'])
-                    self._notifiers.get_notify(self._notify['name'])['handler'].send_msg(text)
+                    text = "".join(["{}: {}\n".format(x, y) for x, y in res.items()])
+                    self._notifiers.get_notify(self._notify['name'])['handler'].send_msg(text, self._logname)
                 except (KeyError, ValueError) as e:
                     logging.warning("Can't send message: {}".format(str(e)))
         return None
+
+    @staticmethod
+    def _compare(element, clause):
+        # print(element, clause)
+        if element.startswith("<="):
+            val = element[2:]
+            op = operator.le
+        elif element.startswith(">="):
+            val = element[2:]
+            op = operator.ge
+        elif element.startswith(">"):
+            val = element[1:]
+            op = operator.gt
+        elif element.startswith("<"):
+            op = operator.lt
+            val = element[1:]
+        elif element.startswith("="):
+            val = element[1:]
+            op = operator.eq
+        elif element.startswith("!"):
+            val = element[1:]
+            op = operator.ne
+        else:
+            raise ValueError("Unknown operator")
+        try:
+            val = val.strip()
+            v = ipaddress.ip_address(val)
+            c = ipaddress.ip_network(clause)
+            if op == operator.ne:
+                return v not in c
+            elif op == operator.eq:
+                return v in c
+            else:
+                raise ValueError("can't compare ipaddress")
+        except ValueError:
+            pass
+        if (type(val) == int or val.isnumeric()) and (type(clause) == int or clause.isnumeric()):
+            return op(int(clause), int(val))
+        else:
+            return op(clause, val)
 
     def _match_notify_conditions(self, matches, conditions):
         # print(matches)
@@ -272,34 +208,43 @@ class RegexParser(LogParser):
             for clause in condition:
                 # print('claus1e', clause)
                 if clause in matches:
-                    # print('clause', clause, matches[clause])
-                    if condition[clause] == 'new':
-                        # print('is_new')
-                        if is_new(self._output, matches['name'], clause, matches[clause]):
-                            # print('new ', clause)
+                    # print('clause', clause, matches[clause], condition[clause])
+                    if type(condition[clause]) != list:
+                        condition[clause] = [condition[clause]]
+                    for elem in condition[clause]:
+                        # print('clause', clause, matches[clause], elem)
+                        if elem == 'new':
+                            # print('is_new')
+                            if is_new(self._output, matches['name'], clause, matches[clause]):
+                                # print('new ', clause)
+                                res2 = res2 and True
+                            else:
+                                res2 = False
+                        elif elem == 'all' or elem == 'any':
                             res2 = res2 and True
+                        elif elem == 'local':
+                            try:
+                                res2 = res2 and is_local_address(matches[clause])
+                            except ValueError:
+                                # only for IP addresses
+                                res2 = False
+                        elif elem == 'nonlocal':
+                            try:
+                                res2 = res2 and not is_local_address(matches[clause])
+                            except ValueError:
+                                # only for IP addresses
+                                res2 = False
+                        elif elem[0] in "=!<>":
+                            # print(self._compare(elem, matches[clause]))
+                            res2 = res2 and self._compare(elem, matches[clause])
                         else:
                             res2 = False
-                    elif condition[clause] == 'all' or condition[clause] == 'any':
-                        res2 = res2 and True
-                    elif condition[clause] == 'local':
-                        try:
-                            res2 = res2 and is_local_address(matches[clause])
-                        except ValueError:
-                            # only for IP addresses
-                            res2 = False
-                    elif condition[clause] == 'nonlocal':
-                        try:
-                            res2 = res2 and not is_local_address(matches[clause])
-                        except ValueError:
-                            # only for IP addresses
-                            res2 = False
-                    else:
-                        res2 = False
+                        # print(res, res2)
             res = res or res2
             if res:
-                matches['notify'] = "{} {}".format(matches[clause], clause)
-                return matches
+                # matches['notify'] = "{} {}".format(matches[clause], clause)
+                # print(matches['notify'])
+                return True
         # print(res)
         return None
 
@@ -323,7 +268,6 @@ class RegexParser(LogParser):
                     raise ValueError("Unknown value {}".format(rv))
             else:
                 raise ValueError("Unknown transform {}".format(self._transform[idx]))
-
         return rv
 
     @staticmethod
@@ -332,3 +276,16 @@ class RegexParser(LogParser):
         for m in matches:
             val = val.replace(m, data_conversion.get(m, '-'))
         return val
+
+
+if __name__ == "__main__":
+    r = RegexParser('', None, None, None, None, None)
+
+    rs = {'hostname': 'mercenary', 'ip_address': '2001:984:47bf:1:36a3:bf3c:d751:500b', 'unknown': '-', 'username': '-',
+          'timestamp': datetime.datetime(2021, 9, 23, 18, 19, 33, tzinfo=tzoffset(None, 7200)), 'http_command': 'GET',
+          'path': '/cds/loginscreen.php', 'protocol': 'HTTP', 'protocol_version': '1.1', 'code': '200', 'size': 892,
+          'name': 'apache_access'}
+    conds = [{'ip_address': ['new', "local"]}]  # , {'username': 'new'}]
+
+    xx = r._match_notify_conditions(rs, conds)
+    print(xx)

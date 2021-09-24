@@ -39,7 +39,6 @@ class Config:
                     'transform': t['transform'] if 'transform' in t else {}, 'notify': {}
                 }
                 if 'notify' in t and 'condition' in t['notify'] and 'name' in t['notify']:
-                    # print(t['notify'])
                     notify = {
                         'condition': t['notify']['condition'],
                         'name': t['notify']['name']

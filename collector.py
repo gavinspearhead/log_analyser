@@ -13,6 +13,7 @@ from state import State
 from notify import Notify
 from parsers import RegexParser
 from loghandler import LogHandler
+from util import pid_running
 
 config_file_name = "loganalyser.config"
 state_file_name = "loganalyser.state"
@@ -24,8 +25,10 @@ pid_file_name = "loganalyser.pid"
 pid_path = '/tmp/'
 
 VERSION = "0.2"
+PROG_NAME = "Log Collector"
 LOG_LEVEL = logging.INFO
 STATE_DUMP_TIMEOUT = 15
+CLEANUP_INTERVAL = 60 * 60  # 1 hour
 
 
 class LogObserver:
@@ -80,9 +83,11 @@ class LogObserver:
             eh.flush_output()
 
     def cleanup(self):
-        for eh in self._event_handlers.values():
-            eh.cleanup()
-        time.sleep(60 * 60)  # 1 hour
+        while True:
+            logging.debug("Cleaning up")
+            for eh in self._event_handlers.values():
+                eh.cleanup()
+            time.sleep(CLEANUP_INTERVAL)
 
     def start_cleanup_threat(self):
         logging.debug("starting cleanup thread")
@@ -91,36 +96,29 @@ class LogObserver:
         self._cleanup_threat.start()
 
 
-def pid_running(pid_filename):
-    try:
-        with open(pid_filename, "r") as fn:
-            s = int(fn.readline().strip())
-            if s > 0:
-                os.kill(s, 0)
-                return True
-    except (ValueError, FileNotFoundError, OSError):
-        return False
-    except PermissionError:
-        return True
-    return False
-
-
 if __name__ == '__main__':
     try:
         state_dump_timeout = STATE_DUMP_TIMEOUT
-        parser = argparse.ArgumentParser(description="Log Collector")
+        parser = argparse.ArgumentParser(description=PROG_NAME)
+        parser.add_argument("-v", '--version', help="Print Version information", action='store_true')
         parser.add_argument("-D", '--debug', help="Debug mode", action='store_true')
         parser.add_argument("-c", '--config', help="Config File Directory", default="", metavar="FILE")
+        parser.add_argument("-p", '--pid', help="PID File Directory", default="", metavar="FILE")
         parser.add_argument("-d", '--dump_state_timeout', help="Timeout between periods dumping state", type=int,
                             default=STATE_DUMP_TIMEOUT, metavar="SECONDS")
         args = parser.parse_args()
         config_path = ''
+        if args.version:
+            print("{} {}".format(PROG_NAME, VERSION))
+            exit(0)
         if args.config:
             config_path = args.config
         if args.dump_state_timeout:
             state_dump_timeout = args.dump_state_timeout
         if args.debug:
             LOG_LEVEL = logging.DEBUG
+        if args.pid:
+            pid_path = args.pid
 
         logging.basicConfig(level=LOG_LEVEL)
         pid_file = os.path.join(pid_path, pid_file_name)
@@ -159,12 +157,11 @@ if __name__ == '__main__':
                 out = output.get_output(config.get_output(fl))
 
                 res = []
-                # print(out)
                 output_conn = factory(out)(out)
                 output_conn.connect()
-                # print(output_conn)
                 for x in filters:
-                    res.append(RegexParser(x['regex'], x['emit'], x['transform'], x['notify'], notify, output_conn))
+                    res.append(
+                        RegexParser(x['regex'], x['emit'], x['transform'], x['notify'], notify, output_conn, log_name))
 
                 observer.add(fl, pos, res, inode, dev, out, log_name, retention_time)
 
@@ -180,10 +177,8 @@ if __name__ == '__main__':
             pass
         finally:
             logging.debug('finale')
-            # print(event_handler1.dump_state())
             observer.stop()
             observer.join()
-            # print('done')
             observer.dump_state()
             observer.flush_output()
             logging.debug('removing PID file')

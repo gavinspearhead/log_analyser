@@ -17,18 +17,18 @@ def false_only_cache(fn):
 
 
 def apache_is_new_ipaddress(col, value):
-    return col.count({"ip_address": value, "name": "apache_access"}) == 0
+    return 0 == col.count({"ip_address": value, "name": "apache_access"})
 
 
 def apache_is_new_username(col, value):
-    return col.count({"username": value, "name": "apache_access"}) == 0
+    return 0 == col.count({"username": value, "name": "apache_access"})
 
 
 def ssh_is_new_ipaddress(col, value):
     return 0 == col.count({"ip_address": value, "name": "auth_ssh"})
 
 
-@false_only_cache
+# @false_only_cache
 def ssh_is_new_username(col, value):
     return col.count({"username": value, "name": "auth_ssh"}) == 0
 
@@ -54,9 +54,8 @@ def ssh_is_new(col, field, value):
 @false_only_cache
 def is_new(col, source, field, value):
     if source == "auth_ssh":
-        x = ssh_is_new(col, field, value)
+        return ssh_is_new(col, field, value)
     elif source == 'apache_access':
-        x = apache_is_new(col, field, value)
+        return apache_is_new(col, field, value)
     else:
-        x = False
-    return x
+        return False

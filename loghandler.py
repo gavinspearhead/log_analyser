@@ -1,6 +1,5 @@
 import os
 import threading
-import traceback
 import output
 import logging
 
@@ -31,10 +30,13 @@ class LogHandler(FileSystemEventHandler):
         self._file_list[filename] = FileHandler(filename, pos, parsers, inode, dev, output_type, name, retention)
 
     def match(self, event):
-        for filename in self._file_list:
-            if not event.is_directory and filename == event.src_path:
-                return self._file_list[filename]
-        return None
+        try:
+            for filename in self._file_list:
+                if not event.is_directory and filename == event.src_path:
+                    return self._file_list[filename]
+            return None
+        except AttributeError as e:
+            logging.debug(str(e))
 
     def on_deleted(self, event):
         try:
@@ -144,9 +146,6 @@ class FileHandler:
     def dump_state(self):
         with self._lock:
             _pos = self._pos
-        # self._lock.acquire()
-        # _pos = self._pos
-        # self._lock.release()
         return {"pos": _pos, "path": self._path, 'inode': self._inode, 'device': self._dev}
 
     def add_parser(self, parser):
@@ -178,10 +177,8 @@ class FileHandler:
             if not line:
                 break
             if self._process_line(line):
-                self._lock.acquire()
-                self._pos = self._file.tell()
-                # print(self._pos)
-                self._lock.release()
+                with self._lock:
+                    self._pos = self._file.tell()
 
     def on_modified(self, event):
         if not event.is_directory and self._path == event.src_path:

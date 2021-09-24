@@ -2,11 +2,10 @@ import datetime
 import json
 import logging
 import threading
+from abc import ABC
 
 from pymongo import MongoClient
 
-
-# Output config
 
 class Outputs:
 
@@ -25,7 +24,7 @@ class Outputs:
         return None
 
 
-class AbstractOutput:
+class AbstractOutput(ABC):
     DEFAULT_BUFFER_SIZE = 1
 
     def __init__(self, config):
@@ -37,18 +36,15 @@ class AbstractOutput:
 
     def write(self, data):
         # print(len(self._buffer), self._buffer_size)
-        try:
-            self._lock.acquire()
+        with self._lock:
             self._buffer.append(data)
             buf_len = len(self._buffer)
-        finally:
-            self._lock.release()
         if buf_len > self._buffer_size:
             self.commit()
         pass
 
     def commit(self):
-        raise NotImplemented("connect")
+        raise NotImplemented("commit")
 
     def connect(self):
         raise NotImplemented("connect")
@@ -77,8 +73,6 @@ class IgnoreOutput(AbstractOutput):
 class StdOutput(AbstractOutput):
     def __init__(self, config):
         super().__init__(config)
-
-    # def write(self, data):
 
     def commit(self):
         if len(self._buffer) == 0:
@@ -124,21 +118,16 @@ class MongoOutput(AbstractOutput):
         self._db = None
         self._collection = None
 
-    # def write(self, data):
-    #     self._collection.insert_one(data)
-
     def commit(self):
         if len(self._buffer) == 0:
             return
         try:
-            self._lock.acquire()
-            self._collection.insert_many(self._buffer)
-            self._buffer = []
+            with self._lock:
+                self._collection.insert_many(self._buffer)
+                self._buffer = []
         except Exception as e:
             logging.warning(str(e))
             self.connect()
-        finally:
-            self._lock.release()
 
     def connect(self):
         self._db = MongoConnector(self._config)
