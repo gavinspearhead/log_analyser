@@ -52,7 +52,7 @@ class LogObserver:
         for directory in self._event_handlers:
             self._observer.schedule(self._event_handlers[directory], directory, recursive=False)
         self._observer.start()
-        self.start_cleanup_threat()
+        self._start_cleanup_threat()
 
     def stop(self):
         logging.info('Stopping log collector')
@@ -82,16 +82,16 @@ class LogObserver:
         for eh in self._event_handlers.values():
             eh.flush_output()
 
-    def cleanup(self):
+    def _cleanup(self):
         while True:
             logging.debug("Cleaning up")
             for eh in self._event_handlers.values():
                 eh.cleanup()
             time.sleep(CLEANUP_INTERVAL)
 
-    def start_cleanup_threat(self):
+    def _start_cleanup_threat(self):
         logging.debug("starting cleanup thread")
-        self._cleanup_threat = threading.Thread(target=self.cleanup)
+        self._cleanup_threat = threading.Thread(target=self._cleanup)
         self._cleanup_threat.daemon = True
         self._cleanup_threat.start()
 

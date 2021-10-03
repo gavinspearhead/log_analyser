@@ -26,6 +26,8 @@ class Config:
             config = json.load(infile)
         r_config = []
         for config_element in config:
+            if 'path' not in config_element or 'name' not in config_element or 'output' not in config_element:
+                continue
             tmp = {
                 'path': config_element['path'],
                 'name': config_element['name'],
@@ -33,18 +35,19 @@ class Config:
                 'retention': config_element['retention'] if 'retention' in config_element else None, 'filter': []
             }
             for t in config_element['filter']:
-                log_filter = {
-                    'regex': t['regex'],
-                    'emit': t['emit'],
-                    'transform': t['transform'] if 'transform' in t else {}, 'notify': {}
-                }
-                if 'notify' in t and 'condition' in t['notify'] and 'name' in t['notify']:
-                    notify = {
-                        'condition': t['notify']['condition'],
-                        'name': t['notify']['name']
+                if 'regex' in t and 'emit' in t:
+                    log_filter = {
+                        'regex': t['regex'],
+                        'emit': t['emit'],
+                        'transform': t['transform'] if 'transform' in t else {}, 'notify': {}
                     }
-                    log_filter['notify'] = notify
-                tmp['filter'].append(log_filter)
+                    if 'notify' in t and 'condition' in t['notify'] and 'name' in t['notify']:
+                        notify = {
+                            'condition': t['notify']['condition'],
+                            'name': t['notify']['name']
+                        }
+                        log_filter['notify'] = notify
+                    tmp['filter'].append(log_filter)
             r_config.append(tmp)
         self._config = r_config
 

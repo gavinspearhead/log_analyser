@@ -3,7 +3,6 @@ import json
 import logging
 import threading
 from abc import ABC
-
 from pymongo import MongoClient
 
 
@@ -77,13 +76,10 @@ class StdOutput(AbstractOutput):
     def commit(self):
         if len(self._buffer) == 0:
             return
-        try:
-            self._lock.acquire()
+        with self._lock:
             for data in self._buffer:
                 print(json.dumps(data))
             self._buffer = []
-        finally:
-            self._lock.release()
 
     def connect(self):
         pass

@@ -34,7 +34,7 @@ function round(nr, dig)
 {
     if (dig == undefined) dig = 0
     var exp = 10 ** dig;
-    console.log( Math.round((nr+ Number.EPSILON) * exp)/exp);
+//    console.log( Math.round((nr+ Number.EPSILON) * exp)/exp);
     return Math.round((nr+ Number.EPSILON) * exp)/exp;
 }
 
@@ -45,7 +45,7 @@ function calculate_height()
     var b_height = $("body").height();
     var w_height = window.innerHeight;
     var res_height = Math.floor(w_height-nb_height);
-    console.log(w_height, nb_height, res_height, b_height);
+//    console.log(w_height, nb_height, res_height, b_height);
     $('#maindiv').height(res_height);
 }
 function fmtChartJSPerso(n, p, fmt)
@@ -78,7 +78,7 @@ function load_graph(canvas_id, type, name, period, to,from, title, host)
     }).done(function(data) {
         var res = JSON.parse(data);
 //        console.log (res);
-    var pieoptions= {
+    var baroptions= {
             graphTitle: title,
             graphTitleFontSize: 16,
             canvasBorders: true,
@@ -89,54 +89,59 @@ function load_graph(canvas_id, type, name, period, to,from, title, host)
             highLight: true,
             fmtXLabel: "text",
             fmtYLabel:"number",
+            rotateLabels: "smart",
             annotateLabel: "<%=v2+': '+v1+' '+v3%>",
             annotateDisplay: true,
             yAxisUnitFontSize: 16,
             inGraphDataShow : true,
-            spaceBetweenBar : 5,
+            spaceBetweenBar : 4,
             scaleFontColor: "#ddd",
             graphTitleFontColor: "#bbb",
-            inGraphDataFontColor:"#ccc"
+            inGraphDataFontColor:"#ccc",
+            forceScale:"steps",
+            scaleSteps : 10,
         };
-        var baroptions= {
+        var pieoptions = baroptions;
+        var stacked_baroptions= {
             graphTitle: title,
             graphTitleFontSize: 16,
             canvasBorders: true,
             canvasBordersWidth: 1,
             barDatasetSpacing: 0,
             barValueSpacing:0,
+            rotateLabels: "smart",
+            spaceBetweenBar : 4,
             animation : false,
             responsive: true,
             legend: false,
             highLight: true,
             xScaleLabelsMinimumWidth: 10,
             fmtXLabel: "text",
-            fmtYLabel:"number",
+            fmtYLabel: "number",
             annotateLabel: "<%=v2+': '+v1+' '+v3%>",
             annotateDisplay: true,
+            inGraphDataShow : true,
             yAxisMinimumInterval:1,
             forceGraphMin : 0,
             graphMin:0,
-            scaleSteps : 1,
+            forceScale:"steps",
+            scaleSteps : 10,
             scaleStepWidth : 1,
             yAxisUnitFontSize: 16,
             scaleFontColor: "#ddd",
             graphTitleFontColor: "#bbb",
         };
         if (res.labels.length == 0 || res.data.length == 0) {
-            var data_sets =
-            {
+        // for an empty graph
+            var data_sets = {
                 labels : [''],
                 datasets: [{ data: [0]}]
             }
-
-            console.log(data_sets.datasets);
             new Chart(document.getElementById(canvas_id).getContext("2d")).Pie(data_sets, pieoptions);
-            console.log('aempty'); return;
+            return false;
          }
         var data_sets = [];
         for (var i = 0; i < res.data.length; i++) {
-            //console.log(i, res.data[i], res.labels[i])
             data_sets.push( {
                 fillColor: colours[i % colours.length],
                 strokeColor: colours[i % colours.length],
@@ -149,26 +154,14 @@ function load_graph(canvas_id, type, name, period, to,from, title, host)
            datasets: data_sets
         }
         if (res.data.length == 1) {
-//            console.log('a', data.datasets[0].data);
-//            var datasets2 = [];
-//            for (var i = 0 ; i < data.datasets[0].data.length; i++) {
-//                var x = [data.datasets[0].data[i]];
-//                console.log(x)
-//                datasets2.push({
-//                    fillColor: colours[i % colours.length],
-//                    strokeColor: colours[i % colours.length],
-//                    data: x,
-//                    title: data.labels[i]
-//                });
-//            }
-//            data.datasets = datasets2;
-
-            console.log('b', data);
-            pieoptions.annotateLabel = "<%=v2+': '+v3%>"
-            new Chart(document.getElementById(canvas_id).getContext("2d")).Bar(data, pieoptions);
+             baroptions.annotateLabel = "<%=v2+': '+v3%>"
+             console.log(data);
+             if (data.datasets[0].data.length > 10) {
+             baroptions['inGraphDataShow'] = false;
+             }
+             new Chart(document.getElementById(canvas_id).getContext("2d")).Bar(data, baroptions);
         } else {
-        //console.log(data);
-             new Chart(document.getElementById(canvas_id).getContext("2d")).StackedBar(data, baroptions);
+             new Chart(document.getElementById(canvas_id).getContext("2d")).StackedBar(data, stacked_baroptions);
          }
     });
     return false;
@@ -182,7 +175,7 @@ function load_all_graphs()
     var to = null;
     var from = null;
     var host = $("#host_selector").find(":selected").val()
-    console.log(host, 'aoeuauae@##');
+//    console.log(host, 'aoeuauae@##');
 
     if ($("#daily").is(":checked")) {period = 'today';}
     else if ($("#hourly").is(":checked")) {period = 'hour';}
@@ -203,7 +196,7 @@ function load_all_graphs()
 
 function set_hosts(selected)
 {
-        console.log('hosts 1');
+//        console.log('hosts 1');
   $.ajax({
         url: script_root + '/hosts/',
         type: 'POST',
@@ -211,9 +204,9 @@ function set_hosts(selected)
         cache: false,
         contentType: "application/json;charset=UTF-8",
     }).done(function(data) {
-        console.log('hosts');
+//        console.log('hosts');
         var res = JSON.parse(data);
-        console.log(res)
+//        console.log(res)
         $('#host_selector').html(res.html);
     });
 }
@@ -245,8 +238,6 @@ $( document ).ready(function() {
     });
 
     $("#host_selector").change(function() { load_all_graphs(); })
-
-
     $('#itemstablediv').scrollTop(0);
     load_all_graphs();
 });

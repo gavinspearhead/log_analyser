@@ -304,7 +304,8 @@ def get_ssh_data(name, period, search, raw=False, to_time=None, from_time=None, 
              ])
         for x in res:
             ip_addr = x['_id']['ip_address']
-            row = {'ip_address': ip_addr, 'count': x['total'], 'type': x['_id']['type'], 'users': ", ".join(sorted(x['users']))}
+            row = {'ip_address': ip_addr, 'count': x['total'], 'type': x['_id']['type'],
+                   'users': ", ".join(sorted(x['users']))}
             rv.append(row)
         if raw:
             rv, keys = get_raw_data(rv, 'type', 'ip_address', 'count')
@@ -623,7 +624,7 @@ def data():
             'ContentType': 'application/json'}
     else:
         res2 = []
-        flags ={}
+        flags = {}
         for x in res:
             for k, v in x.items():
                 if k == 'ip_address' and k not in flags:
@@ -642,18 +643,18 @@ def data():
 
 
 dashboard_data_types = {
-    "ssh_users": ("ssh", "users", "SSH Users"),
-    "ssh_time_users": ("ssh", "time_users", "SSH Users per Time"),
-    "ssh_time_ips": ("ssh", "time_ips", "SSH IPs per time"),
-    "ssh_ipaddresses": ("ssh", "ip_addresses", "SSH IP Addresses"),
+    "ssh_users": ("ssh", "users", "SSH - Users"),
+    "ssh_time_users": ("ssh", "time_users", "SSH - Users per Time"),
+    "ssh_time_ips": ("ssh", "time_ips", "SSH - IPs per time"),
+    "ssh_ipaddresses": ("ssh", "ip_addresses", "SSH - IP Addresses"),
     # "ssh_ips": ("ssh", "ip_addresses"),
-    "apache_ipaddresses": ("apache", "ip_addresses", "Apache IP Addresses"),
-    "apache_time_ips": ("apache", "time_ips", "Apache IPs per Time"),
-    "apache_codes": ("apache", "codes", "Apache Response codes"),
-    "apache_method": ("apache", "method", "Apache HTTP Methods"),
-    "apache_protocol": ("apache", "protocol", "Apache Protocols"),
-    "apache_size": ("apache", "size_ip", "Apache Volume per IP"),
-    "apache_users": ("apache", "size_user", "Volume per User"),
+    "apache_ipaddresses": ("apache", "ip_addresses", "Apache - IP Addresses"),
+    "apache_time_ips": ("apache", "time_ips", "Apache - IPs per Time"),
+    "apache_codes": ("apache", "codes", "Apache - Response codes"),
+    "apache_method": ("apache", "method", "Apache - HTTP Methods"),
+    "apache_protocol": ("apache", "protocol", "Apache - Protocols"),
+    "apache_size": ("apache", "size_ip", "Apache - Volume per IP"),
+    "apache_users": ("apache", "size_user", "Apache - Volume per User"),
 }
 
 main_data_types = {

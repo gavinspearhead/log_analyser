@@ -28,7 +28,6 @@ class Local_Addresses:
 
 
 _local_addresses = Local_Addresses()
-
 set_local_address = _local_addresses.load_ranges
 is_local_address = _local_addresses.is_local
 load_local_address = _local_addresses.load_local_addresses
