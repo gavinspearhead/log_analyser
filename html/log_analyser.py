@@ -10,7 +10,7 @@ from copy import deepcopy
 import tzlocal
 import dateutil.parser
 import pytz
-import geoip
+import geoip2.database
 import ipaddress
 
 from natsort import natsorted
@@ -24,7 +24,20 @@ from output import MongoConnector, Outputs
 output_file_name = "loganalyser.output"
 config_path = os.path.dirname(__file__)
 app = Flask(__name__)
-geoip_db = geoip.open_database(os.path.join(os.path.dirname(__file__), 'data/GeoLite2-Country.mmdb'))
+geoip2_db = geoip2.database.Reader(os.path.join(os.path.dirname(__file__), 'data/GeoLite2-Country.mmdb'))
+
+
+def get_prefix(ip_address):
+    try:
+        r = geoip2_db.country(ip_address)
+        # print(r)
+        network_address = ipaddress.ip_interface("{}/{}".format(ip_address, r.traits._prefix_len))
+        # print(network_address.network)
+
+        return network_address.network
+    except geoip2.errors.AddressNotFoundError:
+        # print('none')
+        return None
 
 
 def get_mongo_connection():
@@ -294,7 +307,7 @@ def get_ssh_data(name, period, search, raw=False, to_time=None, from_time=None, 
             rv.append(row)
         if raw:
             rv, keys = get_raw_data(rv, 'ip_address', 'time', 'total')
-    elif name == 'ip_addresses':
+    elif name == 'ip_addresses' or name == 'ip_prefixes':
         keys = ['IP Addresses', 'type', 'count', 'users']
         res = col.aggregate(
             [{"$match": {"$and": [{"name": "auth_ssh"}, mask, search_q]}},
@@ -307,8 +320,14 @@ def get_ssh_data(name, period, search, raw=False, to_time=None, from_time=None, 
             row = {'ip_address': ip_addr, 'count': x['total'], 'type': x['_id']['type'],
                    'users': ", ".join(sorted(x['users']))}
             rv.append(row)
-        if raw:
-            rv, keys = get_raw_data(rv, 'type', 'ip_address', 'count')
+        if name == 'ip_prefixes':
+            keys = ['IP Prefixes', 'count', 'type', 'users']
+            rv = merge_prefixes(rv, ['count'], ['users'], ['type'])
+            if raw:
+                rv, keys = get_raw_data(rv, 'type', 'prefix', 'count')
+        else:
+            if raw:
+                rv, keys = get_raw_data(rv, 'type', 'ip_address', 'count')
     elif name == 'new_ips':
         keys = ['ip address', 'count', 'types']
         ips = {}
@@ -391,6 +410,41 @@ def get_ssh_data(name, period, search, raw=False, to_time=None, from_time=None, 
     return rv, keys
 
 
+def join_str_list(list1, list2):
+    a = list1.split(',')
+    b = list2.split(',')
+    return ",".join(list(set(a + b)))
+
+
+def merge_prefixes(rv, sum_list, join_list, hash_list=None):
+    rv2 = {}
+    for x in rv:
+        prefix = get_prefix(x['ip_address'])
+        if prefix is None:
+            prefix = x['ip_address']
+        else:
+            prefix = str(prefix)
+        # print(prefix)
+        key = prefix
+        if hash_list is not None:
+            key = prefix + str(hash(str([x[y] for y in hash_list])))
+        if key in rv2:
+            for z in sum_list:
+                rv2[key][z] += x[z]
+            for y in join_list:
+                rv2[key][y] = join_str_list(rv2[key][y], x[y])
+        else:
+            rv2[key] = {}
+            rv2[key]['prefix'] = prefix
+            rv2[key].update(x)
+            del rv2[key]['ip_address']
+    # for y in list(rv2.values()):
+    # print(y['prefix'])
+    rv = rv2.values()
+    print(rv2)
+    return rv
+
+
 def get_apache_data(name, period, search, raw, to_time=None, from_time=None, host="*"):
     local_tz = str(tzlocal.get_localzone())
     col = get_mongo_connection()
@@ -443,7 +497,7 @@ def get_apache_data(name, period, search, raw, to_time=None, from_time=None, hos
             rv.append(row)
         if raw:
             rv, keys = get_raw_data(rv, 'protocol', 'protocol_version', 'count')
-    elif name == 'ip_addresses':
+    elif name == 'ip_addresses' or name == 'ip_prefixes':
         res = col.aggregate(
             [{"$match": {"$and": [{"name": "apache_access"}, mask, search_q]}},
              {"$group": {"_id": "$ip_address", "total": {"$sum": 1},
@@ -452,13 +506,22 @@ def get_apache_data(name, period, search, raw, to_time=None, from_time=None, hos
                          }},
              {"$sort": {"total": -1}}
              ])
-        keys = ['ip address', 'count', 'users', 'codes']
+        if name == 'ip_address':
+            keys = ['ip address', 'count', 'users', 'codes']
+        else:
+            keys = ['prefix', 'count', 'users', 'codes']
+
         for x in res:
             row = {'ip_address': x['_id'], 'count': x['total'], 'users': ",".join(sorted(x['usernames'])),
                    'codes': ",".join(sorted(x['codes']))}
             rv.append(row)
-        if raw:
-            rv, keys = get_raw_data(rv, 'ip_address', None, 'count')
+        if name == 'ip_prefixes':
+            rv = merge_prefixes(rv, ['count'], ['users', 'codes'])
+            if raw:
+                rv, keys = get_raw_data(rv, 'prefix', None, 'count')
+        else:
+            if raw:
+                rv, keys = get_raw_data(rv, 'ip_address', None, 'count')
     elif name == 'new_ips':
         keys = ['ip address', 'count', 'types']
         ips = {}
@@ -560,20 +623,28 @@ def get_apache_data(name, period, search, raw, to_time=None, from_time=None, hos
                 'total': x['total'],
                 'ips': ", ".join(x['ips'])}
             rv.append(row)
-    elif name == "size_ip":
+    elif name == "size_ip" or name == 'size_prefix':
         res = col.aggregate(
             [{"$match": {"$and": [{"name": "apache_access"}, mask, search_q]}},
              {"$group": {"_id": {"ip_address": "$ip_address"}, "total": {"$sum": "$size"}}},
              {"$sort": {"total": -1}}
              ])
-        keys = ['IP Address', 'size']
         for x in res:
             row = {'ip_address': x['_id']['ip_address'], 'size': x['total']}
             rv.append(row)
-        if raw:
-            rv, keys = get_raw_data(rv, 'ip_address', None, 'size')
+        if name == 'size_prefix':
+            keys = ['IP Prefixes', 'size']
+            rv = merge_prefixes(rv, ['size'], [])
+            if raw:
+                rv, keys = get_raw_data(rv, 'prefix', None, 'size')
+            else:
+                rv = [{'prefix': x['prefix'], 'size': format_size(x['size'])} for x in rv]
         else:
-            rv = [{'ip_address': x['ip_address'], 'size': format_size(x['size'])} for x in rv]
+            keys = ['IP Address', 'size']
+            if raw:
+                rv, keys = get_raw_data(rv, 'ip_address', None, 'size')
+            else:
+                rv = [{'ip_address': x['ip_address'], 'size': format_size(x['size'])} for x in rv]
 
     elif name == "size_user":
         res = col.aggregate(
@@ -629,10 +700,13 @@ def data():
             for k, v in x.items():
                 if k == 'ip_address' and k not in flags:
                     try:
-                        flag = geoip_db.lookup(v).country.lower()
+                        # flag = geoip_db.lookup(v).country.lower()
+                        # print('x,', flag)
+                        flag = geoip2_db.country(v).country.iso_code.lower()
+                        # print('ye', flag)
                         flags[v] = flag
-                    except (AttributeError, ValueError):
-                        # print(v)
+                    except (AttributeError, ValueError, geoip2.errors.AddressNotFoundError) as e:
+                        # print(e)
                         flags[v] = ''
 
             # Force every thing to string so we can truncate stuff in the template
@@ -647,13 +721,16 @@ dashboard_data_types = {
     "ssh_time_users": ("ssh", "time_users", "SSH - Users per Time"),
     "ssh_time_ips": ("ssh", "time_ips", "SSH - IPs per time"),
     "ssh_ipaddresses": ("ssh", "ip_addresses", "SSH - IP Addresses"),
+    "ssh_ipprefixes": ("ssh", "ip_prefixes", "SSH - IP Prefixes"),
     # "ssh_ips": ("ssh", "ip_addresses"),
     "apache_ipaddresses": ("apache", "ip_addresses", "Apache - IP Addresses"),
+    "apache_ipprefixes": ("apache", "ip_prefixes", "Apache - IP Prefixes"),
     "apache_time_ips": ("apache", "time_ips", "Apache - IPs per Time"),
     "apache_codes": ("apache", "codes", "Apache - Response codes"),
     "apache_method": ("apache", "method", "Apache - HTTP Methods"),
     "apache_protocol": ("apache", "protocol", "Apache - Protocols"),
     "apache_size": ("apache", "size_ip", "Apache - Volume per IP"),
+    "apache_size_prefix": ("apache", "size_prefix", "Apache - Volume per IP Prefix"),
     "apache_users": ("apache", "size_user", "Apache - Volume per User"),
 }
 
@@ -664,11 +741,13 @@ main_data_types = {
         "ssh_time_users": ("ssh", "time_users", "Users per Time"),
         "ssh_time_ips": ("ssh", "time_ips", "IPs per Time"),
         "ssh_ipaddresses": ("ssh", "ip_addresses", "IP Addresses"),
+        "ssh_ipprefixes": ("ssh", "ip_prefixes", "IP Prefixes"),
         "ssh_new_ips": ("ssh", "new_ips", "New IP Addresses"),
     },
     "apache": {
         # "ssh_ips": ("ssh", "ip_addresses"),
         "apache_ipaddresses": ("apache", "ip_addresses", "IP Addresses"),
+        "apache_ipprefixes": ("apache", "ip_prefixes", "IP Prefixes"),
         "apache_new_ips": ("apache", "new_ips", "New IP Addresses"),
         "apache_time_ips": ("apache", "time_ips", "IPs per Time"),
         "apache_codes": ("apache", "codes", "Response Codes"),
@@ -677,6 +756,7 @@ main_data_types = {
         "apache_urls": ("apache", "urls", "URLs"),
         "apache_time_urls": ("apache", "time_urls", "URLs per Time"),
         "apache_size": ("apache", "size_ip", "Volume per IP"),
+        "apache_prefix_size": ("apache", "size_prefix", "Volume per IP Prefix"),
         "apache_users": ("apache", "size_user", "Volume per User"),
     }
 }
