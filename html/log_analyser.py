@@ -413,7 +413,7 @@ def get_ssh_data(name, period, search, raw=False, to_time=None, from_time=None, 
 def join_str_list(list1, list2):
     a = list1.split(',')
     b = list2.split(',')
-    return ",".join(list(set(a + b)))
+    return ",".join(sorted(list(set(a + b))))
 
 
 def merge_prefixes(rv, sum_list, join_list, hash_list=None):
@@ -424,7 +424,6 @@ def merge_prefixes(rv, sum_list, join_list, hash_list=None):
             prefix = x['ip_address']
         else:
             prefix = str(prefix)
-        # print(prefix)
         key = prefix
         if hash_list is not None:
             key = prefix + str(hash(str([x[y] for y in hash_list])))
@@ -438,10 +437,7 @@ def merge_prefixes(rv, sum_list, join_list, hash_list=None):
             rv2[key]['prefix'] = prefix
             rv2[key].update(x)
             del rv2[key]['ip_address']
-    # for y in list(rv2.values()):
-    # print(y['prefix'])
     rv = rv2.values()
-    print(rv2)
     return rv
 
 

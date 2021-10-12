@@ -121,6 +121,7 @@ function load_graph(canvas_id, type, name, period, to,from, title, host)
             annotateLabel: "<%=v2+': '+v1+' '+v3%>",
             annotateDisplay: true,
             inGraphDataShow : true,
+            inGraphDataFontColor: "#000",
             yAxisMinimumInterval:1,
             forceGraphMin : 0,
             graphMin:0,
@@ -155,12 +156,16 @@ function load_graph(canvas_id, type, name, period, to,from, title, host)
         }
         if (res.data.length == 1) {
              baroptions.annotateLabel = "<%=v2+': '+v3%>"
-             console.log(data);
              if (data.datasets[0].data.length > 10) {
-             baroptions['inGraphDataShow'] = false;
+                 baroptions['inGraphDataShow'] = false;
              }
              new Chart(document.getElementById(canvas_id).getContext("2d")).Bar(data, baroptions);
         } else {
+             console.log(data);
+             console.log(data.datasets.length);
+              if (data.datasets.length > 10) {
+                 stacked_baroptions['inGraphDataShow'] = false;
+             }
              new Chart(document.getElementById(canvas_id).getContext("2d")).StackedBar(data, stacked_baroptions);
          }
     });
