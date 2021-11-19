@@ -1,23 +1,20 @@
 "use strict";
 
 var colours = [
-'#d43d51',
-'#dd584a',
-'#e27147',
-'#e48948',
-'#bdc367',
-'#e4a04e',
-'#e3b75a',
-'#e0cd6d',
-'#9bb965',
-'#7aae65',
-'#5aa267',
-'#38956a',
-'#00876c',
-
-//'#A2383B', '#c78200', '#2f6473', '#38A29F', '#277171', '#A23888', '#71275F','#A28D38',  '#F9F871',
-//    '#FFC258', '#F38E56', '#A93D62', '#D6605D', '#364C6A', '#2F4858', '#4D4D78', '#8E4375', '#6D4A7C',
-    ];
+    '#d43d51',
+    '#dd584a',
+    '#e27147',
+    '#e48948',
+    '#bdc367',
+    '#e4a04e',
+    '#e3b75a',
+    '#e0cd6d',
+    '#9bb965',
+    '#7aae65',
+    '#5aa267',
+    '#38956a',
+    '#00876c',
+];
 
 var g_name= '';
 var g_type = '';
@@ -30,11 +27,11 @@ var simple_types = [
     "apache_response",
     "apache_ips",
 ];
+
 function round(nr, dig)
 {
     if (dig == undefined) dig = 0
     var exp = 10 ** dig;
-//    console.log( Math.round((nr+ Number.EPSILON) * exp)/exp);
     return Math.round((nr+ Number.EPSILON) * exp)/exp;
 }
 
@@ -45,7 +42,6 @@ function calculate_height()
     var b_height = $("body").height();
     var w_height = window.innerHeight;
     var res_height = Math.floor(w_height-nb_height);
-//    console.log(w_height, nb_height, res_height, b_height);
     $('#maindiv').height(res_height);
 }
 function fmtChartJSPerso(n, p, fmt)
@@ -58,6 +54,8 @@ function fmtChartJSPerso(n, p, fmt)
         }
         return p;
     } else if (fmt == 'number') {
+        if (p < 10) return round(p, 2).toString();
+        if (p < 100) return round(p, 1).toString();
         if (p < 1024) return p;
         if (p < 1024 * 1024 ) return (round(p / 1024, 1)).toString() + "K";
         if (p < 1024 * 1024 * 1024 ) return (round(p / (1024 * 1024), 1)).toString() + "M";
@@ -77,7 +75,6 @@ function load_graph(canvas_id, type, name, period, to,from, title, host)
         contentType: "application/json;charset=UTF-8",
     }).done(function(data) {
         var res = JSON.parse(data);
-//        console.log (res);
     var baroptions= {
             graphTitle: title,
             graphTitleFontSize: 16,
@@ -88,7 +85,7 @@ function load_graph(canvas_id, type, name, period, to,from, title, host)
             legend: false,
             highLight: true,
             fmtXLabel: "text",
-            fmtYLabel:"number",
+            fmtYLabel: "number",
             rotateLabels: "smart",
             annotateLabel: "<%=v2+': '+v1+' '+v3%>",
             annotateDisplay: true,
@@ -121,7 +118,7 @@ function load_graph(canvas_id, type, name, period, to,from, title, host)
             annotateLabel: "<%=v2+': '+v1+' '+v3%>",
             annotateDisplay: true,
             inGraphDataShow : true,
-            inGraphDataFontColor: "#000",
+            inGraphDataFontColor: "#ccc",
             yAxisMinimumInterval:1,
             forceGraphMin : 0,
             graphMin:0,
@@ -175,12 +172,10 @@ function load_graph(canvas_id, type, name, period, to,from, title, host)
 
 function load_all_graphs()
 {
-//    var types = simple_types;
     var period = 'today';
     var to = null;
     var from = null;
     var host = $("#host_selector").find(":selected").val()
-//    console.log(host, 'aoeuauae@##');
 
     if ($("#daily").is(":checked")) {period = 'today';}
     else if ($("#hourly").is(":checked")) {period = 'hour';}
@@ -199,27 +194,7 @@ function load_all_graphs()
 }
 
 
-function set_hosts(selected)
-{
-//        console.log('hosts 1');
-  $.ajax({
-        url: script_root + '/hosts/',
-        type: 'POST',
-        data:  JSON.stringify({'selected': selected} ),
-        cache: false,
-        contentType: "application/json;charset=UTF-8",
-    }).done(function(data) {
-//        console.log('hosts');
-        var res = JSON.parse(data);
-//        console.log(res)
-        $('#host_selector').html(res.html);
-    });
-}
-
 $( document ).ready(function() {
-       
-//    add_items_lock = 0
-
     set_hosts()
     $('.dropdown-toggle').dropdown()
 
@@ -227,7 +202,6 @@ $( document ).ready(function() {
     $('body').css('background-size', 'contain');
     $("#custom").click(function() {
         $("#custom").prop("checked", true);
-//         $('#timepicker').toggleClass('d-none');
      });
 
     $("[name^='timeperiod").click(function(event) {
@@ -237,7 +211,6 @@ $( document ).ready(function() {
 
     $("#submit_custom").click(function() {
         $("#custom").prop("checked", true);
-//        $('#timepicker').toggleClass('d-none');
         $('#custom').dropdown('toggle');
         load_all_graphs();
     });

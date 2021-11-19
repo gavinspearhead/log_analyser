@@ -11,13 +11,14 @@ import logging
 #     'ctime': 1621087741.3265584
 # }
 # ]
+from typing import Union, Dict, Optional, List, Tuple
 
 
 class State:
-    def __init__(self):
-        self._state = None
+    def __init__(self) -> None:
+        self._state: List[Dict[str, Union[str, int]]] = []
 
-    def parse_state(self, filename):
+    def parse_state(self, filename: str) -> None:
         # print(filename)
         try:
             with open(filename, "r") as infile:
@@ -35,17 +36,17 @@ class State:
                 r_state.append(state_entry)
             except ValueError as e:
                 logging.warning(str(e))
-                pass
         self._state = r_state
-        # print(self._state)
 
-    def pos(self, path):
+    def pos(self, path: str) -> Optional[int]:
         for fl in self._state:
             if fl['path'] == path:
-                return fl['pos']
+                return int(fl['pos'])
+        return None
 
-    def id(self, path):
+    def id(self, path: str) -> Tuple[Optional[int], Optional[int]]:
         for fl in self._state:
-            if fl['path'] == path:
-                return fl['inode'], fl['device']
+            # print(fl)
+            if fl['path'] == path and fl['inode'] is not None and fl['device'] is not None:
+                return int(fl['inode']), int(fl['device'])
         return None, None

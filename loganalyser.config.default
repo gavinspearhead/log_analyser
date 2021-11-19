@@ -23,10 +23,10 @@
             "timestamp": "date",
             "port": "int"
 	     },
-	     "notify": {
+	     "notify": [{
 	        "name": "telegram",
 	        "condition": [ {"ip_address": "local", "username": "all"} ]
-	     }
+	     }]
     },
     {
      "regex": "(%SYSLOG_TIMESTAMP:timestamp) (%NAME:host).*: Failed (%STR:access) for (?:invalid user )?(%NAME:username) from (%IP:addr) port (%NUM:port) (%NAME:protocol)",
@@ -46,8 +46,8 @@
             "timestamp": "date",
             "port": "int"
         },
-	     "notify": {
-	     }
+	     "notify": [{
+	     }]
      },
      {
      "regex": "(%SYSLOG_TIMESTAMP:timestamp) (%NAME:host).*: Disconnected from user (%NAME:username) (%IP:addr) port (%NUM:port)",
@@ -65,8 +65,8 @@
             "timestamp": "date",
             "port": "int"
         },
-        "notify": {
-	    }
+        "notify": [{
+	    }]
      }
      ]
 },
@@ -97,11 +97,11 @@
             "timestamp": "date",
             "size": "int"
          },
-        "notify" : {
+        "notify" :[ {
 	        "name": "telegram",
 	        "condition": [ {"ip_address": ["nonlocal", "new"}, {"username": "new"}]
 	    }
-	    }
+	    }]
      ]
  }
 ]

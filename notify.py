@@ -1,119 +1,48 @@
 import logging
-import smtplib
-import ssl
-import xmpp
-import telegram_send
+
 import json
-import time
-
-
-class Notify_handler:
-    def __init__(self, config):
-        self._config = config
-        self._limit = int(config.get('limit', 0))  # rate limit
-        self._last_time = {}
-
-    def check_rate_limit(self, limit_type):
-        if self._limit == 0:
-            return False
-        now = int(time.time())
-        rv = limit_type in self._last_time and now - self._last_time[limit_type] < self._limit
-        if not rv:
-            self._last_time[limit_type] = now
-        return rv
-
-    def send_msg(self, msg, limit_type):
-        raise NotImplementedError
-
-
-class Notify_signal(Notify_handler):
-    def __init__(self, config):
-        super().__init__(config)
-
-    def send_msg(self, msg, limit_type):
-        raise NotImplementedError
-
-
-class Notify_jabber(Notify_handler):
-    def __init__(self, config):
-        super().__init__(config)
-        self._jabber_id = config.get('jabber_id', "")
-        self._send_to = config.get('to_address', "")
-        self._password = config.get('password', "")
-
-    def send_msg(self, msg, limit_type):
-        if self.check_rate_limit(limit_type):
-            return
-        jid = xmpp.protocol.JID(self._jabber_id)
-        connection = xmpp.Client(server=jid.getDomain())
-        connection.connect()
-        connection.auth(user=jid.getNode(), password=self._password, resource=jid.getResource())
-        connection.send(xmpp.protocol.Message(to=self._send_to, body=msg))
-        raise NotImplementedError
-
-
-class Notify_mail(Notify_handler):
-
-    def __init__(self, config):
-        super().__init__(config)
-        self._smtp_server = config.get('smtp_host', "")
-        self._smtp_port = config.get('smtp_port', "")
-        self._mail_from = config.get('from_address', "")
-        self._mail_to = config.get('to_address', "")
-        self._password = config.get('password', "")
-        self._subject = config.get('subject', "Log Notification")
-
-    def send_msg(self, msg, limit_type):
-        if self.check_rate_limit(limit_type):
-            return
-        context = ssl.create_default_context()
-        try:
-            with smtplib.SMTP_SSL(self._smtp_server, self._smtp_port, context=context) as server:
-                if self._password != '':
-                    server.login(self._mail_from, self._password)
-                message = "Subject: {}\n\n{}".format(self._subject, msg)
-                server.sendmail(self._mail_from, self._mail_to, message)
-        except smtplib.SMTPException as e:
-            raise ValueError(e)
-
-
-class Notify_telegram(Notify_handler):
-    def __init__(self, config):
-        super().__init__(config)
-        self._config_path = config.get('config_path', None)
-        self._subject = config.get('subject', "")
-
-    def send_msg(self, msg, limit_type):
-        if self.check_rate_limit(limit_type):
-            return
-        msg = "{}:\n\n{}".format(self._subject, msg)
-        telegram_send.send(messages=[msg], conf=self._config_path)
+from typing import Dict, Optional, Any, Type, List
+from notifiers import notify_syslog
+from notifiers import notify_http
+from notifiers import notify_telegram
+from notifiers import notify_signal
+from notifiers import notify_mqtt
+from notifiers import notify_udp
+from notifiers import notify_tcp
+from notifiers import notify_jabber
+from notifiers import notify_mail
+from notifiers import notify_handler
 
 
 class Notify:
-    def __init__(self):
-        self._notify = None
+    _notifiers = {
+        'telegram': notify_telegram.Notify_telegram,
+        'signal': notify_signal.Notify_signal,
+        'mail': notify_mail.Notify_mail,
+        'jabber': notify_jabber.Notify_jabber,
+        'tcp': notify_tcp.Notify_tcp,
+        'udp': notify_udp.Notify_udp,
+        'mqtt': notify_mqtt.Notify_mqtt,
+        'http': notify_http.Notify_http,
+        'syslog': notify_syslog.Notify_syslog,
+    }
 
-    def get_notify(self, name):
+    def __init__(self) -> None:
+        self._notify: List[Dict[str, Any]] = []
+
+    def get_notify(self, name: str) -> Optional[Dict[str, Any]]:
         for i in self._notify:
             if i['name'] == name:
                 return i
         return None
 
-    @staticmethod
-    def _factory(notify_type):
-        if notify_type == 'telegram':
-            return Notify_telegram
-        elif notify_type == 'signal':
-            return Notify_signal
-        elif notify_type == 'mail':
-            return Notify_mail
-        elif notify_type == 'jabber':
-            return Notify_jabber
+    def _factory(self, notify_type: str) -> Type[notify_handler.Notify_handler]:
+        if notify_type in self._notifiers:
+            return self._notifiers[notify_type]
         else:
             raise ValueError("Unknown notify type: {}".format(notify_type))
 
-    def parse_notify(self, filename):
+    def parse_notify(self, filename: str) -> None:
         with open(filename, "r") as infile:
             notify = json.load(infile)
         r_config = []
@@ -126,9 +55,8 @@ class Notify:
             r_config.append(tmp)
 
         self._notify = r_config
-        # print(self._notify)
 
-    def send(self, notify_type, msg, limit_type):
+    def send(self, notify_type: str, msg: str, limit_type: str) -> None:
         for i in self._notify:
             try:
                 if notify_type == i['type']:

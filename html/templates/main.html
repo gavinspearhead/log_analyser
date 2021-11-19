@@ -30,58 +30,51 @@
 <div id="maindiv" class="container-fluid max-height no-overflow">
     <nav class="navbar navbar-fixed-top">
     <div>
-        <h2 id="header"></h2>
-        <!-- Button trigger modal
-        <button type="button" id="hidefeeds" class="btn btn-secondary btn-sm"><span class="left_menu"><i class="fas fa-angle-double-left"></i></span><span class="right_menu hidden"><i class="fas fa-angle-double-right"></i></span></button>
-        <button type="button" class="btn btn-secondary btn-sm" id="addfeedbutton">Add Feed</button>
-        <button type="button" id="uploadopml" class="btn btn-secondary btn-sm">Import OPML</button>
-        <button type="button" id="editcategory" class="btn btn-secondary btn-sm">Categories</button>
-        &nbsp; &nbsp;
-        <button type="button" id="markread" class="btn btn-secondary btn-sm">Mark read</button> -->
+        <h2><span id="header"></span></h2>
     </div>
     <div class="navbar-right">
     <div class="input-group input-group-sm">
-        <input id="searchbar" class="form-control bg-dark border-darkish"  type="text" placeholder="Search">
+        <input id="searchbar" class="form-control bg-dark border-darkish" type="text" placeholder="Search">
          <span class="input-group-btn border-darkish">
         <button type="button" id="searchbutton" class="btn btn-secondary btn-sm border-darkish">Search</button></span>
+        &nbsp;
+        <div class="input-inline">
+            <div class="input-group input-group-sm">
+                <label for="host_selector" class="control-label">Host:&nbsp;&nbsp;</label>
+                <select id="host_selector" class="form-control form-control-sm bg-dark">
+                </select>
+            </div>
+        </div>
     </div>
     </div>
+
 </nav>
 
     <div class="row max-height">
         <div class="col-3 scrollable bottom_margin" id="logtypes">
-            <ul class="list-unstyled components" id="log_list">
+            <ul  class="_list-unstyled">
+            <li class="list-unstyled components" id="log_list">
                 <hr>
-                <li><b><a href="dashboard/">Dashboard</a></b></li>
-                <li><b>Apache</b>
+                <li class="list-unstyled components"><b><a href="dashboard/"><i class="fas fa-table">&nbsp;</i>Dashboard</a></b></li>
+                <li class="list-unstyled components">&nbsp;</li>
+                <li class="list-unstyled components"><b>Apache</b>
+                    <ul class="_list-unstyled">
                     {% for x in data_types["apache"] %}
-                    <ul role="button" id="{{data_types['apache'][x][0]}}_{{data_types['apache'][x][1]}}">{{data_types['apache'][x][2]}}</ul>
-
+                    <li  class="list-unstyled" role="button" id="{{data_types['apache'][x][0]}}_{{data_types['apache'][x][1]}}" data-type="Apache">{{data_types['apache'][x][2]}}</li>
                     {% endfor %}
-                    <!--ul role="button" id="apache_ip_addresses">IP Addresses</ul>
-                    <ul role="button" id="apache_new_ips">New IP Addresses</ul>
-                    <ul role="button" id="apache_time_ips">IP Addresses per time</ul>
-                    <ul role="button" id="apache_codes">Response Codes</ul>
-                    <ul role="button" id="apache_method">HTTP Method</ul>
-                    <ul role="button" id="apache_protocol">Protocol and versions</ul>
-                    <ul role="button" id="apache_urls">URLs</ul>
-                    <ul role="button" id="apache_time_urls">URLs per time</ul>
-                    <ul role="button" id="apache_size_ip">Total size per IP</ul-->
+                    </ul>
+
                 </li>
-                <li><b>SSH</b>
+                <li class="list-unstyled components"><b>SSH</b>
+                    <ul>
                     {% for x in data_types["ssh"] %}
-                    <ul role="button" id="{{data_types['ssh'][x][0]}}_{{data_types['ssh'][x][1]}}">{{data_types['ssh'][x][2]}}</ul>
-
+                    <li  class="list-unstyled components" role="button" id="{{data_types['ssh'][x][0]}}_{{data_types['ssh'][x][1]}}" data-type="SSH">{{data_types['ssh'][x][2]}}</li>
                     {% endfor %}
-                    <!--ul role="button"
-                    <ul role="button" id="ssh_users">Users</ul>
-                    <ul role="button" id="ssh_new_users">New Users</ul>
-                    <ul role="button" id="ssh_new_ips">New IPs</ul>
-                    <ul role="button" id="ssh_time_users">Users per time</ul>
-                    <ul role="button" id="ssh_ip_addresses">IP addresses</ul>
-                    <ul role="button" id="ssh_time_ips">IP addresses per time</ul-->
+                    </ul>
                 </li>
             </ul>
+            <br>
+            <h6><small>{{ prog_name}}</small> </h6>
         </div>
 
         <div class="col scrollable bottom_margin" id="itemstablediv">
@@ -134,7 +127,7 @@
 <script>
 var script_root = '{{ request.script_root }}';
 </script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/functions.js') }}"></script>
 <script type="text/javascript" src="{{ url_for('static', filename='js/custom.js') }}"></script>
-
 </body>
 </html>

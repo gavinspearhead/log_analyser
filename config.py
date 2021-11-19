@@ -1,6 +1,5 @@
 import json
 
-
 # Config
 # {
 #     #     'path': '/var/log/auth.log',
@@ -16,12 +15,15 @@ import json
 #     ]
 #
 # }
+from pprint import pprint
+from typing import Iterator, Optional, List, Dict, Any
+
 
 class Config:
-    def __init__(self):
-        self._config = None
+    def __init__(self) -> None:
+        self._config: List[Dict[str, Any]] = []
 
-    def parse_config(self, filename):
+    def parse_config(self, filename: str) -> None:
         with open(filename, "r") as infile:
             config = json.load(infile)
         r_config = []
@@ -41,45 +43,50 @@ class Config:
                         'emit': t['emit'],
                         'transform': t['transform'] if 'transform' in t else {}, 'notify': {}
                     }
-                    if 'notify' in t and 'condition' in t['notify'] and 'name' in t['notify']:
-                        notify = {
-                            'condition': t['notify']['condition'],
-                            'name': t['notify']['name']
-                        }
-                        log_filter['notify'] = notify
+                    if 'notify' in t:
+                        log_filter['notify'] = []
+                        for notifier in t['notify']:
+                            if 'condition' in notifier and 'name' in notifier:
+                                notify = {
+                                    'condition': notifier['condition'],
+                                    'name': notifier['name']
+                                }
+                                log_filter['notify'].append(notify)
                     tmp['filter'].append(log_filter)
             r_config.append(tmp)
         self._config = r_config
+        # pprint(self._config)
 
-    def get_retention(self, filename):
+    def get_retention(self, filename: str) -> Optional[int]:
         for i in self._config:
             if i['path'] == filename:
-                return i['retention']
-
-    def get_name(self, filename):
-        for i in self._config:
-            if i['path'] == filename:
-                return i['name']
+                return int(i['retention'])
         return None
 
-    def get_filter(self, filename):
+    def get_name(self, filename: str) -> Optional[str]:
+        for i in self._config:
+            if i['path'] == filename:
+                return str(i['name'])
+        return None
+
+    def get_filter(self, filename: str) -> Optional[Dict[str, Any]]:
         for i in self._config:
             if i['path'] == filename:
                 return i['filter']
         return None
 
-    def _check_filename(self, filename):
+    def _check_filename(self, filename: str) -> bool:
         for i in self._config:
             if i['path'] == filename:
                 return True
         return False
 
-    def get_files(self):
+    def get_files(self) -> Iterator[str]:
         for i in self._config:
-            yield i['path']
+            yield str(i['path'])
 
-    def get_output(self, filename):
+    def get_output(self, filename: str) -> Optional[str]:
         for i in self._config:
             if i['path'] == filename:
-                return i['output']
+                return str(i['output'])
         return None

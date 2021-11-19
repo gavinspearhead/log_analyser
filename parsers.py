@@ -1,8 +1,12 @@
 import datetime
 import ipaddress
+import json
 import logging
 import operator
 import re
+import typing
+from pprint import pprint
+
 import dateutil.parser
 from util import load_data_set
 from time_parsers import parse_apache_timestamp, parse_syslog_timestamp
@@ -12,20 +16,22 @@ from dateutil.tz import tzoffset
 from matches import is_new
 from local_ip import is_local_address
 
+from typing import Union, Dict, Optional, List, Tuple
+
 data_conversion = load_data_set()
 
 
 class LogParser(ABC):
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
-    def match(self, line):
+    def match(self, line: str):
         raise NotImplemented
 
-    def emit(self, matches, name):
+    def emit(self, matches, name: str):
         raise NotImplemented
 
-    def notify(self, matches, name):
+    def notify(self, matches, name: str):
         raise NotImplemented
 
 
@@ -54,7 +60,8 @@ class RegexParser(LogParser):
         '%': ('%', str)
     }
 
-    def __init__(self, reg_ex: str, format_str, transform, notify, notifiers, output, log_name):
+    def __init__(self, reg_ex: str, format_str: typing.Dict[str, str], transform: typing.Dict[str, str], notify,
+                 notifiers, output, log_name) -> None:
         super().__init__()
         self._pattern, self._filters = self.parse_regexp(reg_ex)
         # print(self._pattern)
@@ -66,20 +73,20 @@ class RegexParser(LogParser):
         self._output = output
         self._logname = log_name
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "{} : {}".format(self._pattern, self._format_str)
 
-    def _find_pattern(self, pattern):
+    def _find_pattern(self, pattern: str) -> Tuple[str, object]:
         if pattern in self._patterns:
             return self._patterns[pattern]
         raise ValueError("Pattern not found {}".format(pattern))
 
     @staticmethod
-    def _parse_pattern(line):
-        pos = 0
-        start = pos
-        colon_count = 0
-        parts = ["", "", ""]
+    def _parse_pattern(line: str) -> Tuple[str, str, str, int]:
+        pos: int = 0
+        start: int = pos
+        colon_count: int = 0
+        parts: List[str] = ["", "", ""]
         while True:
             try:
                 if line[pos] == ')':
@@ -95,12 +102,12 @@ class RegexParser(LogParser):
             except IndexError:
                 raise ValueError('missing closing parenthesis')
 
-    def parse_regexp(self, line):
+    def parse_regexp(self, line: str) -> typing.Tuple[str, typing.Dict]:
         # "foo (%BAR:name:param)
-        pos = 0
-        out = ""
-        filters = {}
-        index = 0
+        pos: int = 0
+        out: str = ""
+        filters: typing.Dict = {}
+        index: int = 0
         while pos < len(line):
             try:
                 if line[pos:pos + 2] == "(%":
@@ -120,11 +127,11 @@ class RegexParser(LogParser):
         # print(out, filters)
         return out, filters
 
-    def match(self, line):
+    def match(self, line: str) -> typing.List[str]:
         res = self._compiled_pattern.search(line)
         # print(line, res)
         if res is None:
-            return False
+            return []
         return list(res.groups())
 
     def emit(self, matches, name):
@@ -147,19 +154,30 @@ class RegexParser(LogParser):
         # print(res)
         return res
 
-    def notify(self, matches, name):
+    def notify(self, matches, name: str):
         res = self.emit(matches, name)
-        if self._notify != {}:
-            if self._match_notify_conditions(res, self._notify['condition']):
-                try:
-                    text = "".join(["{}: {}\n".format(x, y) for x, y in res.items()])
-                    self._notifiers.get_notify(self._notify['name'])['handler'].send_msg(text, self._logname)
-                except (KeyError, ValueError) as e:
-                    logging.warning("Can't send message: {}".format(str(e)))
+        print(self._notify)
+        for notifier in self._notify:
+            if notifier != {}:
+                if self._match_notify_conditions(res, notifier['condition']):
+                    try:
+                        notifier = self._notifiers.get_notify(notifier['name'])
+                        formatting = notifier['handler'].get_format()
+                        if formatting == "text":
+                            msg = "".join(["{}: {}\n".format(x, y) for x, y in res.items()])
+                        elif formatting == "json":
+                            msg = json.dumps({x: str(y) for x, y in res.items()})
+                        else:
+                            raise ValueError("Unknown format {}".format(formatting))
+
+                        notifier['handler'].send_msg(msg, self._logname)
+                        # self._notifiers.get_notify(self._notify['name'])['handler'].send_msg(text, self._logname)
+                    except (KeyError, ValueError) as e:
+                        logging.warning("Can't send message: {}".format(str(e)))
         return None
 
     @staticmethod
-    def _compare(element, clause):
+    def _compare(element: str, clause) -> bool:
         # print(element, clause)
         if element.startswith("<="):
             val = element[2:]
@@ -198,7 +216,7 @@ class RegexParser(LogParser):
         else:
             return op(clause, val)
 
-    def _match_notify_conditions(self, matches, conditions):
+    def _match_notify_conditions(self, matches, conditions) -> typing.Optional[bool]:
         # print(matches)
         # print(conditions)
         res = False
@@ -279,7 +297,7 @@ class RegexParser(LogParser):
 
 
 if __name__ == "__main__":
-    r = RegexParser('', None, None, None, None, None)
+    r = RegexParser('', None, None, None, None, None, None)
 
     rs = {'hostname': 'mercenary', 'ip_address': '2001:984:47bf:1:36a3:bf3c:d751:500b', 'unknown': '-', 'username': '-',
           'timestamp': datetime.datetime(2021, 9, 23, 18, 19, 33, tzinfo=tzoffset(None, 7200)), 'http_command': 'GET',

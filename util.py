@@ -1,11 +1,15 @@
+import logging
 import os
 import socket
+import typing
+
 import netifaces as ni
 
 
-def get_own_ip(ip_version=4):
+def get_own_ip(ip_version: int = 4) -> str:
     interfaces = ni.interfaces()
-    address = None
+    address = ''
+
     for i in interfaces:
         if i != "lo":
             try:
@@ -14,14 +18,15 @@ def get_own_ip(ip_version=4):
                 elif ip_version == 6:
                     address = ni.ifaddresses(i)[ni.AF_INET6][0]['addr']
                 else:
-                    raise KeyError
+                    logging.debug("Unknown IP version: {}".format(ip_version))
+                    raise KeyError("Unknown IP version")
                 break
             except KeyError:
                 pass
     return address
 
 
-def load_data_set():
+def load_data_set() -> typing.Dict[str, str]:
     return {
         '$fqdn': socket.getfqdn(),
         '$hostname': socket.gethostname().lower(),
@@ -30,7 +35,7 @@ def load_data_set():
     }
 
 
-def pid_running(pid_filename):
+def pid_running(pid_filename: str) -> bool:
     try:
         with open(pid_filename, "r") as fn:
             s = int(fn.readline().strip())
