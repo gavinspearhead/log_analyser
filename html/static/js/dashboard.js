@@ -65,7 +65,7 @@ function fmtChartJSPerso(n, p, fmt)
     }
 }
 
-function load_graph(canvas_id, type, name, period, to,from, title, host)
+function load_graph(canvas_id, type, name, period, to,from, title, host, show)
 {
     $.ajax({
         url: script_root + '/data/',
@@ -75,7 +75,7 @@ function load_graph(canvas_id, type, name, period, to,from, title, host)
         contentType: "application/json;charset=UTF-8",
     }).done(function(data) {
         var res = JSON.parse(data);
-    var baroptions= {
+        var baroptions= {
             graphTitle: title,
             graphTitleFontSize: 16,
             canvasBorders: true,
@@ -136,8 +136,8 @@ function load_graph(canvas_id, type, name, period, to,from, title, host)
                 datasets: [{ data: [0]}]
             }
             new Chart(document.getElementById(canvas_id).getContext("2d")).Pie(data_sets, pieoptions);
-            return false;
-         }
+
+         } else {
         var data_sets = [];
         for (var i = 0; i < res.data.length; i++) {
             data_sets.push( {
@@ -158,13 +158,17 @@ function load_graph(canvas_id, type, name, period, to,from, title, host)
              }
              new Chart(document.getElementById(canvas_id).getContext("2d")).Bar(data, baroptions);
         } else {
-             console.log(data);
-             console.log(data.datasets.length);
               if (data.datasets.length > 10) {
                  stacked_baroptions['inGraphDataShow'] = false;
              }
              new Chart(document.getElementById(canvas_id).getContext("2d")).StackedBar(data, stacked_baroptions);
-         }
+        }
+        }
+        if (show) {
+            $("#"+ canvas_id).show();
+        } else {
+            $("#"+ canvas_id).hide();
+        }
     });
     return false;
 }
@@ -188,8 +192,11 @@ function load_all_graphs()
         to = $("#to_date").val();
     }
     $("canvas").each(function() {
-        load_graph($(this).attr('id'), $(this).attr("data-type"), $(this).attr("data-name"), period, to, from,
-                   $(this).attr("data-title"), host);
+        var checkbox_index = $(this).attr('data-type') + "_" + $(this).attr('data-name');
+        var checkbox_val= $("#checkbox_" + checkbox_index)[0].checked;
+        var canvas_id = $(this).attr('id') ;
+        load_graph(canvas_id, $(this).attr("data-type"), $(this).attr("data-name"), period, to, from,
+                   $(this).attr("data-title"), host, checkbox_val);
     })
 }
 
@@ -197,7 +204,6 @@ function load_all_graphs()
 $( document ).ready(function() {
     set_hosts()
     $('.dropdown-toggle').dropdown()
-
     $('body').css('background-image', 'url("' + script_root + '/static/img/background.gif")');
     $('body').css('background-size', 'contain');
     $("#custom").click(function() {
@@ -217,5 +223,21 @@ $( document ).ready(function() {
 
     $("#host_selector").change(function() { load_all_graphs(); })
     $('#itemstablediv').scrollTop(0);
+
+    $("[id^='checkbox_'").click(function(event) {
+        var value = $(this)[0].checked;
+        var this_id = $(this).attr('id');
+        $.ajax({
+            url: script_root + '/set_item/',
+            type: 'PUT',
+            data:  JSON.stringify({ item: $(this).attr('name') , value: value} ),
+            contentType: "application/json;charset=UTF-8",
+            cache: false
+        }).done(function() {
+            var name = $("#"+ this_id)[0].name;
+            $("#canvas_" + name).toggle();
+        });
+    });
+
     load_all_graphs();
 });

@@ -15,7 +15,7 @@ import pytz
 import tzlocal
 
 from typing import List, Dict, Any, Optional, Tuple, Union
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, make_response
 from humanfriendly import format_size
 from natsort import natsorted
 from copy import deepcopy
@@ -34,17 +34,17 @@ dashboard_data_types: Dict[str, Tuple[str, str, str]] = {
     "ssh_users": ("ssh", "users", "SSH - Users"),
     "ssh_time_users": ("ssh", "time_users", "SSH - Users per Time"),
     "ssh_time_ips": ("ssh", "time_ips", "SSH - IPs per time"),
-    "ssh_ipaddresses": ("ssh", "ip_addresses", "SSH - IP Addresses"),
-    "ssh_ipprefixes": ("ssh", "ip_prefixes", "SSH - IP Prefixes"),
-    "apache_ipaddresses": ("apache", "ip_addresses", "Apache - IP Addresses"),
-    "apache_ipprefixes": ("apache", "ip_prefixes", "Apache - IP Prefixes"),
+    "ssh_ip_addresses": ("ssh", "ip_addresses", "SSH - IP Addresses"),
+    "ssh_ip_prefixes": ("ssh", "ip_prefixes", "SSH - IP Prefixes"),
+    "apache_ip_addresses": ("apache", "ip_addresses", "Apache - IP Addresses"),
+    "apache_ip_prefixes": ("apache", "ip_prefixes", "Apache - IP Prefixes"),
     "apache_time_ips": ("apache", "time_ips", "Apache - IPs per Time"),
     "apache_codes": ("apache", "codes", "Apache - Response codes"),
     "apache_method": ("apache", "method", "Apache - HTTP Methods"),
     "apache_protocol": ("apache", "protocol", "Apache - Protocols"),
-    "apache_size": ("apache", "size_ip", "Apache - Volume per IP"),
+    "apache_size_ip": ("apache", "size_ip", "Apache - Volume per IP"),
     "apache_size_prefix": ("apache", "size_prefix", "Apache - Volume per IP Prefix"),
-    "apache_users": ("apache", "size_user", "Apache - Volume per User"),
+    "apache_size_user": ("apache", "size_user", "Apache - Volume per User"),
 }
 
 main_data_types: Dict[str, Dict[str, Tuple[str, str, str]]] = {
@@ -53,13 +53,13 @@ main_data_types: Dict[str, Dict[str, Tuple[str, str, str]]] = {
         "ssh_new_users": ("ssh", "new_users", "SSH New Users"),
         "ssh_time_users": ("ssh", "time_users", "Users per Time"),
         "ssh_time_ips": ("ssh", "time_ips", "IPs per Time"),
-        "ssh_ipaddresses": ("ssh", "ip_addresses", "IP Addresses"),
-        "ssh_ipprefixes": ("ssh", "ip_prefixes", "IP Prefixes"),
+        "ssh_ip_addresses": ("ssh", "ip_addresses", "IP Addresses"),
+        "ssh_ip_prefixes": ("ssh", "ip_prefixes", "IP Prefixes"),
         "ssh_new_ips": ("ssh", "new_ips", "New IP Addresses"),
     },
     "apache": {
-        "apache_ipaddresses": ("apache", "ip_addresses", "IP Addresses"),
-        "apache_ipprefixes": ("apache", "ip_prefixes", "IP Prefixes"),
+        "apache_ip_addresses": ("apache", "ip_addresses", "IP Addresses"),
+        "apache_ip_prefixes": ("apache", "ip_prefixes", "IP Prefixes"),
         "apache_new_ips": ("apache", "new_ips", "New IP Addresses"),
         "apache_time_ips": ("apache", "time_ips", "IPs per Time"),
         "apache_codes": ("apache", "codes", "Response Codes"),
@@ -67,11 +67,15 @@ main_data_types: Dict[str, Dict[str, Tuple[str, str, str]]] = {
         "apache_protocol": ("apache", "protocol", "Protocols and Versions"),
         "apache_urls": ("apache", "urls", "URLs"),
         "apache_time_urls": ("apache", "time_urls", "URLs per Time"),
-        "apache_size": ("apache", "size_ip", "Volume per IP"),
-        "apache_prefix_size": ("apache", "size_prefix", "Volume per IP Prefix"),
-        "apache_users": ("apache", "size_user", "Volume per User"),
+        "apache_size_ip": ("apache", "size_ip", "Volume per IP"),
+        "apache_size_prefix": ("apache", "size_prefix", "Volume per IP Prefix"),
+        "apache_size_user": ("apache", "size_user", "Volume per User"),
     }
 }
+
+enabled_data_types: Dict[str, Dict[str, Tuple[str, str, str]]] = {}
+for x in dashboard_data_types:
+    enabled_data_types[x] = True
 
 
 class Data_set:
@@ -105,19 +109,19 @@ class Data_set:
 
     @property
     def raw_data(self) -> Dict[str, Dict[str, Union[int, str]]]:
-        return self.get_raw_data()
+        return self._get_raw_data()
 
-    def get_raw_data(self) -> Dict[str, Dict[str, Union[int, str]]]:
+    def _get_raw_data(self) -> Dict[str, Dict[str, Union[int, str]]]:
         if self._field1 is None or self._field3 is None:
             raise ValueError("Can't get raw data")
-        rv, self._raw_keys = self._get_raw_data()
+        rv, self._raw_keys = self._get_raw_data_internal()
         return rv
 
     @property
-    def data(self):
-        return self.get_data()
+    def data(self) -> List[Dict[str, Union[int, str]]]:
+        return self._get_data()
 
-    def get_data(self) -> List[Dict[str, Union[int, str]]]:
+    def _get_data(self) -> List[Dict[str, Union[int, str]]]:
         return self._data
 
     def merge_prefixes(self, sum_list: List[str], join_list: List[str], hash_list: Optional[List[str]] = None) -> None:
@@ -166,7 +170,7 @@ class Data_set:
             template['time'] = t
             self._data.append(deepcopy(template))
 
-    def _get_raw_data(self) -> Tuple[ Dict[str, Dict[str, Union[str, int]]], List[str]]:
+    def _get_raw_data_internal(self) -> Tuple[Dict[str, Dict[str, Union[str, int]]], List[str]]:
         field1_values: List[str] = natsorted(list(set([x[self._field1] for x in self._data])))
         field2_values: List[str] = []
         if self._field2 is not None:
@@ -338,6 +342,8 @@ def get_ssh_user_time_data(search: str, mask: Dict[str, Any], raw: bool, time_ma
     local_tz: str = str(tzlocal.get_localzone())
     col = get_mongo_connection()
     search_q = get_search_mask_ssh(search)
+    if time_mask == 'day':
+        time_mask = 'dayOfMonth'
     res = col.aggregate(
         [{"$match": {"$and": [{"name": "auth_ssh"}, mask, search_q]}},
          {"$group": {"_id": {"username": "$username", "type": "$type",
@@ -497,7 +503,7 @@ def get_ssh_new_ips_data(search: str, mask: Dict[str, Any], start_time: datetime
     data = Data_set(None, None, None)
     data.set_keys(['IP address', 'Count', 'Types', 'Hosts'])
     for ip2 in new_ips:
-        data.add_data_row( {
+        data.add_data_row({
             'ip_address': ip2,
             'count': new_ips[ip2][0],
             'types': new_ips[ip2][1],
@@ -999,12 +1005,39 @@ def hosts() -> Tuple[str, int, Dict[str, str]]:
         return json.dumps({'success': False, "message": str(e)}), 200, {'ContentType': 'application/json'}
 
 
+def modify_enable_types(cookie_val):
+    global enabled_data_types
+    if cookie_val is not None:
+        cookie_val = json.loads(cookie_val)
+        for x in dashboard_data_types:
+            if x in cookie_val and x in enabled_data_types:
+                enabled_data_types[x] = cookie_val[x]
+
+
+@app.route('/set_item/', methods=['PUT'])
+def set_item():
+    cookie_val = request.cookies.get('dashboard_selects', None)
+    modify_enable_types(cookie_val)
+    item = request.json.get('item', '').strip()
+    value = request.json.get('value', None)
+    resp = make_response(('ok', 200, {'ContentType': 'application/json'}))
+    if item != '' and value is not None:
+        enabled_data_types[item] = value
+        resp.set_cookie('dashboard_selects', json.dumps(enabled_data_types))
+    return resp
+
+
 @app.route('/dashboard/')
 def dashboard() -> Tuple[str, int, Dict[str, str]]:
     try:
+        cookie_val = request.cookies.get('dashboard_selects', None)
+        modify_enable_types(cookie_val)
         prog_name = "{} {}".format(PROG_NAME_WEB, VERSION)
-        return render_template("dashboard.html", data_types=dashboard_data_types, prog_name=prog_name), 200, {
-            'ContentType': 'application/json'}
+        resp = make_response(render_template("dashboard.html", data_types=dashboard_data_types, prog_name=prog_name,
+                                             main_data_types=main_data_types, enabled=enabled_data_types), 200, \
+                             {'ContentType': 'application/json'})
+        resp.set_cookie('test', 'test')
+        return resp
     except Exception as e:
         return json.dumps({'success': False, "message": str(e)}), 200, {'ContentType': 'application/json'}
 

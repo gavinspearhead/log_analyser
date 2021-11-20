@@ -76,25 +76,57 @@
         </div>
 
     </nav>
+
+    <div class="row max-height">
+        <div class="col-3 scrollable bottom_margin">
+            <li class="list-unstyled components"><b>SSH</b>
+                <ul>
+                    {% for x in main_data_types["ssh"] %}
+                    {% if x in data_types %}
+                    <li class="list-unstyled components" role="button" id="{{main_data_types['ssh'][x][0]}}_{{main_data_types['ssh'][x][1]}}" data-type="SSH">
+                        <input type="checkbox" name="{{x}}" id="checkbox_{{x}}" {% if enabled[x] %}checked{%endif%}>
+                        {{main_data_types['ssh'][x][2]}}
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+                </ul>
+            </li>
+            <li class="list-unstyled components"><b>Apache</b>
+                <ul class="_list-unstyled">
+                {% for x in main_data_types["apache"] %}
+                    {% if x in data_types %}
+                <li class="list-unstyled" role="button" id="{{main_data_types['apache'][x][0]}}_{{main_data_types['apache'][x][1]}}" data-type="Apache">
+                    <input type="checkbox" name="{{x}}" id="checkbox_{{x}}" {% if enabled[x] %}checked{%endif%}>
+                    {{main_data_types['apache'][x][2]}}
+                </li>
+                   {% endif %}
+                {% endfor %}
+                </ul>
+
+            </li>
+
+        </div>
+
 <div class="col scrollable bottom_margin" id="itemstablediv">
-    <br>
-    <div class="row no-gutters">
-        {% for k in data_types %}
-            <div class="col-md-auto" id="canvas_div_{{x}}">
-                <canvas id="canvas_{{k}}" height="480" width="640" data-type="{{data_types[k][0]}}" data-name="{{data_types[k][1]}}" data-title="{{data_types[k][2]}}"></canvas>
-            </div>
-        {% endfor %}
-    </div>
-    <h6><small>{{ prog_name}}</small> </h6>
+<br>
+<div class="row no-gutters">
+    {% for k in data_types %}
+        <div class="col-md-auto" id="canvas_div_{{x}}">
+            <canvas id="canvas_{{k}}" height="480" width="640" data-type="{{data_types[k][0]}}" data-name="{{data_types[k][1]}}" data-title="{{data_types[k][2]}}"></canvas>
+        </div>
+    {% endfor %}
+</div>
+<h6><small>{{ prog_name}}</small> </h6>
 </div>
 
+</div>
 </div>
 
 <div id="alert_success_bar" class="hidden alert_bar alert_outer">
 <div class="alert alert-success alert-dismissable fade show" role="alert">
-    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-    <span aria-hidden="true">&times;</span>
-  </button>
+<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+<span aria-hidden="true">&times;</span>
+</button>
   <span id="alert_success_text"></span>
 </div>
 </div>

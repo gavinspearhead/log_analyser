@@ -35,7 +35,7 @@
     <div class="navbar-right">
     <div class="input-group input-group-sm">
         <input id="searchbar" class="form-control bg-dark border-darkish" type="text" placeholder="Search">
-         <span class="input-group-btn border-darkish">
+        <span class="input-group-btn border-darkish">
         <button type="button" id="searchbutton" class="btn btn-secondary btn-sm border-darkish">Search</button></span>
         &nbsp;
         <div class="input-inline">
@@ -52,7 +52,7 @@
 
     <div class="row max-height">
         <div class="col-3 scrollable bottom_margin" id="logtypes">
-            <ul  class="_list-unstyled">
+            <ul class="_list-unstyled">
             <li class="list-unstyled components" id="log_list">
                 <hr>
                 <li class="list-unstyled components"><b><a href="dashboard/"><i class="fas fa-table">&nbsp;</i>Dashboard</a></b></li>
@@ -60,7 +60,7 @@
                 <li class="list-unstyled components"><b>Apache</b>
                     <ul class="_list-unstyled">
                     {% for x in data_types["apache"] %}
-                    <li  class="list-unstyled" role="button" id="{{data_types['apache'][x][0]}}_{{data_types['apache'][x][1]}}" data-type="Apache">{{data_types['apache'][x][2]}}</li>
+                    <li class="list-unstyled" role="button" id="{{data_types['apache'][x][0]}}_{{data_types['apache'][x][1]}}" data-type="Apache">{{data_types['apache'][x][2]}}</li>
                     {% endfor %}
                     </ul>
 
@@ -68,7 +68,7 @@
                 <li class="list-unstyled components"><b>SSH</b>
                     <ul>
                     {% for x in data_types["ssh"] %}
-                    <li  class="list-unstyled components" role="button" id="{{data_types['ssh'][x][0]}}_{{data_types['ssh'][x][1]}}" data-type="SSH">{{data_types['ssh'][x][2]}}</li>
+                    <li class="list-unstyled components" role="button" id="{{data_types['ssh'][x][0]}}_{{data_types['ssh'][x][1]}}" data-type="SSH">{{data_types['ssh'][x][2]}}</li>
                     {% endfor %}
                     </ul>
                 </li>
