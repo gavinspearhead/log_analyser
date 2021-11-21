@@ -26,6 +26,10 @@
 <div id="maindiv" class="container-fluid max-height no-overflow">
     <nav class="navbar navbar-fixed-top" id="navbar">
         <div>
+            <button class="btn btn-secondary" id="compact_button">
+                <i id="left_button" class="fas fa-arrow-left"></i>
+                <i id="right_button" class="fas fa-arrow-right" style="display:none"> </i>
+            </button>
             <button class="btn btn-secondary"><a href=".."><i class="fas fa-home"></i></a></button>
 
             <input type="radio" class="btn-check" name="timeperiod" id="hourly" autocomplete="off" >
@@ -78,32 +82,34 @@
     </nav>
 
     <div class="row max-height">
-        <div class="col-3 scrollable bottom_margin">
-            <li class="list-unstyled components"><b>SSH</b>
+        <div class="col-2 scrollable bottom_margin" id="left_menu">
+            {% for y in main_data_types %}
+            <li class="list-unstyled components"><b>{{ main_data_titles[y] }}</b>
                 <ul>
-                    {% for x in main_data_types["ssh"] %}
+                    {% for x in main_data_types[y] %}
                     {% if x in data_types %}
-                    <li class="list-unstyled components" role="button" id="{{main_data_types['ssh'][x][0]}}_{{main_data_types['ssh'][x][1]}}" data-type="SSH">
-                        <input type="checkbox" name="{{x}}" id="checkbox_{{x}}" {% if enabled[x] %}checked{%endif%}>
-                        {{main_data_types['ssh'][x][2]}}
+                    <li class="list-unstyled components" role="button" id="{{main_data_types[y][x][0]}}_{{main_data_types[y][x][1]}}" data-type="{{y}}">
+                        <input class="form-check-input" type="checkbox" name="{{x}}" id="checkbox_{{x}}" {% if enabled[x] %}checked{%endif%} >
+                        <label for="checkbox_{{x}}"> {{main_data_types[y][x][2]}}</label>
                     </li>
                     {% endif %}
                     {% endfor %}
                 </ul>
             </li>
-            <li class="list-unstyled components"><b>Apache</b>
-                <ul class="_list-unstyled">
-                {% for x in main_data_types["apache"] %}
-                    {% if x in data_types %}
-                <li class="list-unstyled" role="button" id="{{main_data_types['apache'][x][0]}}_{{main_data_types['apache'][x][1]}}" data-type="Apache">
-                    <input type="checkbox" name="{{x}}" id="checkbox_{{x}}" {% if enabled[x] %}checked{%endif%}>
-                    {{main_data_types['apache'][x][2]}}
-                </li>
-                   {% endif %}
-                {% endfor %}
-                </ul>
+            {% endfor %}
+<!--            <li class="list-unstyled components"><b>Apache</b>-->
+<!--                <ul class="_list-unstyled">-->
+<!--                {% for x in main_data_types["apache"] %}-->
+<!--                    {% if x in data_types %}-->
+<!--                <li class="list-unstyled" role="button" id="{{main_data_types['apache'][x][0]}}_{{main_data_types['apache'][x][1]}}" data-type="Apache">-->
+<!--                    <input type="checkbox" name="{{x}}" id="checkbox_{{x}}" {% if enabled[x] %}checked{%endif%}>-->
+<!--                    {{main_data_types['apache'][x][2]}}-->
+<!--                </li>-->
+<!--                   {% endif %}-->
+<!--                {% endfor %}-->
+<!--                </ul>-->
 
-            </li>
+<!--            </li>-->
 
         </div>
 

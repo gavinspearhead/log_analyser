@@ -47,6 +47,11 @@ dashboard_data_types: Dict[str, Tuple[str, str, str]] = {
     "apache_size_user": ("apache", "size_user", "Apache - Volume per User"),
 }
 
+main_data_titles = {
+    'ssh' : "SSH",
+    'apache': 'Apache'
+}
+
 main_data_types: Dict[str, Dict[str, Tuple[str, str, str]]] = {
     'ssh': {
         "ssh_users": ("ssh", "users", "Users"),
@@ -1034,12 +1039,13 @@ def dashboard() -> Tuple[str, int, Dict[str, str]]:
         modify_enable_types(cookie_val)
         prog_name = "{} {}".format(PROG_NAME_WEB, VERSION)
         resp = make_response(render_template("dashboard.html", data_types=dashboard_data_types, prog_name=prog_name,
-                                             main_data_types=main_data_types, enabled=enabled_data_types), 200, \
-                             {'ContentType': 'application/json'})
+                                             main_data_types=main_data_types, enabled=enabled_data_types,
+                                             main_data_titles=main_data_titles), 200,
+                                             {'ContentType': 'application/json'})
         resp.set_cookie('test', 'test')
         return resp
     except Exception as e:
-        return json.dumps({'success': False, "message": str(e)}), 200, {'ContentType': 'application/json'}
+        return make_response(json.dumps({'success': False, "message": str(e)}), 200, {'ContentType': 'application/json'})
 
 
 @app.route('/')

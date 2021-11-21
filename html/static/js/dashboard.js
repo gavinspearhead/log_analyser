@@ -164,23 +164,20 @@ function load_graph(canvas_id, type, name, period, to,from, title, host, show)
              new Chart(document.getElementById(canvas_id).getContext("2d")).StackedBar(data, stacked_baroptions);
         }
         }
-        if (show) {
-            $("#"+ canvas_id).show();
-        } else {
-            $("#"+ canvas_id).hide();
-        }
+//        if (show) {
+//            $("#"+ canvas_id).show();
+//        } else {
+//            $("#"+ canvas_id).hide();
+//        }
     });
     return false;
 }
 
-
-function load_all_graphs()
+function get_period()
 {
-    var period = 'today';
     var to = null;
     var from = null;
-    var host = $("#host_selector").find(":selected").val()
-
+    var period = 'today';
     if ($("#daily").is(":checked")) {period = 'today';}
     else if ($("#hourly").is(":checked")) {period = 'hour';}
     else if ($("#yesterday").is(":checked")) {period = 'yesterday';}
@@ -191,12 +188,34 @@ function load_all_graphs()
         from = $("#from_date").val();
         to = $("#to_date").val();
     }
+    return {period, from, to}
+}
+
+
+function load_all_graphs()
+{
+    var host = $("#host_selector").find(":selected").val()
+    let {period, from, to} = get_period()
+//    if ($("#daily").is(":checked")) {period = 'today';}
+//    else if ($("#hourly").is(":checked")) {period = 'hour';}
+//    else if ($("#yesterday").is(":checked")) {period = 'yesterday';}
+//    else if ($("#weekly").is(":checked")) {period = 'week';}
+//    else if ($("#monthly").is(":checked")) {period = 'month';}
+//    else if ($("#custom").is(":checked")) {
+//        period = 'custom';
+//        from = $("#from_date").val();
+//        to = $("#to_date").val();
+//    }
     $("canvas").each(function() {
         var checkbox_index = $(this).attr('data-type') + "_" + $(this).attr('data-name');
         var checkbox_val= $("#checkbox_" + checkbox_index)[0].checked;
-        var canvas_id = $(this).attr('id') ;
-        load_graph(canvas_id, $(this).attr("data-type"), $(this).attr("data-name"), period, to, from,
+        var canvas_id = $(this).attr('id');
+        if (checkbox_val){
+            load_graph(canvas_id, $(this).attr("data-type"), $(this).attr("data-name"), period, to, from,
                    $(this).attr("data-title"), host, checkbox_val);
+        } else {
+            $("#"+canvas_id).hide()
+        }
     })
 }
 
@@ -235,9 +254,26 @@ $( document ).ready(function() {
             cache: false
         }).done(function() {
             var name = $("#"+ this_id)[0].name;
-            $("#canvas_" + name).toggle();
+            var checkbox_val= $("#"+ this_id)[0].checked;
+            console.log(name, checkbox_val);
+            if (checkbox_val) {
+                var host = $("#host_selector").find(":selected").val();
+                let {period, from, to} = get_period();
+                console.log(host, period, from, to);
+                load_graph($("#canvas_" + name).attr('id'), $("#canvas_" + name).attr("data-type"), $("#canvas_" + name).attr("data-name"), period, to, from,
+                   $("#canvas_" + name).attr("data-title"), host, checkbox_val);
+                $("#canvas_" + name).show();
+            } else{
+                $("#canvas_" + name).hide();
+            }
+
         });
     });
-
+    $("#compact_button").click(function() {
+        $("#left_menu").toggle();
+        $("#left_button").toggle();
+        $("#right_button").toggle();
+    })
     load_all_graphs();
+    console.log(window);
 });

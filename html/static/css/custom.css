@@ -138,10 +138,6 @@ td {
     border-color: #666 !important;
 }
 
-.hidden {
-    display: none;
-}
-
 .invisible {
     visibility: hidden;
 }
