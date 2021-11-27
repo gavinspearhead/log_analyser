@@ -44,13 +44,15 @@ function calculate_height()
     var res_height = Math.floor(w_height-nb_height);
     $('#maindiv').height(res_height);
 }
+
+
 function fmtChartJSPerso(n, p, fmt)
 {
     if (fmt == "text") {
         if (p.length > 15) {
             var s =p;
             var l =p.length;
-            return s.slice(0,5) + "..." + s.slice(l-5, l);
+            return s.slice(0, 5) + "..." + s.slice(l-5, l);
         }
         return p;
     } else if (fmt == 'number') {
@@ -65,7 +67,7 @@ function fmtChartJSPerso(n, p, fmt)
     }
 }
 
-function load_graph(canvas_id, type, name, period, to,from, title, host, show)
+function load_graph(canvas_id, type, name, period, to,from, title, host)
 {
     $.ajax({
         url: script_root + '/data/',
@@ -136,39 +138,33 @@ function load_graph(canvas_id, type, name, period, to,from, title, host, show)
                 datasets: [{ data: [0]}]
             }
             new Chart(document.getElementById(canvas_id).getContext("2d")).Pie(data_sets, pieoptions);
-
-         } else {
-        var data_sets = [];
-        for (var i = 0; i < res.data.length; i++) {
-            data_sets.push( {
-                fillColor: colours[i % colours.length],
-                strokeColor: colours[i % colours.length],
-                data: res.data[i],
-                title: res.labels[i]
-            })
-        }
-        var data = {
-           labels: res.fields,
-           datasets: data_sets
-        }
-        if (res.data.length == 1) {
-             baroptions.annotateLabel = "<%=v2+': '+v3%>"
-             if (data.datasets[0].data.length > 10) {
-                 baroptions['inGraphDataShow'] = false;
-             }
-             new Chart(document.getElementById(canvas_id).getContext("2d")).Bar(data, baroptions);
         } else {
-              if (data.datasets.length > 10) {
-                 stacked_baroptions['inGraphDataShow'] = false;
-             }
-             new Chart(document.getElementById(canvas_id).getContext("2d")).StackedBar(data, stacked_baroptions);
+            var data_sets = [];
+            for (var i = 0; i < res.data.length; i++) {
+                data_sets.push( {
+                    fillColor: colours[i % colours.length],
+                    strokeColor: colours[i % colours.length],
+                    data: res.data[i],
+                    title: res.labels[i]
+                });
+            }
+            var data = {
+                labels: res.fields,
+                datasets: data_sets
+            }
+            if (res.data.length == 1) {
+                 baroptions.annotateLabel = "<%=v2+': '+v3%>"
+                 if (data.datasets[0].data.length > 10) {
+                     baroptions['inGraphDataShow'] = false;
+                 }
+                 new Chart(document.getElementById(canvas_id).getContext("2d")).Bar(data, baroptions);
+            } else {
+                 if (data.datasets.length > 10) {
+                     stacked_baroptions['inGraphDataShow'] = false;
+                 }
+                 new Chart(document.getElementById(canvas_id).getContext("2d")).StackedBar(data, stacked_baroptions);
+            }
         }
-        }
-//        if (show) {
-//            $("#"+ canvas_id).show();
-//        } else {
-//            $("#"+ canvas_id).hide();
-//        }
     });
     return false;
 }
@@ -196,27 +192,17 @@ function load_all_graphs()
 {
     var host = $("#host_selector").find(":selected").val()
     let {period, from, to} = get_period()
-//    if ($("#daily").is(":checked")) {period = 'today';}
-//    else if ($("#hourly").is(":checked")) {period = 'hour';}
-//    else if ($("#yesterday").is(":checked")) {period = 'yesterday';}
-//    else if ($("#weekly").is(":checked")) {period = 'week';}
-//    else if ($("#monthly").is(":checked")) {period = 'month';}
-//    else if ($("#custom").is(":checked")) {
-//        period = 'custom';
-//        from = $("#from_date").val();
-//        to = $("#to_date").val();
-//    }
     $("canvas").each(function() {
         var checkbox_index = $(this).attr('data-type') + "_" + $(this).attr('data-name');
         var checkbox_val= $("#checkbox_" + checkbox_index)[0].checked;
         var canvas_id = $(this).attr('id');
-        if (checkbox_val){
+        if (checkbox_val) {
             load_graph(canvas_id, $(this).attr("data-type"), $(this).attr("data-name"), period, to, from,
-                   $(this).attr("data-title"), host, checkbox_val);
+                       $(this).attr("data-title"), host);
         } else {
-            $("#"+canvas_id).hide()
+            $("#"+canvas_id).hide();
         }
-    })
+    });
 }
 
 
@@ -230,7 +216,7 @@ $( document ).ready(function() {
      });
 
     $("[name^='timeperiod").click(function(event) {
-       load_all_graphs()
+       load_all_graphs();
     });
     calculate_height();
 
@@ -255,15 +241,14 @@ $( document ).ready(function() {
         }).done(function() {
             var name = $("#"+ this_id)[0].name;
             var checkbox_val= $("#"+ this_id)[0].checked;
-            console.log(name, checkbox_val);
             if (checkbox_val) {
                 var host = $("#host_selector").find(":selected").val();
                 let {period, from, to} = get_period();
-                console.log(host, period, from, to);
-                load_graph($("#canvas_" + name).attr('id'), $("#canvas_" + name).attr("data-type"), $("#canvas_" + name).attr("data-name"), period, to, from,
-                   $("#canvas_" + name).attr("data-title"), host, checkbox_val);
+                load_graph($("#canvas_" + name).attr('id'), $("#canvas_" + name).attr("data-type"),
+                           $("#canvas_" + name).attr("data-name"), period, to, from,
+                           $("#canvas_" + name).attr("data-title"), host);
                 $("#canvas_" + name).show();
-            } else{
+            } else {
                 $("#canvas_" + name).hide();
             }
 
@@ -274,6 +259,12 @@ $( document ).ready(function() {
         $("#left_button").toggle();
         $("#right_button").toggle();
     })
+    console.log(window)
+    if ($(window).width() < 768) {
+        $("#left_menu").hide();
+        $("#left_button").hide();
+        $("#right_button").show();
+    }
+
     load_all_graphs();
-    console.log(window);
 });

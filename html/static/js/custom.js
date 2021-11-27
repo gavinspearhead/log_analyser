@@ -10,9 +10,10 @@ var max_datapoints = 120;
 function set_ip_click_handler() {
     $(".ip_addr").unbind("click");
     $(".ip_addr").click(function(event) {
-        window.open('https://dnschecker.org/ip-whois-lookup.php?query=' + encodeURIComponent($(this).text()));
+//        window.open('https://dnschecker.org/ip-whois-lookup.php?query=' + encodeURIComponent($(this).text()));
+        window.open(script_root + "/reverse_dns/"+ encodeURIComponent($(this).text()));
     });
-    }
+}
 
 function handle_request(name, type, search, title, title_type)
 {
@@ -84,5 +85,4 @@ $( document ).ready(function() {
 
     set_log_handlers();
     handle_request('users', "ssh", '', 'Users', "SSH");
-
 });

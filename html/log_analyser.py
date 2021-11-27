@@ -7,12 +7,16 @@ import logging
 import os.path
 import re
 import sys
+from traceback import print_exc
+
+import dns.resolver
 import pymongo
 import dateutil.parser
 import geoip2.database
 import geoip2.errors
 import pytz
 import tzlocal
+import whois
 
 from typing import List, Dict, Any, Optional, Tuple, Union
 from flask import Flask, render_template, request, make_response
@@ -48,7 +52,7 @@ dashboard_data_types: Dict[str, Tuple[str, str, str]] = {
 }
 
 main_data_titles = {
-    'ssh' : "SSH",
+    'ssh': "SSH",
     'apache': 'Apache'
 }
 
@@ -219,7 +223,7 @@ def get_mongo_connection() -> pymongo.collection.Collection:
 
 def get_period_mask(period: str, to_time: Optional[str] = None, from_time: Optional[str] = None,
                     tz: pytz.BaseTzInfo = pytz.UTC) -> Tuple[
-    datetime.datetime, datetime.datetime, str, Union[List[int], List[Tuple[int, int]]]]:
+                    datetime.datetime, datetime.datetime, str, Union[List[int], List[Tuple[int, int]]]]:
     now = datetime.datetime.now(tz)
     intervals: Union[List[int], List[Tuple[int, int]]] = []
     if period == 'today':
@@ -1014,9 +1018,9 @@ def modify_enable_types(cookie_val):
     global enabled_data_types
     if cookie_val is not None:
         cookie_val = json.loads(cookie_val)
-        for x in dashboard_data_types:
-            if x in cookie_val and x in enabled_data_types:
-                enabled_data_types[x] = cookie_val[x]
+        for item in dashboard_data_types:
+            if item in cookie_val and item in enabled_data_types:
+                enabled_data_types[item] = cookie_val[item]
 
 
 @app.route('/set_item/', methods=['PUT'])
@@ -1026,7 +1030,7 @@ def set_item():
     item = request.json.get('item', '').strip()
     value = request.json.get('value', None)
     resp = make_response(('ok', 200, {'ContentType': 'application/json'}))
-    if item != '' and value is not None:
+    if item != '' and value is not None and item in enabled_data_types:
         enabled_data_types[item] = value
         resp.set_cookie('dashboard_selects', json.dumps(enabled_data_types))
     return resp
@@ -1041,11 +1045,67 @@ def dashboard() -> Tuple[str, int, Dict[str, str]]:
         resp = make_response(render_template("dashboard.html", data_types=dashboard_data_types, prog_name=prog_name,
                                              main_data_types=main_data_types, enabled=enabled_data_types,
                                              main_data_titles=main_data_titles), 200,
-                                             {'ContentType': 'application/json'})
+                             {'ContentType': 'application/json'})
         resp.set_cookie('test', 'test')
         return resp
     except Exception as e:
-        return make_response(json.dumps({'success': False, "message": str(e)}), 200, {'ContentType': 'application/json'})
+        return make_response(json.dumps({'success': False, "message": str(e)}), 200,
+                             {'ContentType': 'application/json'})
+
+
+@app.route('/reverse_dns/<item>/', methods=["GET"])
+def reverse_dns(item) -> Tuple[str, int, Dict[str, str]]:
+    try:
+        print(item)
+        result = []
+        result1 = []
+        addr = ipaddress.ip_address(item)
+        addr = dns.reversename.from_address(item)
+        print(addr)
+        result = dns.resolver.resolve(addr, 'PTR')
+    except ValueError as e:
+        # print_exc(e)
+        try:
+            result = dns.resolver.resolve(item, 'A')
+            result1 = dns.resolver.resolve(item, 'AAAA')
+            print(result)
+        except Exception:
+            pass
+    except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN):
+        result = ['Not found']
+        pass
+    print(result)
+    data = []
+    for x in result:
+        data.append(str(x))
+    for x in result1:
+        data.append(str(x))
+    print(data)
+    try:
+        whois_data = whois.whois(item, True)
+        wd = {
+            "name": whois_data.name,
+            "registrar": whois_data.registrar,
+            "registrar address": whois_data.registrar_address,
+            "registrar zip code": whois_data.registrar_zip_code,
+            "registrar city": whois_data.registrar_city,
+            "registrar country": whois_data.registrant_country,
+            "creation date": whois_data.creation_date,
+            'expiration data': whois_data.expiration_date,
+            'last_updated': whois_data.last_updated,
+            'status': whois_data.status,
+            "statuses": whois_data.statuses,
+            "dnssec": whois_data.dnssec,
+            'name_servers': whois_data.name_servers,
+            "whois_server": whois_data.whois_server,
+        }
+    except whois.parser.PywhoisError:
+        wd = {}
+    except Exception as e:
+        print_exc(e)
+
+    return render_template("reverse_dns.html", result=data, item=item, whois_data=wd), 200, {
+        'ContentType': 'application/json'}
 
 
 @app.route('/')
