@@ -251,7 +251,6 @@ $( document ).ready(function() {
             } else {
                 $("#canvas_" + name).hide();
             }
-
         });
     });
     $("#compact_button").click(function() {
@@ -259,7 +258,6 @@ $( document ).ready(function() {
         $("#left_button").toggle();
         $("#right_button").toggle();
     })
-    console.log(window)
     if ($(window).width() < 768) {
         $("#left_menu").hide();
         $("#left_button").hide();

@@ -1056,33 +1056,28 @@ def dashboard() -> Tuple[str, int, Dict[str, str]]:
 @app.route('/reverse_dns/<item>/', methods=["GET"])
 def reverse_dns(item) -> Tuple[str, int, Dict[str, str]]:
     try:
-        print(item)
         result = []
         result1 = []
-        addr = ipaddress.ip_address(item)
+        ipaddress.ip_address(item)
         addr = dns.reversename.from_address(item)
-        print(addr)
         result = dns.resolver.resolve(addr, 'PTR')
     except ValueError as e:
-        # print_exc(e)
         try:
             result = dns.resolver.resolve(item, 'A')
             result1 = dns.resolver.resolve(item, 'AAAA')
-            print(result)
         except Exception:
             pass
-    except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN):
+    except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout):
         result = ['Not found']
         pass
-    print(result)
     data = []
-    for x in result:
-        data.append(str(x))
-    for x in result1:
-        data.append(str(x))
-    print(data)
+    for res in result:
+        data.append(str(res))
+    for res in result1:
+        data.append(str(res))
     try:
         whois_data = whois.whois(item, True)
+        # print(whois_data)
         wd = {
             "name": whois_data.name,
             "registrar": whois_data.registrar,
@@ -1096,9 +1091,11 @@ def reverse_dns(item) -> Tuple[str, int, Dict[str, str]]:
             'status': whois_data.status,
             "statuses": whois_data.statuses,
             "dnssec": whois_data.dnssec,
-            'name_servers': whois_data.name_servers,
+            'name_servers': ", ".join(whois_data.name_servers) if whois_data.name_servers is not None else None,
+            'emails': ", ".join(whois_data.emails) if whois_data.emails is not None else None,
             "whois_server": whois_data.whois_server,
         }
+        wd = {i: wd[i] for i in wd if wd[i] is not None}
     except whois.parser.PywhoisError:
         wd = {}
     except Exception as e:

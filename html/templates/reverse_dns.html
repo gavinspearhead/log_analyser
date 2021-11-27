@@ -1,26 +1,5 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-	<meta charset="utf-8">
-	<title>Log Analyser</title>
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<link href="{{ url_for('static', filename='css/custom.css') }}" rel="stylesheet">
-	<link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
-	<link href="{{ url_for('static', filename='css/fontawesome-all.min.css') }}" rel="stylesheet">
-	<link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
-    <script type="text/javascript" src="{{ url_for('static', filename='js/jquery-3.6.0.min.js') }}"></script>
-    <script type="text/javascript" src="{{ url_for('static', filename='js/popper.js') }}"></script>
-    <script type="text/javascript" src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
 
-<style> {# included here because relative path #}
-@font-face {
-    font-family: "My Custom Font";
-    src: url("{{ request.script_root }}/static/fonts/fontawesome-webfont.ttf") format("truetype");
-}
-</style>
-</head>
-<body class="text-white bg-dark">
-<h4> DNS for {{item}}</h4>
+<h4>DNS for {{item}}</h4>
 <ul>
 {% for x in result %}
 	<li>{{ x }}</li>
@@ -36,7 +15,3 @@
 
 </ul>
 {%endif%}
-<div id="maindiv" class="container-fluid max-height no-overflow">
-
-</body>
-</html>

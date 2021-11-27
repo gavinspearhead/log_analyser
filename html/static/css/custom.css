@@ -145,3 +145,18 @@ td {
 h2#header {
   text-transform: capitalize;
 }
+
+
+body.dark .modal-content {
+	background-color: #1e2229;
+}
+
+body.dark .modal-content .modal-header,
+body.dark .modal-content .modal-footer {
+	border-color: #424242;
+}
+
+body.dark .form-control {
+	background-color: #282d36;
+	border-color: #282d36;
+}

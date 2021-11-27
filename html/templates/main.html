@@ -51,22 +51,21 @@
 </nav>
 
     <div class="row max-height">
-        <div class="col-3 scrollable bottom_margin" id="logtypes">
-            <ul class="_list-unstyled">
+        <div class="col-auto scrollable bottom_margin" id="logtypes">
+            <ul class="list-group">
             <li class="list-unstyled components" id="log_list">
                 <hr>
                 <li class="list-unstyled components"><b><a href="dashboard/"><i class="fas fa-table">&nbsp;</i>Dashboard</a></b></li>
                 <li class="list-unstyled components">&nbsp;</li>
                 <li class="list-unstyled components"><b>Apache</b>
-                    <ul class="_list-unstyled">
+                    <ul class="">
                     {% for x in data_types["apache"] %}
                     <li class="list-unstyled" role="button" id="{{data_types['apache'][x][0]}}_{{data_types['apache'][x][1]}}" data-type="Apache">{{data_types['apache'][x][2]}}</li>
                     {% endfor %}
                     </ul>
-
                 </li>
-                <li class="list-unstyled components"><b>SSH</b>
-                    <ul>
+                <li class="list-inline components"><b>SSH</b>
+                    <ul class="">
                     {% for x in data_types["ssh"] %}
                     <li class="list-unstyled components" role="button" id="{{data_types['ssh'][x][0]}}_{{data_types['ssh'][x][1]}}" data-type="SSH">{{data_types['ssh'][x][2]}}</li>
                     {% endfor %}
@@ -123,6 +122,24 @@
 </div>
 </div>
 
+
+<div class="modal" tabindex="-1" id="dns_popup">
+  <div class="modal-dialog modal-lg bg-dark">
+    <div class="modal-content bg-dark">
+      <div class="modal-header bg-dark">
+        <h5 class="modal-title">DNS Info</h5>
+        <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body" id="dns_popup_content">
+      </div>
+      <div class="modal-footer bg-dark">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
 var script_root = '{{ request.script_root }}';
