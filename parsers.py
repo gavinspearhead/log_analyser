@@ -156,7 +156,7 @@ class RegexParser(LogParser):
 
     def notify(self, matches, name: str):
         res = self.emit(matches, name)
-        print(self._notify)
+        # print(self._notify)
         for notifier in self._notify:
             if notifier != {}:
                 if self._match_notify_conditions(res, notifier['condition']):

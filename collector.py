@@ -161,7 +161,7 @@ if __name__ == '__main__':
                 output_conn = factory(out)(out)
                 output_conn.connect()
                 for x in filters:
-                    print(x)
+                    # print(x)
                     res.append(
                         RegexParser(x['regex'], x['emit'], x['transform'], x['notify'], notify, output_conn, log_name))
 

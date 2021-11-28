@@ -47,7 +47,7 @@ class FileHandler:
             stat_info = os.stat(self._path)
             self._inode = stat_info.st_ino
             self._dev = stat_info.st_dev
-            print(self._dev, self._inode)
+            # print(self._dev, self._inode)
             self._file = open(self._path, "r")
             if inode != self._inode or dev != self._dev:
                 # we got the same file as before
