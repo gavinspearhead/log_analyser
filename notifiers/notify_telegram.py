@@ -1,8 +1,5 @@
 from typing import Dict, List, Optional
 import telegram_send
-
-
-
 from notifiers import notify_handler
 
 

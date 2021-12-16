@@ -7,8 +7,6 @@ import logging
 import os.path
 import re
 import sys
-from traceback import print_exc
-
 import dns.resolver
 import pymongo
 import dateutil.parser
@@ -19,10 +17,11 @@ import tzlocal
 import whois
 
 from typing import List, Dict, Any, Optional, Tuple, Union
-from flask import Flask, render_template, request, make_response
+from flask import Flask, render_template, request, make_response, Response
 from humanfriendly import format_size
 from natsort import natsorted
 from copy import deepcopy
+from traceback import print_exc
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -34,22 +33,44 @@ config_path: str = os.path.dirname(__file__)
 app = Flask(__name__)
 geoip2_db = geoip2.database.Reader(os.path.join(os.path.dirname(__file__), 'data/GeoLite2-Country.mmdb'))
 
-dashboard_data_types: Dict[str, Tuple[str, str, str]] = {
-    "ssh_users": ("ssh", "users", "SSH - Users"),
-    "ssh_time_users": ("ssh", "time_users", "SSH - Users per Time"),
-    "ssh_time_ips": ("ssh", "time_ips", "SSH - IPs per time"),
-    "ssh_ip_addresses": ("ssh", "ip_addresses", "SSH - IP Addresses"),
-    "ssh_ip_prefixes": ("ssh", "ip_prefixes", "SSH - IP Prefixes"),
-    "apache_ip_addresses": ("apache", "ip_addresses", "Apache - IP Addresses"),
-    "apache_ip_prefixes": ("apache", "ip_prefixes", "Apache - IP Prefixes"),
-    "apache_time_ips": ("apache", "time_ips", "Apache - IPs per Time"),
-    "apache_codes": ("apache", "codes", "Apache - Response codes"),
-    "apache_method": ("apache", "method", "Apache - HTTP Methods"),
-    "apache_protocol": ("apache", "protocol", "Apache - Protocols"),
-    "apache_size_ip": ("apache", "size_ip", "Apache - Volume per IP"),
-    "apache_size_prefix": ("apache", "size_prefix", "Apache - Volume per IP Prefix"),
-    "apache_size_user": ("apache", "size_user", "Apache - Volume per User"),
-}
+
+class Dashboard_data_types:
+    _dashboard_data_types: Dict[str, Tuple[str, str, str]] = {
+        "ssh_users": ("ssh", "users", "SSH - Users"),
+        "ssh_time_users": ("ssh", "time_users", "SSH - Users per Time"),
+        "ssh_time_ips": ("ssh", "time_ips", "SSH - IPs per time"),
+        "ssh_ip_addresses": ("ssh", "ip_addresses", "SSH - IP Addresses"),
+        "ssh_ip_prefixes": ("ssh", "ip_prefixes", "SSH - IP Prefixes"),
+        "apache_ip_addresses": ("apache", "ip_addresses", "Apache - IP Addresses"),
+        "apache_ip_prefixes": ("apache", "ip_prefixes", "Apache - IP Prefixes"),
+        "apache_time_ips": ("apache", "time_ips", "Apache - IPs per Time"),
+        "apache_codes": ("apache", "codes", "Apache - Response codes"),
+        "apache_method": ("apache", "method", "Apache - HTTP Methods"),
+        "apache_protocol": ("apache", "protocol", "Apache - Protocols"),
+        "apache_size_ip": ("apache", "size_ip", "Apache - Volume per IP"),
+        "apache_size_prefix": ("apache", "size_prefix", "Apache - Volume per IP Prefix"),
+        "apache_size_user": ("apache", "size_user", "Apache - Volume per User"),
+    }
+
+    def __init__(self):
+        self._enabled_data_types: Dict[str, bool] = {}
+        for item in self._dashboard_data_types:
+            self._enabled_data_types[item] = True
+
+    def toggle(self, item, value):
+        if item in self._enabled_data_types:
+            self._enabled_data_types[item] = value
+        else:
+            raise ValueError("Item does not exist")
+
+    @property
+    def data_types(self):
+        return self._dashboard_data_types
+
+    @property
+    def enabled_data_types(self):
+        return self._enabled_data_types
+
 
 main_data_titles = {
     'ssh': "SSH",
@@ -81,10 +102,6 @@ main_data_types: Dict[str, Dict[str, Tuple[str, str, str]]] = {
         "apache_size_user": ("apache", "size_user", "Volume per User"),
     }
 }
-
-enabled_data_types: Dict[str, Dict[str, Tuple[str, str, str]]] = {}
-for x in dashboard_data_types:
-    enabled_data_types[x] = True
 
 
 class Data_set:
@@ -162,10 +179,9 @@ class Data_set:
 
     def prepare_time_output(self, time_mask: str, intervals: List[Union[int, str, Tuple[int, int]]],
                             template: Dict[str, Union[Optional[str], int]]) -> None:
-        t: str = ""
         for i in intervals:
             if type(i) == int or type(i) == str:
-                t = '{}'.format(i)
+                t: str = '{}'.format(i)
             elif type(i) == tuple:
                 if time_mask == 'minute':
                     f_str = "{:02}:{:02}"
@@ -190,11 +206,11 @@ class Data_set:
             if self._field2 is not None:
                 for u in field2_values:
                     data_set[t][u] = 0
-        for x in self._data:
+        for item in self._data:
             if self._field2 is not None:
-                data_set[x[self._field1]][x[self._field2]] += x[self._field3]
+                data_set[item[self._field1]][item[self._field2]] += item[self._field3]
             else:
-                data_set[x[self._field1]] = x[self._field3]
+                data_set[item[self._field1]] = item[self._field3]
 
         rv = data_set
         keys: List[str] = list(field1_values)
@@ -222,8 +238,8 @@ def get_mongo_connection() -> pymongo.collection.Collection:
 
 
 def get_period_mask(period: str, to_time: Optional[str] = None, from_time: Optional[str] = None,
-                    tz: pytz.BaseTzInfo = pytz.UTC) -> Tuple[
-                    datetime.datetime, datetime.datetime, str, Union[List[int], List[Tuple[int, int]]]]:
+                    tz: pytz.BaseTzInfo = pytz.UTC) -> Tuple[datetime.datetime, datetime.datetime, str, Union[List[int],
+                                                             List[Tuple[int, int]]]]:
     now = datetime.datetime.now(tz)
     intervals: Union[List[int], List[Tuple[int, int]]] = []
     if period == 'today':
@@ -532,13 +548,13 @@ def get_ssh_new_user_data(search: str, mask: Dict[str, Any], start_time: datetim
          {"$sort": {"total": -1}}
          ])
     for x in res:
-        u: str = x['_id']['username']
+        username: str = x['_id']['username']
         ip: str = x['_id']['ip_address']
-        t: int = x['total']
-        o = pytz.UTC.localize(x['oldest'])
-        if u not in users:
-            users[u] = {}
-        users[u][ip] = (t, o)
+        total: int = x['total']
+        oldest = pytz.UTC.localize(x['oldest'])
+        if username not in users:
+            users[username] = {}
+        users[username][ip] = (total, oldest)
     res = col.aggregate(
         [{"$match": {"$and": [{"name": "auth_ssh"}, {"type": "connect"}, mask, search_q]}},
          {"$group": {
@@ -1015,12 +1031,11 @@ def hosts() -> Tuple[str, int, Dict[str, str]]:
 
 
 def modify_enable_types(cookie_val):
-    global enabled_data_types
     if cookie_val is not None:
         cookie_val = json.loads(cookie_val)
-        for item in dashboard_data_types:
-            if item in cookie_val and item in enabled_data_types:
-                enabled_data_types[item] = cookie_val[item]
+        for item in dashboard_data_types.data_types:
+            if item in cookie_val and item in dashboard_data_types.enabled_data_types:
+                dashboard_data_types.toggle(item, cookie_val[item])
 
 
 @app.route('/set_item/', methods=['PUT'])
@@ -1030,22 +1045,23 @@ def set_item():
     item = request.json.get('item', '').strip()
     value = request.json.get('value', None)
     resp = make_response(('ok', 200, {'ContentType': 'application/json'}))
-    if item != '' and value is not None and item in enabled_data_types:
-        enabled_data_types[item] = value
-        resp.set_cookie('dashboard_selects', json.dumps(enabled_data_types))
+    if item != '' and value is not None:
+        dashboard_data_types.toggle(item, value)
+        resp.set_cookie('dashboard_selects', json.dumps(dashboard_data_types.enabled_data_types))
     return resp
 
 
 @app.route('/dashboard/')
-def dashboard() -> Tuple[str, int, Dict[str, str]]:
+def dashboard() -> Response:
     try:
         cookie_val = request.cookies.get('dashboard_selects', None)
         modify_enable_types(cookie_val)
-        prog_name = "{} {}".format(PROG_NAME_WEB, VERSION)
-        resp = make_response(render_template("dashboard.html", data_types=dashboard_data_types, prog_name=prog_name,
-                                             main_data_types=main_data_types, enabled=enabled_data_types,
-                                             main_data_titles=main_data_titles), 200,
-                             {'ContentType': 'application/json'})
+        program_name = "{} {}".format(PROG_NAME_WEB, VERSION)
+        resp = make_response(
+            render_template("dashboard.html", data_types=dashboard_data_types.data_types, prog_name=program_name,
+                            main_data_types=main_data_types, enabled=dashboard_data_types.enabled_data_types,
+                            main_data_titles=main_data_titles), 200,
+            {'ContentType': 'application/json'})
         resp.set_cookie('test', 'test')
         return resp
     except Exception as e:
@@ -1055,19 +1071,19 @@ def dashboard() -> Tuple[str, int, Dict[str, str]]:
 
 @app.route('/reverse_dns/<item>/', methods=["GET"])
 def reverse_dns(item) -> Tuple[str, int, Dict[str, str]]:
+    result = []
+    result1 = []
     try:
-        result = []
-        result1 = []
         ipaddress.ip_address(item)
-        addr = dns.reversename.from_address(item)
-        result = dns.resolver.resolve(addr, 'PTR')
-    except ValueError as e:
+        address = dns.reversename.from_address(item)
+        result = dns.resolver.resolve(address, 'PTR')
+    except ValueError:
         try:
             result = dns.resolver.resolve(item, 'A')
-            result1 = dns.resolver.resolve(item, 'AAAA')
-        except Exception:
+        except dns.exception.DNSException:
             pass
-    except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout):
+        result1 = dns.resolver.resolve(item, 'AAAA')
+    except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout, dns.exception.DNSException):
         result = ['Not found']
         pass
     data = []
@@ -1116,14 +1132,22 @@ def homepage() -> Tuple[str, int, Dict[str, str]]:
         return json.dumps({'success': False, "message": str(e)}), 200, {'ContentType': 'application/json'}
 
 
-if __name__ == "__main__":
+dashboard_data_types = Dashboard_data_types()
+
+
+def main():
     logging.debug("{} {}".format(PROG_NAME_WEB, VERSION))
-    parser = argparse.ArgumentParser(description="Log anaylyser")
+    parser = argparse.ArgumentParser(description="Log Analyser")
     parser.add_argument("-c", '--config', help="Config File Directory", default="", metavar="FILE")
     args = parser.parse_args()
     if args.config:
+        global config_path
         config_path = args.config
 
     app.jinja_env.trim_blocks = True
     app.jinja_env.lstrip_blocks = True
     app.run(host='0.0.0.0', debug=True)
+
+
+if __name__ == "__main__":
+    main()

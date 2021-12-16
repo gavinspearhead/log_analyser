@@ -1,7 +1,5 @@
 import functools
 import typing
-from typing import Callable
-import pymongo.collection
 from output import MongoOutput
 
 

@@ -1,4 +1,6 @@
 import json
+# from pprint import pprint
+from typing import Iterator, Optional, List, Dict, Any
 
 # Config
 # {
@@ -15,8 +17,6 @@ import json
 #     ]
 #
 # }
-from pprint import pprint
-from typing import Iterator, Optional, List, Dict, Any
 
 
 class Config:
@@ -26,7 +26,7 @@ class Config:
     def parse_config(self, filename: str) -> None:
         with open(filename, "r") as infile:
             config = json.load(infile)
-        r_config = []
+        r_config: List = []
         for config_element in config:
             if 'path' not in config_element or 'name' not in config_element or 'output' not in config_element:
                 continue

@@ -1,5 +1,4 @@
 import logging
-
 import json
 from typing import Dict, Optional, Any, Type, List
 from notifiers import notify_syslog

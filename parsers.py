@@ -5,18 +5,16 @@ import logging
 import operator
 import re
 import typing
-from pprint import pprint
-
 import dateutil.parser
-from util import load_data_set
-from time_parsers import parse_apache_timestamp, parse_syslog_timestamp
+# from pprint import pprint
 
+from util import load_data_set
+from time_parsers import parse_apache_timestamp, parse_syslog_timestamp, parse_iso_timestamp
 from abc import ABC
 from dateutil.tz import tzoffset
 from matches import is_new
 from local_ip import is_local_address
-
-from typing import Union, Dict, Optional, List, Tuple
+from typing import List, Tuple
 
 data_conversion = load_data_set()
 
@@ -55,7 +53,8 @@ class RegexParser(LogParser):
         'APACHE_TIMESTAMP': ('\\[\\d+/[a-zA-Z]+/\\d+:\\d+:\\d+:\\d+\\s[+-]?\\d+]', parse_apache_timestamp),
         'SYSLOG_TIMESTAMP': ('[A-Za-z]+\\s+\\d+\\s+\\d+:\\d+:\\d+', parse_syslog_timestamp),
         'ISOTIME': (
-            '\\d{4}-[01]\\d-[0-3]\\dT[0-2]\\d:[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:[+-][0-2]\\d:[0-5]\\d|Z)?', str),
+            '\\d{4}-?[01]\\d-?[0-3]\\dT[0-2]\\d:?[0-5]\\d:?[0-5]\\d(?:\\.\\d+)?(?:[+-][0-2]\\d(:?[0-5]\\d)?|Z|z)?',
+            parse_iso_timestamp),
         'DATE': ('\\d{4}-[01]\\d-[0-3]\\dT[0-2]\\d', str),
         '%': ('%', str)
     }

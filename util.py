@@ -47,3 +47,9 @@ def pid_running(pid_filename: str) -> bool:
     except PermissionError:
         return True
     return False
+
+
+def write_pidfile(pid_file: str) -> None:
+    with open(pid_file, 'w') as f:
+        pid = str(os.getpid())
+        f.write(pid)

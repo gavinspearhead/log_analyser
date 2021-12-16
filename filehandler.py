@@ -10,7 +10,7 @@ from parsers import LogParser
 
 
 class FileHandler:
-    def __init__(self, filename: str, pos: int, parsers: typing.List, inode: int, dev: int, output_type:str, name: str,
+    def __init__(self, filename: str, pos: int, parsers: typing.List, inode: int, dev: int, output_type: str, name: str,
                  retention: int) -> None:
         self._pos: int = pos
         self._lock = threading.Lock()
@@ -57,7 +57,7 @@ class FileHandler:
             self._file.seek(self._pos)
             # print(self._path, "starting at :", self._file.tell())
             self._read_contents()
-        except OSError as e:
+        except OSError:
             # traceback.print_exc()
             self._file = None
             self._inode = None
@@ -90,14 +90,13 @@ class FileHandler:
 
     def _process_line(self, line: str) -> bool:
         logging.debug(line)
-        if line[-1:] == "\n":
-            line = self._line + line
-            self._line = ''
-            self._match_line(line)
-            return True
-        else:
-            self._line += line
+        self._line += line
+        if line[-1:] != "\n":
             return False
+        line = self._line
+        self._line = ''
+        self._match_line(line)
+        return True
 
     def _read_contents(self) -> None:
         if self._file is None:

@@ -35,4 +35,3 @@ class Notify_udp(notify_handler.Notify_handler):
 
     def get_format(self):
         return self._format
-

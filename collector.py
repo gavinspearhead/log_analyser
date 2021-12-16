@@ -14,7 +14,7 @@ from state import State
 from notify import Notify
 from parsers import RegexParser
 from loghandler import LogHandler
-from util import pid_running
+from util import pid_running, write_pidfile
 from log_analyser_version import VERSION, PROG_NAME_COLLECTOR
 
 config_file_name: str = "loganalyser.config"
@@ -24,20 +24,18 @@ notify_file_name: str = "loganalyser.notify"
 ip_range_file_name: str = "loganalyser.ip_ranges"
 pid_file_name: str = "loganalyser.pid"
 
-pid_path: str = '/tmp/'
-
-LOG_LEVEL = logging.INFO
-STATE_DUMP_TIMEOUT: int = 15
-CLEANUP_INTERVAL: int = 60 * 60  # 1 hour
-
 
 class LogObserver:
-    def __init__(self, state_file_handle:str) -> None:
+    STATE_DUMP_TIMEOUT: int = 15
+
+    def __init__(self, state_file_handle: str, cleanup_interval: int, state_dump_timeout) -> None:
         self._observer = Observer()
         self._lock = threading.Lock()
         self._event_handlers = {}
         self._state_file = state_file_handle
         self._cleanup_threat = None
+        self._cleanup_interval = cleanup_interval
+        self._state_dump_timeout = state_dump_timeout
 
     def add(self, filepath: str, file_pos: int, parsers, file_inode: int, device: int, output_type, name,
             retention: int) -> None:
@@ -54,6 +52,10 @@ class LogObserver:
             self._observer.schedule(self._event_handlers[directory], directory, recursive=False)
         self._observer.start()
         self._start_cleanup_threat()
+        while True:
+            self.dump_state()
+            self.flush_output()
+            time.sleep(self._state_dump_timeout)
 
     def stop(self) -> None:
         logging.info('Stopping log collector')
@@ -88,7 +90,7 @@ class LogObserver:
             logging.debug("Cleaning up")
             for eh in self._event_handlers.values():
                 eh.cleanup()
-            time.sleep(CLEANUP_INTERVAL)
+            time.sleep(self._cleanup_interval)
 
     def _start_cleanup_threat(self) -> None:
         logging.debug("starting cleanup thread")
@@ -97,16 +99,19 @@ class LogObserver:
         self._cleanup_threat.start()
 
 
-if __name__ == '__main__':
+def main() -> None:
+    LOG_LEVEL: int = logging.INFO
+    CLEANUP_INTERVAL: int = 60 * 60  # 1 hour
+    pid_path: str = '/tmp/'
     try:
-        state_dump_timeout: int = STATE_DUMP_TIMEOUT
+        state_dump_timeout: int = LogObserver.STATE_DUMP_TIMEOUT
         parser = argparse.ArgumentParser(description=PROG_NAME_COLLECTOR)
         parser.add_argument("-v", '--version', help="Print Version information", action='store_true')
         parser.add_argument("-D", '--debug', help="Debug mode", action='store_true')
         parser.add_argument("-c", '--config', help="Config File Directory", default="", metavar="FILE")
         parser.add_argument("-p", '--pid', help="PID File Directory", default="", metavar="FILE")
         parser.add_argument("-d", '--dump_state_timeout', help="Timeout between periods dumping state", type=int,
-                            default=STATE_DUMP_TIMEOUT, metavar="SECONDS")
+                            default=LogObserver.STATE_DUMP_TIMEOUT, metavar="SECONDS")
         args = parser.parse_args()
         config_path: str = ''
         if args.version:
@@ -122,8 +127,8 @@ if __name__ == '__main__':
             pid_path = args.pid
 
         logging.basicConfig(level=LOG_LEVEL)
-        pid_file: str = os.path.join(pid_path, pid_file_name)
 
+        pid_file: str = os.path.join(pid_path, pid_file_name)
         config_file = os.path.join(config_path, config_file_name)
         state_file = os.path.join(config_path, state_file_name)
         output_file = os.path.join(config_path, output_file_name)
@@ -139,9 +144,10 @@ if __name__ == '__main__':
         config.parse_config(config_file)
         state.parse_state(state_file)
         output.parse_outputs(output_file)
-        observer = LogObserver(state_file)
-
         local_ip.load_local_address(local_ip_file)
+
+        observer = LogObserver(state_file, CLEANUP_INTERVAL, state_dump_timeout)
+
         if os.path.isfile(pid_file):
             if pid_running(pid_file):
                 print("File already running")
@@ -161,32 +167,29 @@ if __name__ == '__main__':
                 output_conn = factory(out)(out)
                 output_conn.connect()
                 for x in filters:
-                    # print(x)
                     res.append(
                         RegexParser(x['regex'], x['emit'], x['transform'], x['notify'], notify, output_conn, log_name))
 
                 observer.add(fl, pos, res, inode, dev, out, log_name, retention_time)
 
-            with open(pid_file, 'w') as f:
-                pid = str(os.getpid())
-                f.write(pid)
+            write_pidfile(pid_file)
             observer.start()
-            while True:
-                observer.dump_state()
-                observer.flush_output()
-                time.sleep(STATE_DUMP_TIMEOUT)
+
         except KeyboardInterrupt as e:
             logging.debug(e)
-            pass
         finally:
             logging.debug('finale')
             observer.stop()
             observer.join()
-            observer.dump_state()
             observer.flush_output()
+            observer.dump_state()
             logging.debug('removing PID file')
             os.unlink(pid_file)
     except Exception as e:
         traceback.print_exc()
         logging.info(str(e))
-        exit()
+        exit(0)
+
+
+if __name__ == '__main__':
+    main()

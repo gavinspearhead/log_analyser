@@ -3,9 +3,8 @@ import json
 import logging
 import threading
 import typing
-from abc import ABC
-
 import pymongo
+from abc import ABC
 from pymongo import MongoClient, collection
 
 
@@ -39,10 +38,23 @@ class AbstractOutput(ABC):
         # print(len(self._buffer), self._buffer_size)
         with self._lock:
             self._buffer.append(data)
-            buf_len = len(self._buffer)
+            buf_len = self.size()
         if buf_len > self._buffer_size:
             self.commit()
         pass
+
+    def empty(self) -> bool:
+        return len(self._buffer) == 0
+
+    def size(self) -> int:
+        return len(self._buffer)
+
+    def clear_buffer(self):
+        self._buffer = []
+
+    def buffer(self):
+        for elem in self._buffer:
+            yield elem
 
     def commit(self) -> None:
         raise NotImplemented("commit")
@@ -76,12 +88,12 @@ class StdOutput(AbstractOutput):
         super().__init__(config)
 
     def commit(self) -> None:
-        if len(self._buffer) == 0:
+        if self.empty():
             return
         with self._lock:
-            for data in self._buffer:
+            for data in self.buffer():
                 print(json.dumps(data))
-            self._buffer = []
+            self.clear_buffer()
 
     def connect(self) -> None:
         pass
@@ -117,14 +129,14 @@ class MongoOutput(AbstractOutput):
         self._collection: typing.Optional[collection] = None
 
     def commit(self) -> None:
-        if len(self._buffer) == 0:
+        if self.empty():
             return
         try:
             if self._db is None or self._collection is None:
                 raise ValueError('Not connected to Database')
             with self._lock:
-                self._collection.insert_many(self._buffer)
-                self._buffer = []
+                self._collection.insert_many(self.buffer())
+                self.clear_buffer()
         except Exception as e:
             logging.warning(str(e))
             self.connect()

@@ -1,7 +1,7 @@
 from typing import Dict
+from notifiers import notify_handler
 import smtplib
 import ssl
-from notifiers import notify_handler
 
 
 class Notify_mail(notify_handler.Notify_handler):

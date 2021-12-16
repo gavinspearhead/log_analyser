@@ -1,6 +1,5 @@
 import ipaddress
 import json
-
 import typing
 
 
@@ -24,7 +23,7 @@ class Local_Addresses:
         with open(filename, "r") as infile:
             config = json.load(infile)
         ranges = [ipaddress.ip_network(x) for x in config]
-            # ranges.append(ipaddress.ip_network(x))
+        # ranges.append(ipaddress.ip_network(x))
         self.load_ranges(ranges)
 
 
@@ -34,6 +33,6 @@ is_local_address = _local_addresses.is_local
 load_local_address = _local_addresses.load_local_addresses
 
 if __name__ == "__main__":
-    xranges = map(ipaddress.ip_network, ["192.168.178.0/24", "2001:984:47bf:1::0/64", "127.0.0.0/8"])
-    _local_addresses.load_ranges(list(xranges))
+    x_ranges = map(ipaddress.ip_network, ["192.168.178.0/24", "2001:984:47bf:1::0/64", "127.0.0.0/8"])
+    _local_addresses.load_ranges(list(x_ranges))
     print(is_local_address('2001:984:47bf:12:36a3:bf3c:d751:500b'))

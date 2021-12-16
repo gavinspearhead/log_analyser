@@ -200,7 +200,7 @@ function load_all_graphs()
             load_graph(canvas_id, $(this).attr("data-type"), $(this).attr("data-name"), period, to, from,
                        $(this).attr("data-title"), host);
         } else {
-            $("#"+canvas_id).hide();
+            $("#"+canvas_id).parent("div").hide();
         }
     });
 }
@@ -247,9 +247,9 @@ $( document ).ready(function() {
                 load_graph($("#canvas_" + name).attr('id'), $("#canvas_" + name).attr("data-type"),
                            $("#canvas_" + name).attr("data-name"), period, to, from,
                            $("#canvas_" + name).attr("data-title"), host);
-                $("#canvas_" + name).show();
+                $("#canvas_div_" + name).show();
             } else {
-                $("#canvas_" + name).hide();
+                $("#canvas_div_" + name).hide();
             }
         });
     });

@@ -32,13 +32,12 @@ class Notify_tcp(notify_handler.Notify_handler):
             if self._socket is None:
                 raise ValueError("No socket created")
             self._socket.send(bytes(msg, encoding='utf8'))
-        except Exception as e:
+        except Exception:
             try:
                 self._connect()
                 self._socket.send(bytes(msg, encoding='utf8'))
-            except Exception as e:
+            except Exception:
                 raise ValueError("Cannot send message on TCP connection")
 
     def get_format(self):
         return self._format
-

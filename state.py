@@ -1,5 +1,6 @@
 import json
 import logging
+from typing import Union, Dict, Optional, List, Tuple
 
 # State
 # [
@@ -11,7 +12,6 @@ import logging
 #     'ctime': 1621087741.3265584
 # }
 # ]
-from typing import Union, Dict, Optional, List, Tuple
 
 
 class State:

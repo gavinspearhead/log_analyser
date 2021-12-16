@@ -1,10 +1,9 @@
-import syslog
+# import syslog
 from syslog import LOG_EMERG, LOG_ALERT, LOG_CRIT, LOG_ERR, LOG_WARNING, LOG_NOTICE, LOG_INFO, LOG_DEBUG, LOG_KERN, \
     LOG_LOCAL2, LOG_LOCAL3, LOG_LOCAL4, LOG_LOCAL5, LOG_LOCAL6, LOG_USER, LOG_MAIL, LOG_DAEMON, LOG_AUTH, LOG_LPR, \
-    LOG_NEWS, LOG_UUCP, LOG_CRON, LOG_SYSLOG, LOG_LOCAL0, LOG_LOCAL7, LOG_AUTHPRIV, LOG_LOCAL1
-
+    LOG_NEWS, LOG_UUCP, LOG_CRON, LOG_SYSLOG, LOG_LOCAL0, LOG_LOCAL7, LOG_AUTHPRIV, LOG_LOCAL1, openlog, syslog, \
+    closelog, LOG_PID
 from typing import Dict
-
 from log_analyser_version import PROG_NAME_COLLECTOR
 from notifiers import notify_handler
 
@@ -66,7 +65,6 @@ class Notify_syslog(notify_handler.Notify_handler):
     def send_msg(self, msg: str, limit_type: str) -> None:
         if self.check_rate_limit(limit_type):
             return
-        syslog.openlog(ident=self._ident, facility=self._facility, logoption=syslog.LOG_PID)
-        syslog.syslog(self._priority, msg)
-        syslog.closelog()
-
+        openlog(ident=self._ident, facility=self._facility, logoption=LOG_PID)
+        syslog(self._priority, msg)
+        closelog()

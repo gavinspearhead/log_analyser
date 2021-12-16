@@ -1,6 +1,6 @@
 import logging
-from typing import Dict
 import requests
+from typing import Dict
 from notifiers import notify_handler
 
 
