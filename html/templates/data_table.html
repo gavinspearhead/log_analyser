@@ -13,12 +13,27 @@
     {% else %}
     {% set class_name="" %}
     {% endif %}
-    <td><span title="{{d[k]}}" class="{{class_name}}">{{ d[k]| truncate(80) }}</span>
     {% if k == 'ip_address' %}
+        <td><span title="{{d[k]}}" class="{{class_name}}">{{ d[k]| truncate(80) }}</span>
         {% set flag = flags[d[k]] %}
         {% if flag != '' %}
             <img src="{{ url_for('static', filename='img/flags/' ~ flag ~ '.png') }}">
         {% endif %}
+    {% elif k == 'ip_addresses' or k == 'ips' %}
+            <td><span title="{{d[k]}}" class="{{class_name}}">
+        {% set ips = d[k].split(',') %}
+        {%for x in ips %}
+            {% set x = x.strip(' ') %}
+             {% set flag = flags[x] %}
+             {{ x }}
+             {% if flag != '' %}
+                <img src="{{ url_for('static', filename='img/flags/' ~ flag ~ '.png') }}">,
+             {% endif %}
+        {% endfor %}
+        </span>
+    {% else %}
+
+    <td><span title="{{d[k]}}" class="{{class_name}}">{{ d[k]| truncate(80) }}</span>
     {% endif %}
     </td>
 {% endfor %}

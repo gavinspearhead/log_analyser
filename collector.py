@@ -28,7 +28,7 @@ pid_file_name: str = "loganalyser.pid"
 class LogObserver:
     STATE_DUMP_TIMEOUT: int = 15
 
-    def __init__(self, state_file_handle: str, cleanup_interval: int, state_dump_timeout) -> None:
+    def __init__(self, state_file_handle: str, cleanup_interval: int, state_dump_timeout=STATE_DUMP_TIMEOUT) -> None:
         self._observer = Observer()
         self._lock = threading.Lock()
         self._event_handlers = {}

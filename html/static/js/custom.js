@@ -89,7 +89,7 @@ function set_log_handlers()
 $( document ).ready(function() {
     set_hosts()
 
-    $('body').css('background-image', 'url("' + script_root + '/static/img/background.gif")');
+    $('body').css('background-image', 'url("' + script_root + '/static/img/background1.ppg")');
     $('body').css('background-size', 'contain');
     $('#itemstablediv').scrollTop(0);
 

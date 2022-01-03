@@ -2,22 +2,23 @@ import datetime
 import json
 import logging
 import threading
-import typing
+# import typing
 import pymongo
 from abc import ABC
 from pymongo import MongoClient, collection
+from typing import List, Dict, Optional, Any, Type
 
 
 class Outputs:
     def __init__(self) -> None:
-        self._outputs: typing.List[typing.Dict[str, str]] = []
+        self._outputs: List[Dict[str, str]] = []
 
     def parse_outputs(self, filename: str) -> None:
         with open(filename, "r") as infile:
             outputs = json.load(infile)
         self._outputs = outputs
 
-    def get_output(self, name: str) -> typing.Optional[typing.Dict[str, str]]:
+    def get_output(self, name: str) -> Optional[Dict[str, str]]:
         for i in self._outputs:
             if i['name'] == name:
                 return i
@@ -27,14 +28,14 @@ class Outputs:
 class AbstractOutput(ABC):
     DEFAULT_BUFFER_SIZE = 1
 
-    def __init__(self, config: typing.Dict[str, typing.Any]) -> None:
+    def __init__(self, config: Dict[str, Any]) -> None:
         logging.debug("Configuring output {}".format(config['name']))
         self._name: str = config['name']
         self._buffer_size: int = config['buffer_size'] if 'buffer_size' in config else self.DEFAULT_BUFFER_SIZE
-        self._buffer: typing.List[typing.Dict[str, typing.Any]] = []
+        self._buffer: List[Dict[str, Any]] = []
         self._lock = threading.Lock()
 
-    def write(self, data: typing.Dict[str, typing.Any]) -> None:
+    def write(self, data: Dict[str, Any]) -> None:
         # print(len(self._buffer), self._buffer_size)
         with self._lock:
             self._buffer.append(data)
@@ -67,10 +68,10 @@ class AbstractOutput(ABC):
 
 
 class IgnoreOutput(AbstractOutput):
-    def __init__(self, config: typing.Dict[str, str]) -> None:
+    def __init__(self, config: Dict[str, str]) -> None:
         super().__init__(config)
 
-    def write(self, data: typing.Dict[str, typing.Any]) -> None:
+    def write(self, data: Dict[str, Any]) -> None:
         pass
 
     def commit(self) -> None:
@@ -79,12 +80,12 @@ class IgnoreOutput(AbstractOutput):
     def connect(self) -> None:
         pass
 
-    def count(self, condition: typing.Dict[str, typing.Any]) -> int:
+    def count(self, condition: Dict[str, Any]) -> int:
         return -1
 
 
 class StdOutput(AbstractOutput):
-    def __init__(self, config: typing.Dict[str, str]) -> None:
+    def __init__(self, config: Dict[str, str]) -> None:
         super().__init__(config)
 
     def commit(self) -> None:
@@ -98,12 +99,12 @@ class StdOutput(AbstractOutput):
     def connect(self) -> None:
         pass
 
-    def count(self, condition: typing.Dict[str, typing.Any]) -> int:
+    def count(self, condition: Dict[str, Any]) -> int:
         return -1
 
 
 class MongoConnector:
-    def __init__(self, config: typing.Dict[str, str]) -> None:
+    def __init__(self, config: Dict[str, str]) -> None:
         self._config = config
         hostname = self._config['hostname'] if self._config['hostname'] != "" else None
         port = self._config['port'] if self._config['port'] != "" else None
@@ -121,12 +122,12 @@ class MongoConnector:
 
 
 class MongoOutput(AbstractOutput):
-    def __init__(self, config: typing.Dict[str, typing.Any]) -> None:
+    def __init__(self, config: Dict[str, Any]) -> None:
         super().__init__(config)
         self._config = config
         self._mongo = None
-        self._db: typing.Optional[MongoConnector] = None
-        self._collection: typing.Optional[collection] = None
+        self._db: Optional[MongoConnector] = None
+        self._collection: Optional[collection] = None
 
     def commit(self) -> None:
         if self.empty():
@@ -151,13 +152,13 @@ class MongoOutput(AbstractOutput):
         upper_limit = datetime.datetime.now() - datetime.timedelta(days=retention)
         self._collection.delete_many({"$and": [{"name": name}, {"timestamp": {"$lte": upper_limit}}]})
 
-    def count(self, condition: typing.Dict[str, typing.Any]) -> int:
+    def count(self, condition: Dict[str, Any]) -> int:
         if self._db is None or self._collection is None:
             raise ValueError('Not connected to Database')
         return int(self._collection.count_documents(condition))
 
 
-def factory(config: typing.Dict[str, str]) -> typing.Type[AbstractOutput]:
+def factory(config: Dict[str, str]) -> Type[AbstractOutput]:
     if config['type'] == 'stdout':
         return StdOutput
     elif config['type'] == 'mongo':

@@ -239,7 +239,9 @@ def get_mongo_connection() -> pymongo.collection.Collection:
 
 def get_period_mask(period: str, to_time: Optional[str] = None, from_time: Optional[str] = None,
                     tz: pytz.BaseTzInfo = pytz.UTC) -> Tuple[datetime.datetime, datetime.datetime, str, Union[List[int],
-                                                             List[Tuple[int, int]]]]:
+                                                                                                              List[
+                                                                                                                  Tuple[
+                                                                                                                      int, int]]]]:
     now = datetime.datetime.now(tz)
     intervals: Union[List[int], List[Tuple[int, int]]] = []
     if period == 'today':
@@ -631,16 +633,18 @@ def get_apache_methods_data(mask: Dict[str, Any], search: str) -> Data_set:
          {"$group": {
              "_id": "$http_command",
              "total": {"$sum": 1},
+             'ip_addresses': {"$addToSet": "$ip_address"},
              'hosts': {"$addToSet": "$hostname"}}},
          {"$sort": {"total": -1}}
 
          ])
     data = Data_set('method', None, 'count')
-    data.set_keys(['HTTP Method', 'Count', 'Hosts'])
+    data.set_keys(['HTTP Method', 'Count', 'IP Addresses', 'Hosts'])
     for x in res:
         row = {
             'method': x['_id'],
             'count': x['total'],
+            'ip_addresses': ', '.join(x['ip_addresses']),
             'hosts': ", ".join(x['hosts'])
         }
         data.add_data_row(row)
@@ -655,15 +659,17 @@ def get_apache_codes_data(mask: Dict[str, Any], search: str) -> Data_set:
          {"$group": {
              "_id": "$code",
              'hosts': {"$addToSet": "$hostname"},
+             'ip_addresses': {"$addToSet": "$ip_address"},
              "total": {"$sum": 1}}},
          {"$sort": {"total": -1}}
          ])
     data = Data_set('code', None, 'count')
-    data.set_keys(['Code', 'Count', 'Hosts'])
+    data.set_keys(['Code', 'Count', "IP Addresses", 'Hosts'])
     for x in res:
         row = {
             'code': x['_id'],
             'count': x['total'],
+            'ip_addresses': ", ".join(x['ip_addresses']),
             'hosts': ", ".join(x['hosts'])
         }
         data.add_data_row(row)
@@ -782,17 +788,19 @@ def get_apache_urls_data(mask: Dict[str, Any], search: str) -> Data_set:
          {"$group": {
              "_id": {"path": "$path", "code": "$code"},
              'hosts': {"$addToSet": "$hostname"},
+             'ip_addresses': {"$addToSet": "$ip_address"},
              "total": {"$sum": 1}}},
          {"$sort": {"total": -1}}
          ])
     data = Data_set(None, None, None)
-    data.set_keys(['Path', 'Code', 'Count', 'Hosts'])
+    data.set_keys(['Path', 'Code', 'Count', 'IP Addresses', 'Hosts'])
     for x in res:
         row = {
             'path': x['_id']['path'],
             'code': x['_id']['code'],
             'count': x['total'],
-            'hosts': ",".join(sorted(x['hosts']))
+            'ip_addresses': ", ".join(sorted(x['ip_addresses'])),
+            'hosts': ", ".join(sorted(x['hosts']))
         }
         data.add_data_row(row)
     return data
@@ -964,7 +972,7 @@ def get_apache_data(name: str, period: str, search: str, raw: bool, to_time: Opt
 
 def get_flag(ip_address: str) -> str:
     try:
-        return geoip2_db.country(ip_address).country.iso_code.lower()
+        return geoip2_db.country(ip_address.strip()).country.iso_code.lower()
     except (AttributeError, ValueError, geoip2.errors.AddressNotFoundError):
         return ''
 
@@ -1006,9 +1014,13 @@ def load_data() -> Tuple[str, int, Dict[str, str]]:
                 v = str(v)
                 if k == 'ip_address' and v not in flags:
                     flags[v] = get_flag(v)
+                elif k in ['ips', 'ip_addresses']:
+                    for vv in v.split(','):
+                        vv = vv.strip(' ')
+                        if vv not in flags:
+                            flags[vv] = get_flag(vv)
             # Force every thing to string so we can truncate stuff in the template
             res3.append({k: str(v) for k, v in x.items()})
-
         rhtml = render_template("data_table.html", data=res3, keys=keys, flags=flags)
         return json.dumps({'success': True, 'rhtml': rhtml}), 200, {'ContentType': 'application/json'}
 

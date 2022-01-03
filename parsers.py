@@ -4,7 +4,6 @@ import json
 import logging
 import operator
 import re
-import typing
 import dateutil.parser
 # from pprint import pprint
 
@@ -14,7 +13,7 @@ from abc import ABC
 from dateutil.tz import tzoffset
 from matches import is_new
 from local_ip import is_local_address
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Optional
 
 data_conversion = load_data_set()
 
@@ -59,7 +58,7 @@ class RegexParser(LogParser):
         '%': ('%', str)
     }
 
-    def __init__(self, reg_ex: str, format_str: typing.Dict[str, str], transform: typing.Dict[str, str], notify,
+    def __init__(self, reg_ex: str, format_str: Dict[str, str], transform: Dict[str, str], notify,
                  notifiers, output, log_name) -> None:
         super().__init__()
         self._pattern, self._filters = self.parse_regexp(reg_ex)
@@ -101,11 +100,11 @@ class RegexParser(LogParser):
             except IndexError:
                 raise ValueError('missing closing parenthesis')
 
-    def parse_regexp(self, line: str) -> typing.Tuple[str, typing.Dict]:
+    def parse_regexp(self, line: str) -> Tuple[str, Dict]:
         # "foo (%BAR:name:param)
         pos: int = 0
         out: str = ""
-        filters: typing.Dict = {}
+        filters: Dict = {}
         index: int = 0
         while pos < len(line):
             try:
@@ -126,7 +125,7 @@ class RegexParser(LogParser):
         # print(out, filters)
         return out, filters
 
-    def match(self, line: str) -> typing.List[str]:
+    def match(self, line: str) -> List[str]:
         res = self._compiled_pattern.search(line)
         # print(line, res)
         if res is None:
@@ -215,7 +214,7 @@ class RegexParser(LogParser):
         else:
             return op(clause, val)
 
-    def _match_notify_conditions(self, matches, conditions) -> typing.Optional[bool]:
+    def _match_notify_conditions(self, matches, conditions) -> Optional[bool]:
         # print(matches)
         # print(conditions)
         res = False

@@ -2,11 +2,10 @@ import re
 import time
 import logging
 import datetime
-import typing
-from traceback import print_exc
-from typing import Dict, Pattern, Match, Optional
-
 import dateutil.parser
+# import typing
+from traceback import print_exc
+from typing import Dict, Pattern, Match, Optional, Sequence
 
 
 class TimestampParsers:
@@ -22,7 +21,7 @@ class TimestampParsers:
         try:
             if matches is None:
                 raise ValueError("Not found: {}".format(time_str))
-            x: typing.Sequence = matches.groups()
+            x: Sequence = matches.groups()
             if x is None:
                 raise ValueError("Not found: {}".format(time_str))
             day: int = int(x[1])
@@ -80,7 +79,7 @@ class TimestampParsers:
         return time_out_str
 
     def parse_iso_timestamp(self, time_str):
-        try :
+        try:
             dateutil.parser.isoparse(time_str)
         except ValueError as e:
             logging.info("Invalid ISO Date {} {}".format(time_str, e))
@@ -95,6 +94,6 @@ parse_syslog_timestamp = _P.parse_syslog_timestamp
 parse_iso_timestamp = _P.parse_iso_timestamp
 
 if __name__ == "__main__":
-    print('j', parse_syslog_timestamp("Dec 1 23:17:58 " ))
+    print('j', parse_syslog_timestamp("Dec 1 23:17:58 "))
     print('y', parse_apache_timestamp("[04/Dec/2021:00:41:47 +0100]"))
     print('x', parse_iso_timestamp("2021-12-04T03:41:47z"))

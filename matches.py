@@ -1,13 +1,13 @@
 import functools
-import typing
+from  typing import  Any, Tuple, Dict
 from output import MongoOutput
 
 
 def false_only_cache(fn):
-    cache: typing.Dict[int, bool] = {}
+    cache: Dict[int, bool] = {}
 
     @functools.wraps(fn)
-    def wrapper(*args: typing.Tuple[typing.Any, ...], **kwargs: typing.Dict[str, typing.Any]) -> bool:
+    def wrapper(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> bool:
         key = hash(args + tuple(sorted(kwargs.items())))
         if key in cache:
             return cache[key]

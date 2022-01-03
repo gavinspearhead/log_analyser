@@ -2,15 +2,15 @@ import logging
 import os
 import threading
 import traceback
-import typing
 import output
 
 from watchdog.events import FileModifiedEvent
 from parsers import LogParser
+from typing import Any, Optional, Dict, List
 
 
 class FileHandler:
-    def __init__(self, filename: str, pos: int, parsers: typing.List, inode: int, dev: int, output_type: str, name: str,
+    def __init__(self, filename: str, pos: int, parsers: List, inode: int, dev: int, output_type: str, name: str,
                  retention: int) -> None:
         self._pos: int = pos
         self._lock = threading.Lock()
@@ -23,7 +23,7 @@ class FileHandler:
         self._output = output_type
         self._output_engine = None
         self._line: str = ""
-        self._parsers: typing.List[LogParser] = parsers
+        self._parsers: List[LogParser] = parsers
         self._open_output()
         self._open_file(inode, dev)
 
@@ -40,7 +40,7 @@ class FileHandler:
         if self._output_engine is not None:
             self._output_engine.commit()
 
-    def _open_file(self, inode: typing.Optional[int] = None, dev: typing.Optional[int] = None) -> None:
+    def _open_file(self, inode: Optional[int] = None, dev: Optional[int] = None) -> None:
         logging.debug("Opening file: {}".format(self._file))
         self._line = ''
         try:
@@ -68,7 +68,7 @@ class FileHandler:
             raise ValueError("output engine not initialised")
         self._output_engine.cleanup(self._name, self._retention)
 
-    def dump_state(self) -> typing.Dict[str, typing.Any]:
+    def dump_state(self) -> Dict[str, Any]:
         with self._lock:
             _pos = self._pos
         # print("aoaouo", {"pos": _pos, "path": self._path, 'inode': self._inode, 'device': self._dev})

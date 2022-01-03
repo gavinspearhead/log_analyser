@@ -209,8 +209,9 @@ function load_all_graphs()
 $( document ).ready(function() {
     set_hosts()
     $('.dropdown-toggle').dropdown()
-    $('body').css('background-image', 'url("' + script_root + '/static/img/background.gif")');
+    $('body').css('background-image', 'url("' + script_root + '/static/img/necronomicon.png")');
     $('body').css('background-size', 'contain');
+    $('body').css('opacity', '1.6');
     $("#custom").click(function() {
         $("#custom").prop("checked", true);
      });

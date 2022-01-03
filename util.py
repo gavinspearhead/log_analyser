@@ -1,14 +1,13 @@
 import logging
 import os
 import socket
-import typing
-
 import netifaces as ni
+from typing import Dict
 
 
 def get_own_ip(ip_version: int = 4) -> str:
     interfaces = ni.interfaces()
-    address = ''
+    address: str = ''
 
     for i in interfaces:
         if i != "lo":
@@ -26,7 +25,7 @@ def get_own_ip(ip_version: int = 4) -> str:
     return address
 
 
-def load_data_set() -> typing.Dict[str, str]:
+def load_data_set() -> Dict[str, str]:
     return {
         '$fqdn': socket.getfqdn(),
         '$hostname': socket.gethostname().lower(),
@@ -38,7 +37,7 @@ def load_data_set() -> typing.Dict[str, str]:
 def pid_running(pid_filename: str) -> bool:
     try:
         with open(pid_filename, "r") as fn:
-            s = int(fn.readline().strip())
+            s: int = int(fn.readline().strip())
             if s > 0:
                 os.kill(s, 0)
                 return True
@@ -51,5 +50,5 @@ def pid_running(pid_filename: str) -> bool:
 
 def write_pidfile(pid_file: str) -> None:
     with open(pid_file, 'w') as f:
-        pid = str(os.getpid())
+        pid: str = str(os.getpid())
         f.write(pid)
