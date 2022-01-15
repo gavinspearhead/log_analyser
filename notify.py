@@ -11,6 +11,7 @@ from notifiers import notify_tcp
 from notifiers import notify_jabber
 from notifiers import notify_mail
 from notifiers import notify_handler
+from notifiers import notify_mongo
 
 
 class Notify:
@@ -24,6 +25,7 @@ class Notify:
         'mqtt': notify_mqtt.Notify_mqtt,
         'http': notify_http.Notify_http,
         'syslog': notify_syslog.Notify_syslog,
+        'mongo': notify_mongo.Notify_mongo,
     }
 
     def __init__(self) -> None:
@@ -48,7 +50,8 @@ class Notify:
         for config_element in notify:
             tmp = {
                 'type': config_element['type'],
-                'name': config_element['name']
+                'name': config_element['name'],
+                'config': config_element
             }
             tmp['handler'] = self._factory(tmp['type'])(config_element)
             r_config.append(tmp)

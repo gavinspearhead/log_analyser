@@ -26,12 +26,8 @@
 <div id="maindiv" class="container-fluid max-height no-overflow">
     <nav class="navbar navbar-fixed-top" id="navbar">
         <div>
-            <button class="btn btn-secondary" id="compact_button">
-                <i id="left_button" class="fas fa-arrow-left"></i>
-                <i id="right_button" class="fas fa-arrow-right" style="display:none"> </i>
-            </button>
-            <button class="btn btn-secondary"><a href=".."><i class="fas fa-home"></i></a></button>
-            <button class="btn btn-secondary"><a href="../notifications"><i class="fas fa-envelope"></i></a></button>
+            <button class="btn btn-secondary"><a href="/"><i class="fas fa-home"></i></a></button>
+            <button class="btn btn-secondary"><a href="/dashboard/"><i class="fas fa-table"></i></a></button>
 
             <input type="radio" class="btn-check" name="timeperiod" id="hourly" autocomplete="off" >
             <label class="btn btn-secondary" for="hourly">Last Hour</label>
@@ -83,37 +79,25 @@
     </nav>
 
 <div class="row max-height no-gutters">
-    <div class="col col-sm-auto col-md-auto scrollable bottom_margin" id="left_menu">
-        <br/>
-        <ul class="list-group">
-        {% for y in main_data_types %}
-        <li class="list-unstyled components"><b>{{ main_data_titles[y] }}</b>
+ <div class="col-auto scrollable bottom_margin" id="logtypes">
             <ul class="list-group">
-                {% for x in main_data_types[y] %}
-                {% if x in data_types %}
-                <li class="list-unstyled components" role="button" id="{{main_data_types[y][x][0]}}_{{main_data_types[y][x][1]}}" data-type="{{y}}">
-                    <input class="form-check-input" type="checkbox" name="{{x}}" id="checkbox_{{x}}" {% if enabled[x] %}checked{%endif%} >
-                    <label for="checkbox_{{x}}"> {{main_data_types[y][x][2]}}</label>
-                </li>
-                {% endif %}
-                {% endfor %}
+            <li class="list-unstyled components" id="log_list">
+                <hr>
+                <li class="list-unstyled components" data-type="apache">Apache</li>
+                <li class="list-unstyled components">&nbsp;</li>
+                <li class="list-inline components" data-type="ssh">SSH</li>
             </ul>
-        </li><br>
-        {% endfor %}
-        </ul>
-    </div>
-
+            <br>
+            <h6><small>{{ prog_name}}</small> </h6>
+        </div>
     <div class="col scrollable bottom_margin" id="itemstablediv">
-    <br>
-    <div class="row no-gutters">
-        {% for k in data_types %}
-            <div class="col-md-auto" id="canvas_div_{{k}}">
-                <canvas id="canvas_{{k}}" height="480" width="640" data-type="{{data_types[k][0]}}" data-name="{{data_types[k][1]}}" data-title="{{data_types[k][2]}}"></canvas>
-            </div>
-        {% endfor %}
-    </div>
-        <br>
-    <h6><small>{{ prog_name }}</small></h6>
+        <h2>Notifications <span id="header"></span></h2>
+       <div>
+                <table class="table table-dark table-condensed table-sm table-hover" id="itemstable" cellpadding="0" cellspacing="0">
+            <tbody></tbody>
+            </table>
+        </div>
+
         <br>
     </div>
 
@@ -143,7 +127,8 @@ var script_root = '{{ request.script_root }}';
 </script>
 
 <script type="text/javascript" src="{{ url_for('static', filename='js/functions.js') }}"></script>
-<script type="text/javascript" src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/notifications.js') }}"></script>
+
 
 </body>
 </html>

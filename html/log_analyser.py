@@ -7,6 +7,8 @@ import logging
 import os.path
 import re
 import sys
+import traceback
+
 import dns.resolver
 import pymongo
 import dateutil.parser
@@ -22,6 +24,8 @@ from humanfriendly import format_size
 from natsort import natsorted
 from copy import deepcopy
 from traceback import print_exc
+
+from notify import Notify
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -224,6 +228,19 @@ def get_prefix(ip_address: str) -> Optional[str]:
         return str(network_address.network)
     except geoip2.errors.AddressNotFoundError:
         return None
+
+
+def get_mongo_notifications() -> pymongo.collection.Collection:
+    notify = Notify()
+    notify_file_name: str = "loganalyser.notify"
+    notify_file = os.path.join(os.path.join(config_path, '..', notify_file_name))
+    notify.parse_notify(notify_file)
+    config = notify.get_notify('mongo')
+    if config is None and 'config' in config:
+        raise ValueError("Configuration error: No Monge configured")
+    mc = MongoConnector(config['config'])
+    col: pymongo.collection.Collection = mc.get_collection()
+    return col
 
 
 def get_mongo_connection() -> pymongo.collection.Collection:
@@ -1131,6 +1148,70 @@ def reverse_dns(item) -> Tuple[str, int, Dict[str, str]]:
 
     return render_template("reverse_dns.html", result=data, item=item, whois_data=wd), 200, {
         'ContentType': 'application/json'}
+
+
+@app.route('/notifications_data/', methods=['POST'])
+def notifications_data():
+    try:
+        prog_name = "{} {}".format(PROG_NAME_WEB, VERSION)
+        col = get_mongo_notifications()
+        period: str = request.json.get("period", '')
+        req_type: str = request.json.get("type", '')
+        to_time: str = request.json.get("to", '')
+        from_time: str = request.json.get("from", '')
+        local_tz: str = str(tzlocal.get_localzone())
+        mask_range = get_period_mask(period, to_time, from_time, pytz.timezone(local_tz))
+        if req_type == 'ssh':
+            keys = ['host', 'hostname', 'timestamp', 'username', 'access', 'ip_address', 'port', 'protocol', 'type']
+            names = {'host': "Host", 'hostname': 'Hostname', 'timestamp': "Time", 'username': 'User',
+                     'access': "Access", 'ip_address': "IP Address", 'port': "Port", 'protocol': "Protocol",
+                     'type': "Type"}
+            type_mask = {"name": "auth_ssh"}
+            title_type = "SSH"
+        elif req_type == 'apache':
+            keys = ['hostname', 'ip_address', 'username', 'timestamp', 'http_command', 'path', 'protocol',
+                    'protocol_version', 'code', 'size']
+            names = {'hostname': "Hostname", 'ip_address': "IP Address", 'username': "User", 'timestamp': "Time",
+                     'http_command': "Command", 'path': "Path", 'protocol': "Protocol", 'protocol_version': "Version",
+                     'code': "Code", 'size': "Size"}
+            type_mask = {"name": "apache_access"}
+            title_type = "Apache"
+        else:
+            raise ValueError("Unknown type")
+        mask: Dict[str, Any] = {
+            "$and": [{"timestamp": {"$gte": mask_range[0]}}, {"timestamp": {"$lte": mask_range[1]}}, type_mask]}
+        res = col.find(mask)
+        data = []
+        flags: Dict[str, str] = {}
+        for i in res:
+            data.append(i)
+            for k, v in i.items():
+                v = str(v)
+                if k == 'ip_address' and v not in flags:
+                    flags[v] = get_flag(v)
+                elif k in ['ips', 'ip_addresses']:
+                    for vv in v.split(','):
+                        vv = vv.strip(' ')
+                        if vv not in flags:
+                            flags[vv] = get_flag(vv)
+        rhtml = render_template("notifications_table.html", keys=keys, data=data, names=names, prog_name=prog_name,
+                                flags=flags)
+        return json.dumps({'success': True, 'rhtml': rhtml, 'title_type': title_type}), 200, \
+               {'ContentType': 'application/json'}
+    except Exception as e:
+        # traceback.print_exc()
+        return json.dumps({'success': False, "message": str(e)}), 200, {'ContentType': 'application/json'}
+
+
+@app.route('/notifications/')
+def notifications():
+    try:
+        prog_name = "{} {}".format(PROG_NAME_WEB, VERSION)
+        return render_template("notifications.html", prog_name=prog_name), 200, {
+            'ContentType': 'application/json'}
+    except Exception as e:
+        traceback.print_exc()
+        return json.dumps({'success': False, "message": str(e)}), 200, {'ContentType': 'application/json'}
 
 
 @app.route('/')

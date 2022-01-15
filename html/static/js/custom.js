@@ -75,7 +75,7 @@ function set_log_handlers()
         handle_request(name, type, '', title, $(this).attr("data-type"))
     });
     $("[name^='timeperiod").click(function(event) {
-       handle_request(g_name, g_type, g_search,  g_title, g_title_type);
+       handle_request(g_name, g_type, g_search, g_title, g_title_type);
     });
     $("#searchbutton").click(function(event) {
         handle_request(g_name, g_type, $("#searchbar").val(), g_title, g_title_type);
@@ -89,7 +89,7 @@ function set_log_handlers()
 $( document ).ready(function() {
     set_hosts()
 
-    $('body').css('background-image', 'url("' + script_root + '/static/img/background1.ppg")');
+    $('body').css('background-image', 'url("' + script_root + '/static/img/necronomicon.png")');
     $('body').css('background-size', 'contain');
     $('#itemstablediv').scrollTop(0);
 
