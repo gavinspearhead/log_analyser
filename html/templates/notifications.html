@@ -26,11 +26,14 @@
 <div id="maindiv" class="container-fluid max-height no-overflow">
     <nav class="navbar navbar-fixed-top" id="navbar">
         <div>
-            <button class="btn btn-secondary"><a href="/"><i class="fas fa-home"></i></a></button>
-            <button class="btn btn-secondary"><a href="/dashboard/"><i class="fas fa-table"></i></a></button>
+            <button class="btn btn-secondary"><a href=".."><i class="fas fa-home"></i></a></button>
+            <button class="btn btn-secondary"><a href="dashboard/"><i class="fas fa-table"></i></a></button>
 
             <input type="radio" class="btn-check" name="timeperiod" id="hourly" autocomplete="off" >
             <label class="btn btn-secondary" for="hourly">Last Hour</label>
+
+            <input type="radio" class="btn-check" name="timeperiod" id="24hour" autocomplete="off" checked>
+            <label class="btn btn-secondary" for="24hour">24 Hours</label>
 
             <input type="radio" class="btn-check" name="timeperiod" id="daily" autocomplete="off" checked>
             <label class="btn btn-secondary" for="daily">Today</label>

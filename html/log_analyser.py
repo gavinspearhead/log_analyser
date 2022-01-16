@@ -25,11 +25,10 @@ from natsort import natsorted
 from copy import deepcopy
 from traceback import print_exc
 
-from notify import Notify
-
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from output import MongoConnector, Outputs
+from notify import Notify
 from log_analyser_version import VERSION, PROG_NAME_WEB
 
 output_file_name: str = "loganalyser.output"
@@ -265,6 +264,11 @@ def get_period_mask(period: str, to_time: Optional[str] = None, from_time: Optio
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         today_end = now.replace(hour=23, minute=59, second=59, microsecond=999999)
         intervals = list(range(0, 24))
+        return today_start, today_end, 'hour', intervals
+    elif period == '24hour':
+        today_start = now - datetime.timedelta(hours=24)
+        today_end = now
+        intervals = list([(today_start + datetime.timedelta(hours=x)).hour for x in range(24)])
         return today_start, today_end, 'hour', intervals
     elif period == 'hour':
         today_start = now - datetime.timedelta(hours=1)

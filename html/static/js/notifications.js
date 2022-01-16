@@ -12,6 +12,7 @@ function handle_request(search, type)
     var period = 'today';
     if ($("#daily").is(":checked")) {period = 'today';}
     else if ($("#hourly").is(":checked")) {period = 'hour';}
+    else if ($("#24hour").is(":checked")) {period = '24hour';}
     else if ($("#yesterday").is(":checked")) {period = 'yesterday';}
     else if ($("#weekly").is(":checked")) {period = 'week';}
     else if ($("#monthly").is(":checked")) {period = 'month';}
