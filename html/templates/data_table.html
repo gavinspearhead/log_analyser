@@ -1,12 +1,16 @@
+AAA
+{% for k in hostnames %} {{ k }} ::: {{ hostnames[k] }} {%endfor%}
+BBB
 <tr>
+    {%set cntr = namespace(value=1)  %}
 {% for x in keys %}
-<th>{{ x }} </th>
+<th onclick="w3.sortHTML('#itemstable','.table_item', 'td:nth-child({{ cntr.value }})')" style="cursor:pointer">{{ x }} </th>
+    {% set cntr.value = cntr.value + 1 %}
 {% endfor %}
 </tr>
-
 {%if data|length > 0 %}
 {% for d in data %}
-<tr>
+<tr class="table_item">
 {% for k in d %}
     {% if k == 'ip_address' %}
     {% set class_name="ip_addr" %}
@@ -14,7 +18,8 @@
     {% set class_name="" %}
     {% endif %}
     {% if k == 'ip_address' %}
-        <td><span title="{{d[k]}}" class="{{class_name}}">{{ d[k]| truncate(80) }}</span>
+        {% if d[k] in hostnames %} {% set h = hostnames[d[k]] %} {% else %} {% set h = d[k]|truncate(80)%} {%endif %}
+        <td><span title="{{d[k]}}" class="{{class_name}}">{{ h }}</span>
         {% set flag = flags[d[k]] %}
         {% if flag != '' %}
             <img src="{{ url_for('static', filename='img/flags/' ~ flag ~ '.png') }}">
@@ -23,12 +28,14 @@
             <td><span title="{{d[k]}}" class="{{class_name}}">
         {% set ips = d[k].split(',') %}
         {%for x in ips %}
-            {% set x = x.strip(' ') %}
+             {% set x = x.strip(' ') %}
              {% set flag = flags[x] %}
-             {{ x }}
+             {% if x in hostnames %} {% set h = hostnames[x] %} {% else %} {% set h = x %} {%endif %}
+             {{ h }}
              {% if flag != '' %}
-                <img src="{{ url_for('static', filename='img/flags/' ~ flag ~ '.png') }}">,
+                <img src="{{ url_for('static', filename='img/flags/' ~ flag ~ '.png') }}">
              {% endif %}
+             {% if not loop.last %},{% endif %}
         {% endfor %}
         </span>
     {% else %}

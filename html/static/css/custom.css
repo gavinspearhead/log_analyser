@@ -126,6 +126,10 @@ div.float-right {
   border:0;
 }
 
+.table th, table td {
+  max-width: 200px;
+}
+
 input, textarea, select {
     color: white !important;
 }

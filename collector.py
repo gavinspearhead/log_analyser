@@ -17,6 +17,7 @@ from loghandler import LogHandler
 from util import pid_running, write_pidfile
 from log_analyser_version import VERSION, PROG_NAME_COLLECTOR
 
+hostnames_file_name: str = "loganalyser.hostnames"
 config_file_name: str = "loganalyser.config"
 state_file_name: str = "loganalyser.state"
 output_file_name: str = "loganalyser.output"
@@ -134,6 +135,7 @@ def main() -> None:
         output_file = os.path.join(config_path, output_file_name)
         notify_file = os.path.join(config_path, notify_file_name)
         local_ip_file = os.path.join(config_path, ip_range_file_name)
+        hostnames_file = os.path.join(config_path, hostnames_file_name)
 
         config = Config()
         state = State()

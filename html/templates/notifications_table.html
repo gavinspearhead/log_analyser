@@ -1,12 +1,15 @@
 <tr>
+      {%set cntr = namespace(value=1)  %}
 {% for x in keys %}
-<th>{{ names[x] }} </th>
-{% endfor %}
+
+<th onclick="w3.sortHTML('#itemstable','.table_item', 'td:nth-child({{ cntr.value }})')" style="cursor:pointer">{{ names[x] }} </th>
+      {% set cntr.value = cntr.value + 1 %}
+    {% endfor %}
 </tr>
 
 {%if data|length > 0 %}
 {% for d in data %}
-<tr>
+<tr class="table_item">
 {% for k in keys %}
         {% if k == 'ip_address' %}
         <td><span title="{{d[k]}}" class="ip_addr">{{ d[k]| truncate(80) }}</span>

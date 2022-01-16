@@ -29,12 +29,15 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from output import MongoConnector, Outputs
 from notify import Notify
+from hostnames import Hostnames
 from log_analyser_version import VERSION, PROG_NAME_WEB
 
 output_file_name: str = "loganalyser.output"
+hostnames_file_name: str = "loganalyser.hostnames"
+geolite_data_filename: str = "data/GeoLite2-Country.mmdb"
 config_path: str = os.path.dirname(__file__)
 app = Flask(__name__)
-geoip2_db = geoip2.database.Reader(os.path.join(os.path.dirname(__file__), 'data/GeoLite2-Country.mmdb'))
+geoip2_db = geoip2.database.Reader(os.path.join(os.path.dirname(__file__), geolite_data_filename))
 
 
 class Dashboard_data_types:
@@ -254,10 +257,8 @@ def get_mongo_connection() -> pymongo.collection.Collection:
 
 
 def get_period_mask(period: str, to_time: Optional[str] = None, from_time: Optional[str] = None,
-                    tz: pytz.BaseTzInfo = pytz.UTC) -> Tuple[datetime.datetime, datetime.datetime, str, Union[List[int],
-                                                                                                              List[
-                                                                                                                  Tuple[
-                                                                                                                      int, int]]]]:
+                    tz: pytz.BaseTzInfo = pytz.UTC) -> Tuple[datetime.datetime, datetime.datetime, str,
+                                                             Union[List[int], List[Tuple[int, int]]]]:
     now = datetime.datetime.now(tz)
     intervals: Union[List[int], List[Tuple[int, int]]] = []
     if period == 'today':
@@ -1000,6 +1001,8 @@ def get_flag(ip_address: str) -> str:
 
 @app.route('/data/', methods=['POST'])
 def load_data() -> Tuple[str, int, Dict[str, str]]:
+    hostnames = Hostnames(os.path.join(config_path, '..', hostnames_file_name)).get_hostnames()
+    print(hostnames)
     name: str = request.json.get('name', '').strip()
     rtype: str = request.json.get('type', '').strip()
     period: str = request.json.get('period', '').strip()
@@ -1042,7 +1045,7 @@ def load_data() -> Tuple[str, int, Dict[str, str]]:
                             flags[vv] = get_flag(vv)
             # Force every thing to string so we can truncate stuff in the template
             res3.append({k: str(v) for k, v in x.items()})
-        rhtml = render_template("data_table.html", data=res3, keys=keys, flags=flags)
+        rhtml = render_template("data_table.html", data=res3, keys=keys, flags=flags, hostnames=hostnames)
         return json.dumps({'success': True, 'rhtml': rhtml}), 200, {'ContentType': 'application/json'}
 
 
