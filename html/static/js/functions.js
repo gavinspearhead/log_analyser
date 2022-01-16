@@ -12,3 +12,22 @@ function set_hosts(selected)
         $('#host_selector').html(res.html);
     });
 }
+
+
+
+function set_ip_click_handler() {
+    $(".ip_addr").unbind("click");
+    $(".ip_addr").click(function(event) {
+        $("#dns_popup").modal('show');
+        $("#dns_popup_content").text("Loading....");
+//        window.open('https://dnschecker.org/ip-whois-lookup.php?query=' + encodeURIComponent($(this).text()));
+        $.ajax({
+            url: script_root +"/reverse_dns/"+ encodeURIComponent($(this).text()) ,
+            type: "GET"
+        }).done(function(data) {
+            $("#dns_popup_content").html(data);
+            $("#dns_popup").modal("handleUpdate")
+        });
+    })
+
+}

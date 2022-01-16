@@ -9,7 +9,7 @@
 <tr>
 {% for k in keys %}
         {% if k == 'ip_address' %}
-        <td><span title="{{d[k]}}" class="{{class_name}}">{{ d[k]| truncate(80) }}</span>
+        <td><span title="{{d[k]}}" class="ip_addr">{{ d[k]| truncate(80) }}</span>
         {% set flag = flags[d[k]] %}
         {% if flag != '' %}
             <img src="{{ url_for('static', filename='img/flags/' ~ flag ~ '.png') }}">

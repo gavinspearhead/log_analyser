@@ -25,11 +25,10 @@ function handle_request(search, type)
         contentType: "application/json;charset=UTF-8",
     }).done(function(data) {
         var res = JSON.parse(data);
-        console.log(res.rhtml)
         $('#itemstable').html(res.rhtml);
-
         document.title = ("Log Analyser - Notifications: " + res.title_type + " " + period).replace("_", " ");
         $("#header").text((res.title_type + ": " + period).replace("_", " "));
+        set_ip_click_handler();
     });
     return false;
 }
