@@ -245,11 +245,16 @@ class Data_set:
 
 
 def get_prefix(ip_address: str) -> Optional[str]:
+    local_addresses = ["127.0.0.0/8", "10.0.0.0/8", "192.168.0.0/16", "172.16.0.0/12", "fc00::/7", "169.254.0.0/16",
+                       "fe80::/10"]
     try:
         r = geoip2_db.country(ip_address)
         network_address = ipaddress.ip_interface("{}/{}".format(ip_address, r.traits._prefix_len))
         return str(network_address.network)
     except geoip2.errors.AddressNotFoundError:
+        for x in local_addresses:
+            if ipaddress.ip_address(ip_address) in ipaddress.ip_network(x):
+                return x
         return None
 
 
