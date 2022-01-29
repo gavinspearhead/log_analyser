@@ -17,31 +17,53 @@ from typing import Iterator, Optional, List, Dict, Any
 #     ]
 #
 # }
+from config_checker import Config_Checker
 
 
 class Config:
+
+    _config_items = {
+        'path': Config_Checker.OPTIONAL,
+        'name': Config_Checker.MANDATORY,
+        'output': Config_Checker.MANDATORY,
+        'retention': Config_Checker.OPTIONAL,
+        'filter': {
+            "regex": Config_Checker.MANDATORY,
+            "emit": Config_Checker.MANDATORY,
+            "transform": Config_Checker.OPTIONAL,
+            "notify": {
+                "condition": Config_Checker.MANDATORY,
+                "name": Config_Checker.MANDATORY
+            }
+        }
+    }
+
     def __init__(self) -> None:
         self._config: List[Dict[str, Any]] = []
 
     def parse_config(self, filename: str) -> None:
         with open(filename, "r") as infile:
             config = json.load(infile)
+        # Config_Checker.config_validate(self._config_items, config)
         r_config: List = []
         for config_element in config:
-            if 'path' not in config_element or 'name' not in config_element or 'output' not in config_element:
+            if 'path' not in config_element or 'name' not in config_element or 'output' not in config_element \
+                    or 'filter' not in config_element:
                 continue
             tmp = {
                 'path': config_element['path'],
                 'name': config_element['name'],
                 'output': config_element['output'],
-                'retention': config_element['retention'] if 'retention' in config_element else None, 'filter': []
+                'retention': config_element.get('retention', None),
+                'filter': []
             }
             for t in config_element['filter']:
                 if 'regex' in t and 'emit' in t:
                     log_filter = {
                         'regex': t['regex'],
                         'emit': t['emit'],
-                        'transform': t['transform'] if 'transform' in t else {}, 'notify': {}
+                        'transform': t.get('transform', {}),
+                        'notify': {}
                     }
                     if 'notify' in t:
                         log_filter['notify'] = []
@@ -55,7 +77,6 @@ class Config:
                     tmp['filter'].append(log_filter)
             r_config.append(tmp)
         self._config = r_config
-        # pprint(self._config)
 
     def get_retention(self, filename: str) -> Optional[int]:
         for i in self._config:

@@ -71,11 +71,9 @@ function set_log_handlers()
 
 $( document ).ready(function() {
     set_hosts()
-
     $('body').css('background-image', 'url("' + script_root + '/static/img/necronomicon.png")');
     $('body').css('background-size', 'contain');
     $('#itemstablediv').scrollTop(0);
-
     set_log_handlers();
     handle_request('users', "ssh", '', 'Users', "SSH");
 });

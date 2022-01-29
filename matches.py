@@ -1,5 +1,5 @@
 import functools
-from  typing import  Any, Tuple, Dict
+from typing import Any, Tuple, Dict
 from output import MongoOutput
 
 
@@ -31,7 +31,6 @@ def ssh_is_new_ipaddress(col: MongoOutput, value: str) -> bool:
     return 0 == col.count({"ip_address": value, "name": "auth_ssh"})
 
 
-# @false_only_cache
 def ssh_is_new_username(col: MongoOutput, value: str) -> bool:
     return col.count({"username": value, "name": "auth_ssh"}) == 0
 

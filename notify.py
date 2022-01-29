@@ -65,3 +65,7 @@ class Notify:
                     i['handler'].send(msg, limit_type)
             except Exception as e:
                 logging.info("Notifying failed: {}".format(str(e)))
+
+    def cleanup(self):
+        for notifier in self._notify:
+            notifier['handler'].cleanup()

@@ -2,11 +2,12 @@ import datetime
 import json
 import logging
 import threading
-# import typing
 import pymongo
 from abc import ABC
 from pymongo import MongoClient, collection
 from typing import List, Dict, Optional, Any, Type
+
+from config_checker import Config_Checker
 
 
 class Outputs:
@@ -26,17 +27,22 @@ class Outputs:
 
 
 class AbstractOutput(ABC):
+    _config_items = {
+        'buffer_size': Config_Checker.OPTIONAL,
+        'name': Config_Checker.MANDATORY,
+        'type': Config_Checker.MANDATORY
+    }
     DEFAULT_BUFFER_SIZE = 1
 
     def __init__(self, config: Dict[str, Any]) -> None:
         logging.debug("Configuring output {}".format(config['name']))
+        Config_Checker.config_validate(self._config_items, config)
         self._name: str = config['name']
-        self._buffer_size: int = config['buffer_size'] if 'buffer_size' in config else self.DEFAULT_BUFFER_SIZE
+        self._buffer_size: int = config.get('buffer_size', self.DEFAULT_BUFFER_SIZE)
         self._buffer: List[Dict[str, Any]] = []
         self._lock = threading.Lock()
 
     def write(self, data: Dict[str, Any]) -> None:
-        # print(len(self._buffer), self._buffer_size)
         with self._lock:
             self._buffer.append(data)
             buf_len = self.size()
@@ -104,7 +110,18 @@ class StdOutput(AbstractOutput):
 
 
 class MongoConnector:
+    _config_items = {
+        'hostname': Config_Checker.MANDATORY,
+        'port': Config_Checker.MANDATORY,
+        'password': Config_Checker.MANDATORY,
+        'username': Config_Checker.MANDATORY,
+        'auth_db': Config_Checker.MANDATORY,
+        'database': Config_Checker.MANDATORY,
+        'collection': Config_Checker.MANDATORY,
+    }
+
     def __init__(self, config: Dict[str, str]) -> None:
+        Config_Checker.config_validate(self._config_items, config)
         self._config = config
         hostname = self._config['hostname'] if self._config['hostname'] != "" else None
         port = self._config['port'] if self._config['port'] != "" else None
@@ -122,8 +139,11 @@ class MongoConnector:
 
 
 class MongoOutput(AbstractOutput):
+    _config_items = {'buffer_size': Config_Checker.OPTIONAL, 'name': Config_Checker.MANDATORY}
+
     def __init__(self, config: Dict[str, Any]) -> None:
         super().__init__(config)
+        Config_Checker.config_validate(self._config_items, config)
         self._config = config
         self._mongo = None
         self._db: Optional[MongoConnector] = None

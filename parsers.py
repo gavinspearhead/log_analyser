@@ -5,9 +5,8 @@ import logging
 import operator
 import re
 import dateutil.parser
-# from pprint import pprint
 
-from util import load_data_set
+from util import load_data_set, dns_translate
 from time_parsers import parse_apache_timestamp, parse_syslog_timestamp, parse_iso_timestamp
 from abc import ABC
 from dateutil.tz import tzoffset
@@ -62,7 +61,6 @@ class RegexParser(LogParser):
                  notifiers, output, log_name) -> None:
         super().__init__()
         self._pattern, self._filters = self.parse_regexp(reg_ex)
-        # print(self._pattern)
         self._compiled_pattern = re.compile(self._pattern)
         self._format_str = format_str
         self._transform = transform
@@ -101,7 +99,6 @@ class RegexParser(LogParser):
                 raise ValueError('missing closing parenthesis')
 
     def parse_regexp(self, line: str) -> Tuple[str, Dict]:
-        # "foo (%BAR:name:param)
         pos: int = 0
         out: str = ""
         filters: Dict = {}
@@ -122,12 +119,10 @@ class RegexParser(LogParser):
                     pos += 1
             except IndexError as e:
                 logging.info('error {}'.format(e))
-        # print(out, filters)
         return out, filters
 
     def match(self, line: str) -> List[str]:
         res = self._compiled_pattern.search(line)
-        # print(line, res)
         if res is None:
             return []
         return list(res.groups())
@@ -149,17 +144,19 @@ class RegexParser(LogParser):
             except KeyError:
                 continue
         res['name'] = name
-        # print(res)
         return res
 
     def notify(self, matches, name: str):
         res = self.emit(matches, name)
-        # print(self._notify)
         for notifier in self._notify:
             if notifier != {}:
                 if self._match_notify_conditions(res, notifier['condition']):
                     try:
                         notifier = self._notifiers.get_notify(notifier['name'])
+                        if notifier['handler'].do_convert_dns():
+                            rv = dns_translate(res['ip_address'])
+                            if rv:
+                                res['remote_host'] = rv
                         formatting = notifier['handler'].get_format()
                         if formatting == "text":
                             msg = "".join(["{}: {}\n".format(x, y) for x, y in res.items()])
@@ -176,7 +173,6 @@ class RegexParser(LogParser):
 
     @staticmethod
     def _compare(element: str, clause) -> bool:
-        # print(element, clause)
         if element.startswith("<="):
             val = element[2:]
             op = operator.le
@@ -206,7 +202,7 @@ class RegexParser(LogParser):
             elif op == operator.eq:
                 return v in c
             else:
-                raise ValueError("can't compare ipaddress")
+                raise ValueError("Can't compare ipaddress")
         except ValueError:
             pass
         if (type(val) == int or val.isnumeric()) and (type(clause) == int or clause.isnumeric()):
@@ -215,24 +211,16 @@ class RegexParser(LogParser):
             return op(clause, val)
 
     def _match_notify_conditions(self, matches, conditions) -> Optional[bool]:
-        # print(matches)
-        # print(conditions)
         res = False
         for condition in conditions:
-            # print('cond', condition)
             res2 = len(condition) > 0
             for clause in condition:
-                # print('claus1e', clause)
                 if clause in matches:
-                    # print('clause', clause, matches[clause], condition[clause])
                     if type(condition[clause]) != list:
                         condition[clause] = [condition[clause]]
                     for elem in condition[clause]:
-                        # print('clause', clause, matches[clause], elem)
                         if elem == 'new':
-                            # print('is_new')
                             if is_new(self._output, matches['name'], clause, matches[clause]):
-                                # print('new ', clause)
                                 res2 = res2 and True
                             else:
                                 res2 = False
@@ -251,23 +239,17 @@ class RegexParser(LogParser):
                                 # only for IP addresses
                                 res2 = False
                         elif elem[0] in "=!<>":
-                            # print(self._compare(elem, matches[clause]))
                             res2 = res2 and self._compare(elem, matches[clause])
                         else:
                             res2 = False
-                        # print(res, res2)
             res = res or res2
             if res:
-                # matches['notify'] = "{} {}".format(matches[clause], clause)
-                # print(matches['notify'])
                 return True
-        # print(res)
         return None
 
     def _transform_value(self, rv, idx):
         if idx in self._transform:
             if self._transform[idx] == 'date':
-                # print(rv)
                 return dateutil.parser.isoparse(rv)
             elif self._transform[idx] == 'int':
                 return int(rv)

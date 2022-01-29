@@ -11,7 +11,6 @@ class Notify_tcp(notify_handler.Notify_handler):
             raise ValueError("Invalid port number {}".format(self._port))
         self._host: str = config.get('host', "")
         self._format: str = config.get("format", 'text')
-
         if self._format not in ('json', 'text'):
             raise ValueError("Invalid format {}".format(self._format))
         self._socket = None

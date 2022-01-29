@@ -11,7 +11,7 @@
     <script type="text/javascript" src="{{ url_for('static', filename='js/jquery-3.6.0.min.js') }}"></script>
     <script type="text/javascript" src="{{ url_for('static', filename='js/popper.js') }}"></script>
     <script type="text/javascript" src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
-    <script type="text/javascript" src="{{ url_for('static', filename='js/ChartNew.js') }}"></script>
+<!--    <script type="text/javascript" src="{{ url_for('static', filename='js/ChartNew.js') }}"></script>-->
 
 <style> {# included here because relative path #}
 @font-face {
@@ -35,7 +35,7 @@
             <input type="radio" class="btn-check" name="timeperiod" id="24hour" autocomplete="off" checked>
             <label class="btn btn-secondary" for="24hour">24 Hours</label>
 
-            <input type="radio" class="btn-check" name="timeperiod" id="daily" autocomplete="off" checked>
+            <input type="radio" class="btn-check" name="timeperiod" id="daily" autocomplete="off">
             <label class="btn btn-secondary" for="daily">Today</label>
 
             <input type="radio" class="btn-check" name="timeperiod" id="yesterday" autocomplete="off">
@@ -94,13 +94,13 @@
             <h6><small>{{ prog_name}}</small> </h6>
         </div>
     <div class="col scrollable bottom_margin" id="itemstablediv">
+        <br>
         <h2>Notifications <span id="header"></span></h2>
-       <div>
-                <table class="table table-dark table-condensed table-sm table-hover" id="itemstable" cellpadding="0" cellspacing="0">
+        <div>
+            <table class="table table-dark table-condensed table-sm table-hover" id="itemstable" cellpadding="0" cellspacing="0">
             <tbody></tbody>
             </table>
         </div>
-
         <br>
     </div>
 

@@ -1,21 +1,17 @@
 import argparse
-import json
 import os
-import threading
-import time
 import logging
 import local_ip
 import traceback
 
-from watchdog.observers import Observer
 from output import factory, Outputs
 from config import Config
 from state import State
 from notify import Notify
 from parsers import RegexParser
-from loghandler import LogHandler
 from util import pid_running, write_pidfile
 from log_analyser_version import VERSION, PROG_NAME_COLLECTOR
+from log_observer import LogObserver
 
 hostnames_file_name: str = "loganalyser.hostnames"
 config_file_name: str = "loganalyser.config"
@@ -24,80 +20,6 @@ output_file_name: str = "loganalyser.output"
 notify_file_name: str = "loganalyser.notify"
 ip_range_file_name: str = "loganalyser.ip_ranges"
 pid_file_name: str = "loganalyser.pid"
-
-
-class LogObserver:
-    STATE_DUMP_TIMEOUT: int = 15
-
-    def __init__(self, state_file_handle: str, cleanup_interval: int, state_dump_timeout=STATE_DUMP_TIMEOUT) -> None:
-        self._observer = Observer()
-        self._lock = threading.Lock()
-        self._event_handlers = {}
-        self._state_file = state_file_handle
-        self._cleanup_threat = None
-        self._cleanup_interval = cleanup_interval
-        self._state_dump_timeout = state_dump_timeout
-
-    def add(self, filepath: str, file_pos: int, parsers, file_inode: int, device: int, output_type, name,
-            retention: int) -> None:
-        directory = os.path.dirname(filepath)
-        if directory not in self._event_handlers:
-            self._event_handlers[directory] = LogHandler()
-
-        self._event_handlers[directory].add_file(filepath, file_pos, parsers, file_inode, device, output_type, name,
-                                                 retention)
-
-    def start(self) -> None:
-        logging.info('Starting log collector log_analyser_version.py {}'.format(VERSION))
-        for directory in self._event_handlers:
-            self._observer.schedule(self._event_handlers[directory], directory, recursive=False)
-        self._observer.start()
-        self._start_cleanup_threat()
-        while True:
-            self.dump_state()
-            self.flush_output()
-            time.sleep(self._state_dump_timeout)
-
-    def stop(self) -> None:
-        logging.info('Stopping log collector')
-        self._observer.stop()
-
-    def join(self) -> None:
-        logging.debug('Joining log collector')
-        self._observer.join()
-        logging.debug('joining cleanup thread')
-        # self._cleanup_threat.join()
-        logging.debug('done')
-
-    def dump_state(self) -> None:
-        logging.debug('dump_state')
-        current_state = []
-        for eh in self._event_handlers.values():
-            current_state += eh.dump_state()
-        try:
-            logging.debug(json.dumps(current_state))
-            with open(self._state_file, 'w') as outfile:
-                json.dump(current_state, outfile)
-        except OSError as exc:
-            logging.warning("Cannot write file {}: {}".format(self._state_file, str(exc)))
-
-    def flush_output(self) -> None:
-        logging.debug('flushing output')
-        for eh in self._event_handlers.values():
-            eh.flush_output()
-
-    def _cleanup(self) -> None:
-        while True:
-            logging.debug("Cleaning up")
-            for eh in self._event_handlers.values():
-                eh.cleanup()
-            time.sleep(self._cleanup_interval)
-
-    def _start_cleanup_threat(self) -> None:
-        logging.debug("starting cleanup thread")
-        self._cleanup_threat = threading.Thread(target=self._cleanup)
-        self._cleanup_threat.daemon = True
-        self._cleanup_threat.start()
 
 
 def main() -> None:
@@ -135,7 +57,6 @@ def main() -> None:
         output_file = os.path.join(config_path, output_file_name)
         notify_file = os.path.join(config_path, notify_file_name)
         local_ip_file = os.path.join(config_path, ip_range_file_name)
-        hostnames_file = os.path.join(config_path, hostnames_file_name)
 
         config = Config()
         state = State()
@@ -148,7 +69,7 @@ def main() -> None:
         output.parse_outputs(output_file)
         local_ip.load_local_address(local_ip_file)
 
-        observer = LogObserver(state_file, CLEANUP_INTERVAL, state_dump_timeout)
+        observer = LogObserver(state_file, CLEANUP_INTERVAL, state_dump_timeout, notify.cleanup)
 
         if os.path.isfile(pid_file):
             if pid_running(pid_file):

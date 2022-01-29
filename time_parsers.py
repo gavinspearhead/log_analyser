@@ -37,12 +37,9 @@ class TimestampParsers:
             mn: int = int(x[3])
             sec: int = int(x[4])
             tz: str = time.strftime("%z", time.localtime())
-            # print(year, mon, day, hour, mn, sec, tz)
             time_out_str: str = "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}{:s}".format(year, mon, day, hour, mn, sec,
                                                                                        tz)
-
             dateutil.parser.isoparse(time_out_str)
-            # print(time_str)
         except ValueError as e:
             print_exc()
             logging.info("Invalid Syslog Date {} {}".format(time_str, e))
@@ -59,18 +56,15 @@ class TimestampParsers:
                 raise ValueError("Not found: {}".format(time_str))
             day: int = int(x[0])
             mnt: str = x[1].lower()
-            # print(mn)
             if mnt in self._months:
                 mon: int = self._months[mnt]
             else:
                 raise ValueError("Unknown month: {}".format(mnt))
-                # print(mon)
             year: int = int(x[2])
             hour: int = int(x[3])
             mn: int = int(x[4])
             sec: int = int(x[5])
             tz: int = int(x[6])
-            # print(year, mon, day, hour, mn, sec, tz)
             time_out_str = "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}{:+05d}".format(year, mon, day, hour, mn, sec, tz)
             dateutil.parser.isoparse(time_out_str)
         except ValueError as e:
@@ -78,7 +72,7 @@ class TimestampParsers:
             return ""
         return time_out_str
 
-    def parse_iso_timestamp(self, time_str):
+    def parse_iso_timestamp(self, time_str: str) -> str:
         try:
             dateutil.parser.isoparse(time_str)
         except ValueError as e:

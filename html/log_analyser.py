@@ -7,8 +7,7 @@ import logging
 import os.path
 import re
 import sys
-import traceback
-
+# import traceback
 import dns.resolver
 import pymongo
 import dateutil.parser
@@ -24,6 +23,7 @@ from humanfriendly import format_size
 from natsort import natsorted
 from copy import deepcopy
 from traceback import print_exc
+from collections import OrderedDict
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -35,9 +35,9 @@ from log_analyser_version import VERSION, PROG_NAME_WEB
 output_file_name: str = "loganalyser.output"
 hostnames_file_name: str = "loganalyser.hostnames"
 geolite_data_filename: str = "data/GeoLite2-Country.mmdb"
+geoip2_db = geoip2.database.Reader(os.path.join(os.path.dirname(__file__), geolite_data_filename))
 config_path: str = os.path.dirname(__file__)
 app = Flask(__name__)
-geoip2_db = geoip2.database.Reader(os.path.join(os.path.dirname(__file__), geolite_data_filename))
 
 
 class Dashboard_data_types:
@@ -119,21 +119,25 @@ class Data_set:
         self._keys: List[str] = []
         self._raw_keys: List[str] = []
 
+    def __str__(self):
+        return "F1:{}\nF2: {} \nF3: {}\nD: {}\nK: {}\n RK:{}".format(self._field1, self._field2, self._field3,
+                                                                     self._data, self._keys, self._raw_keys)
+
     def set_keys(self, keys: List[str]) -> None:
         self._keys = keys
 
     @property
     def raw_keys(self) -> List[str]:
-        return self.get_raw_keys()
+        return self._get_raw_keys()
 
-    def get_raw_keys(self) -> List[str]:
+    def _get_raw_keys(self) -> List[str]:
         return self._raw_keys
 
     @property
     def keys(self):
-        return self.get_keys()
+        return self._get_keys()
 
-    def get_keys(self) -> List[str]:
+    def _get_keys(self) -> List[str]:
         return self._keys
 
     def add_data_row(self, row: Dict[str, Union[int, str]]) -> None:
@@ -199,13 +203,29 @@ class Data_set:
             else:
                 raise TypeError('invalid time value')
             template['time'] = t
+
             self._data.append(deepcopy(template))
 
     def _get_raw_data_internal(self) -> Tuple[Dict[str, Dict[str, Union[str, int]]], List[str]]:
+        hostnames = Hostnames(os.path.join(config_path, '..', hostnames_file_name))
         field1_values: List[str] = natsorted(list(set([x[self._field1] for x in self._data])))
         field2_values: List[str] = []
+        if self._field1 == 'ip_address':
+            # translate the ip addresses to hostnames
+            def map_hostname(ip):
+                hn = hostnames.translate(ip)
+                if hn is not None:
+                    return "{} ({})".format(hn, ip)
+                else:
+                    return ip
+
+            field1_values_a = [map_hostname(x) for x in field1_values]
+        else:
+            field1_values_a = field1_values
+
         if self._field2 is not None:
-            field2_values = natsorted(list(set([x[self._field2] for x in self._data])))
+            # field2_values = natsorted(list(set([x[self._field2] for x in self._data])))
+            field2_values = list(OrderedDict.fromkeys([x[self._field2] for x in self._data]))
         data_set: Dict[str, Dict[str, Union[str, int]]] = {}
         for t in field1_values:
             data_set[t] = {}
@@ -219,7 +239,8 @@ class Data_set:
                 data_set[item[self._field1]] = item[self._field3]
 
         rv = data_set
-        keys: List[str] = list(field1_values)
+        keys: List[str] = list(field1_values_a)
+
         return rv, keys
 
 
@@ -397,7 +418,7 @@ def get_ssh_user_time_data(search: str, mask: Dict[str, Any], raw: bool, time_ma
         [{"$match": {"$and": [{"name": "auth_ssh"}, mask, search_q]}},
          {"$group": {"_id": {"username": "$username", "type": "$type",
                              "time": {"$" + time_mask: {"date": "$timestamp", "timezone": local_tz}},
-                             "month": {"$month": {"date": "$timestamp", "timezone": local_tz}}
+                             "month": {"$month": {"date": "$timestamp", "timezone": local_tz}},
                              },
                      "total": {"$sum": 1},
                      "ips": {"$addToSet": "$ip_address"},
@@ -426,22 +447,26 @@ def get_ssh_user_time_data(search: str, mask: Dict[str, Any], raw: bool, time_ma
 
 
 def get_ssh_user_data(search: str, mask: Dict[str, Any]) -> Data_set:
+    local_tz: str = str(tzlocal.get_localzone())
     col = get_mongo_connection()
     search_q = get_search_mask_ssh(search)
     q = [{"$match": {"$and": [{"name": "auth_ssh"}, mask, search_q]}},
          {"$group": {"_id": {"username": "$username", "type": "$type"}, "total": {"$sum": 1},
                      "hosts": {"$addToSet": "$host"},
-                     "ips": {"$addToSet": "$ip_address"}}},
+                     "ips": {"$addToSet": "$ip_address"},
+                     "times": {"$addToSet": {"$dateToString": {"date": "$timestamp", "timezone": local_tz,
+                                                               "format": "%Y-%m-%dT%H:%M:%S"}}}}},
          {"$sort": {"total": -1}}
          ]
     data = Data_set('type', 'username', 'count')
-    data.set_keys(['Username', 'Type', 'Count', 'IPs', "Hosts"])
+    data.set_keys(['Username', 'Type', 'Count', 'IPs', "Hosts", "Timestamps"])
     res = col.aggregate(q)
     for x in res:
         row = {
             'username': x['_id']['username'], 'type': x['_id']['type'], 'count': x['total'],
             'ips': ", ".join(x['ips']),
-            'hosts': ", ".join(x['hosts'])
+            'hosts': ", ".join(x['hosts']),
+            'times': ", ".join(x['times'])
         }
         data.add_data_row(row)
     return data
@@ -459,9 +484,11 @@ def get_ssh_ip_data(search: str, mask: Dict[str, Any], name: str) -> Data_set:
          ])
     data = Data_set('prefix' if name == 'ip_prefixes' else 'ip_address', None, 'count')
     for x in res:
-        ip_addr = x['_id']['ip_address']
+        ip_address = x['_id']['ip_address']
         row = {
-            'ip_address': ip_addr, 'count': x['total'], 'type': x['_id']['type'],
+            'ip_address': ip_address,
+            'count': x['total'],
+            'type': x['_id']['type'],
             'users': ", ".join(sorted(x['users'])),
             'hosts': ", ".join(sorted(x['hosts']))
         }
@@ -734,8 +761,8 @@ def get_apache_ips_data(mask: Dict[str, Any], search: str, name: str) -> Data_se
          {"$sort": {"total": -1}}
          ])
     data = Data_set('prefix' if name == 'ip_prefixes' else 'ip_address', None, 'count')
-    if name == 'ip_address':
-        data.set_keys(['IP address', 'Count', 'Users', 'Codes', 'Hosts'])
+    if name == 'ip_addresses':
+        data.set_keys(['IP Address', 'Count', 'Users', 'Codes', 'Hosts'])
     else:
         data.set_keys(['IP Prefix', 'Count', 'Users', 'Codes', "Hosts"])
 
@@ -743,9 +770,9 @@ def get_apache_ips_data(mask: Dict[str, Any], search: str, name: str) -> Data_se
         row = {
             'ip_address': x['_id'],
             'count': x['total'],
-            'users': ",".join(sorted(x['usernames'])),
-            'codes': ",".join(sorted(x['codes'])),
-            'hosts': ",".join(sorted(x['hosts']))
+            'users': ", ".join(sorted(x['usernames'])),
+            'codes': ", ".join(sorted(x['codes'])),
+            'hosts': ", ".join(sorted(x['hosts']))
         }
         data.add_data_row(row)
     if name == 'ip_prefixes':
@@ -861,7 +888,7 @@ def get_apache_time_ips_data(mask: Dict[str, Any], search: str, raw: bool,
             'ip_address': x['_id']['ip_address'],
             'total': x['total'],
             'codes': ", ".join(sorted(x['codes'])),
-            'hosts': ",".join(sorted(x['hosts']))
+            'hosts': ", ".join(sorted(x['hosts']))
         }
         data.add_data_row(row)
     return data
@@ -898,7 +925,7 @@ def get_apache_time_urls_data(mask: Dict[str, Any], search: str, raw: bool,
             'path': x['_id']['path'],
             'total': x['total'],
             'ips': ", ".join(x['ips']),
-            'hosts': ",".join(sorted(x['hosts']))
+            'hosts': ", ".join(sorted(x['hosts']))
         }
         data.add_data_row(row)
     return data
@@ -920,7 +947,7 @@ def get_apache_size_ip_data(mask: Dict[str, Any], search: str, name: str, raw: b
         row = {
             'ip_address': x['_id']['ip_address'],
             'size': x['total'],
-            'hosts': ",".join(sorted(x['hosts']))
+            'hosts': ", ".join(sorted(x['hosts']))
         }
         data.add_data_row(row)
     if name == 'size_prefix':
@@ -950,7 +977,7 @@ def get_apache_size_user_data(mask: Dict[str, Any], search: str, raw: bool) -> D
         row = {
             'username': x['_id']['username'],
             'size': x['total'],
-            'hosts': ",".join(sorted(x['hosts']))
+            'hosts': ", ".join(sorted(x['hosts']))
         }
         data.add_data_row(row)
     if not raw:
@@ -992,17 +1019,17 @@ def get_apache_data(name: str, period: str, search: str, raw: bool, to_time: Opt
     return data
 
 
-def get_flag(ip_address: str) -> str:
+def get_flag(ip_address: str) -> Tuple[str, str]:
     try:
-        return geoip2_db.country(ip_address.strip()).country.iso_code.lower()
+        country = geoip2_db.country(ip_address.strip()).country
+        return country.iso_code.lower(), country.name
     except (AttributeError, ValueError, geoip2.errors.AddressNotFoundError):
-        return ''
+        return '', ''
 
 
 @app.route('/data/', methods=['POST'])
 def load_data() -> Tuple[str, int, Dict[str, str]]:
     hostnames = Hostnames(os.path.join(config_path, '..', hostnames_file_name)).get_hostnames()
-    print(hostnames)
     name: str = request.json.get('name', '').strip()
     rtype: str = request.json.get('type', '').strip()
     period: str = request.json.get('period', '').strip()
@@ -1026,12 +1053,12 @@ def load_data() -> Tuple[str, int, Dict[str, str]]:
         else:
             fields = keys
             res2 = [[x for x in res1.values()]]
-        return json.dumps({'success': True, "data": res2, "labels": keys, "fields": fields}), 200, {
-            'ContentType': 'application/json'}
+        return json.dumps({'success': True, "data": res2, "labels": keys, "fields": fields, "hostnames": hostnames}), \
+               200, {'ContentType': 'application/json'}
     else:
         res3: List[Dict[str, str]] = []
         keys = data.keys
-        flags: Dict[str, str] = {}
+        flags: Dict[str, Tuple[str, str]] = {}
         res = data.data
         for x in res:
             for k, v in x.items():
@@ -1043,7 +1070,7 @@ def load_data() -> Tuple[str, int, Dict[str, str]]:
                         vv = vv.strip(' ')
                         if vv not in flags:
                             flags[vv] = get_flag(vv)
-            # Force every thing to string so we can truncate stuff in the template
+            # Force every thing to string, so we can truncate stuff in the template
             res3.append({k: str(v) for k, v in x.items()})
         rhtml = render_template("data_table.html", data=res3, keys=keys, flags=flags, hostnames=hostnames)
         return json.dumps({'success': True, 'rhtml': rhtml}), 200, {'ContentType': 'application/json'}
@@ -1053,6 +1080,20 @@ def get_hosts() -> List[str]:
     col = get_mongo_connection()
     res = col.distinct("hostname")
     return list(set([x.lower() for x in res]))
+
+
+@app.context_processor
+def utility_processor():
+    def match_prefix(ip, prefixes):
+        try:
+            for x in prefixes:
+                if ipaddress.ip_address(ip.strip()) in ipaddress.ip_network(x.strip()):
+                    return prefixes[x]
+        except Exception:
+            pass
+        return ""
+
+    return dict(match_prefix=match_prefix)
 
 
 @app.route('/hosts/', methods=['POST'])
@@ -1129,7 +1170,6 @@ def reverse_dns(item) -> Tuple[str, int, Dict[str, str]]:
         data.append(str(res))
     try:
         whois_data = whois.whois(item, True)
-        # print(whois_data)
         wd = {
             "name": whois_data.name,
             "registrar": whois_data.registrar,
@@ -1150,8 +1190,9 @@ def reverse_dns(item) -> Tuple[str, int, Dict[str, str]]:
         wd = {i: wd[i] for i in wd if wd[i] is not None}
     except whois.parser.PywhoisError:
         wd = {}
-    except Exception as e:
-        print_exc(e)
+    except Exception:
+        wd = {}
+        print_exc()
 
     return render_template("reverse_dns.html", result=data, item=item, whois_data=wd), 200, {
         'ContentType': 'application/json'}
@@ -1169,18 +1210,19 @@ def notifications_data():
         local_tz: str = str(tzlocal.get_localzone())
         mask_range = get_period_mask(period, to_time, from_time, pytz.timezone(local_tz))
         if req_type == 'ssh':
-            keys = ['host', 'hostname', 'timestamp', 'username', 'access', 'ip_address', 'port', 'protocol', 'type']
+            keys = ['host', 'hostname', 'timestamp', 'username', 'access', 'ip_address', 'port', 'protocol', 'type',
+                    'remote_host']
             names = {'host': "Host", 'hostname': 'Hostname', 'timestamp': "Time", 'username': 'User',
                      'access': "Access", 'ip_address': "IP Address", 'port': "Port", 'protocol': "Protocol",
-                     'type': "Type"}
+                     'type': "Type", 'remote_host': "Remote Host"}
             type_mask = {"name": "auth_ssh"}
             title_type = "SSH"
         elif req_type == 'apache':
             keys = ['hostname', 'ip_address', 'username', 'timestamp', 'http_command', 'path', 'protocol',
-                    'protocol_version', 'code', 'size']
+                    'protocol_version', 'code', 'size', 'remote_host']
             names = {'hostname': "Hostname", 'ip_address': "IP Address", 'username': "User", 'timestamp': "Time",
                      'http_command': "Command", 'path': "Path", 'protocol': "Protocol", 'protocol_version': "Version",
-                     'code': "Code", 'size': "Size"}
+                     'code': "Code", 'size': "Size", 'remote_host': "Remote Host"}
             type_mask = {"name": "apache_access"}
             title_type = "Apache"
         else:
@@ -1217,7 +1259,7 @@ def notifications():
         return render_template("notifications.html", prog_name=prog_name), 200, {
             'ContentType': 'application/json'}
     except Exception as e:
-        traceback.print_exc()
+        # traceback.print_exc()
         return json.dumps({'success': False, "message": str(e)}), 200, {'ContentType': 'application/json'}
 
 

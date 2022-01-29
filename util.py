@@ -1,8 +1,10 @@
 import logging
 import os
 import socket
+import dns
 import netifaces as ni
-from typing import Dict
+from typing import Dict, Optional
+from functools import lru_cache
 
 
 def get_own_ip(ip_version: int = 4) -> str:
@@ -52,3 +54,11 @@ def write_pidfile(pid_file: str) -> None:
     with open(pid_file, 'w') as f:
         pid: str = str(os.getpid())
         f.write(pid)
+
+
+@lru_cache(maxsize=64)
+def dns_translate(ip_address: str) -> Optional[str]:
+    try:
+        return str(dns.resolver.resolve(dns.resolver.resolve_address(ip_address).name, 'ptr', lifetime=3.0).rrset[0])
+    except dns.exception.DNSException:
+        return None

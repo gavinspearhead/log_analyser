@@ -24,10 +24,6 @@ class Notify_signal(notify_handler.Notify_handler):
     def send_msg(self, msg: str, limit_type: str) -> None:
         if self.check_rate_limit(limit_type):
             return
-        # bus = SystemBus()
-        #
-        # signal = bus.get('org.asamk.Signal')
-        # signal.sendMessage(msg, [], [self._phone])
 
         if self._phone_number is not None and self._phone_number != "":
             cmd: str = "{} send -u {} -m {}".format(self._command_path, self._phone_number, msg)

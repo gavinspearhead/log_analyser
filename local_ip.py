@@ -11,7 +11,6 @@ class Local_Addresses:
         self._ranges = ranges
 
     def is_local(self, address: str) -> bool:
-        # print(address, self._ranges, ipaddress.ip_address(address))
         if ipaddress.ip_address(address).is_private:
             return True
         for i in self._ranges:
@@ -23,7 +22,6 @@ class Local_Addresses:
         with open(filename, "r") as infile:
             config = json.load(infile)
         ranges = [ipaddress.ip_network(x) for x in config]
-        # ranges.append(ipaddress.ip_network(x))
         self.load_ranges(ranges)
 
 

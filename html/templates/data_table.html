@@ -1,6 +1,3 @@
-AAA
-{% for k in hostnames %} {{ k }} ::: {{ hostnames[k] }} {%endfor%}
-BBB
 <tr>
     {%set cntr = namespace(value=1)  %}
 {% for x in keys %}
@@ -12,36 +9,44 @@ BBB
 {% for d in data %}
 <tr class="table_item">
 {% for k in d %}
-    {% if k == 'ip_address' %}
+    {% if k == 'ip_address' or k == 'ip_addresses' or k == 'ips' %}
     {% set class_name="ip_addr" %}
     {% else %}
     {% set class_name="" %}
     {% endif %}
-    {% if k == 'ip_address' %}
-        {% if d[k] in hostnames %} {% set h = hostnames[d[k]] %} {% else %} {% set h = d[k]|truncate(80)%} {%endif %}
-        <td><span title="{{d[k]}}" class="{{class_name}}">{{ h }}</span>
-        {% set flag = flags[d[k]] %}
-        {% if flag != '' %}
-            <img src="{{ url_for('static', filename='img/flags/' ~ flag ~ '.png') }}">
-        {% endif %}
-    {% elif k == 'ip_addresses' or k == 'ips' %}
-            <td><span title="{{d[k]}}" class="{{class_name}}">
-        {% set ips = d[k].split(',') %}
-        {%for x in ips %}
-             {% set x = x.strip(' ') %}
-             {% set flag = flags[x] %}
-             {% if x in hostnames %} {% set h = hostnames[x] %} {% else %} {% set h = x %} {%endif %}
-             {{ h }}
-             {% if flag != '' %}
-                <img src="{{ url_for('static', filename='img/flags/' ~ flag ~ '.png') }}">
-             {% endif %}
-             {% if not loop.last %},{% endif %}
-        {% endfor %}
-        </span>
-    {% else %}
-
-    <td><span title="{{d[k]}}" class="{{class_name}}">{{ d[k]| truncate(80) }}</span>
-    {% endif %}
+    {% if k == 'ip_address' -%}
+        {% if d[k] in hostnames -%}
+            {% set h = hostnames[d[k]] %}
+        {% else %}
+            {% set p = match_prefix(d[k], hostnames) %}
+            {% if p != "" %}  {% set h = p.strip(' \n\r') %}
+            {% else %}
+                {% set h = d[k]|truncate(80)%}
+            {%endif %}
+        {%endif %}
+        {% set flag = flags[d[k]][0] %}
+        {% set country = flags[d[k]][1] %}
+        <td><span title="{{d[k]}}" class="{{class_name}}" data-content="{{d[k]}}">{{ h }}</span>{% if flag != '' %}<img src="{{ url_for('static', filename='img/flags/' ~ flag ~ '.png') }}" title="{{country}}"> {% endif %}
+    {%- elif k == 'ip_addresses' or k == 'ips' -%}
+        <td>
+    {% set ips = d[k].split(',') %}
+        {%- for x in ips -%}
+             {% set x = x.strip() %}
+             {% set flag = flags[x][0] %}
+             {% set country = flags[x][1] %}
+             {%- if x in hostnames -%}
+                {% set h = hostnames[x].strip() %}
+             {%- else -%}
+                {% set p = match_prefix(x, hostnames) %}
+                {% if p != "" %}{% set h = p.strip() %}
+                {% else -%}
+                    {% set h = x.strip() %}
+                {% endif %}
+             {%- endif -%}{%-if 0==0%}<span title="{{x}}" class="{{class_name}}" data-content="{{x}}">{{h}}</span>{%- if flag != '' -%}<img src="{{ url_for('static', filename='img/flags/' ~ flag ~ '.png') }}" title="{{country}}">{%- endif -%}{%- if not loop.last -%},{%- endif -%}{%-endif-%}
+        {%- endfor -%}
+    {% else -%}
+        <td><span title="{{d[k]}}" class="{{class_name}}">{{ d[k]| truncate(80) }}</span>
+    {% endif -%}
     </td>
 {% endfor %}
 </tr>

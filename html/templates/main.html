@@ -11,7 +11,7 @@
     <script type="text/javascript" src="{{ url_for('static', filename='js/jquery-3.6.0.min.js') }}"></script>
     <script type="text/javascript" src="{{ url_for('static', filename='js/popper.js') }}"></script>
     <script type="text/javascript" src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
-    <script type="text/javascript" src="{{ url_for('static', filename='js/ChartNew.js') }}"></script>
+<!--    <script type="text/javascript" src="{{ url_for('static', filename='js/ChartNew.js') }}"></script>-->
 
 <style> {# included here because relative path #}
 @font-face {
@@ -23,19 +23,29 @@
 
 <body class="text-white bg-dark">
 
-<script type="text/javascript">
-
-</script>
-
 <div id="maindiv" class="container-fluid max-height no-overflow">
     <nav class="navbar navbar-fixed-top">
-
         <div>
-        <h2>
             <button class="btn btn-secondary"><a href="dashboard/"><i class="fas fa-table"></i></a></button>
             <button class="btn btn-secondary"><a href="notifications/"><i class="fas fa-envelope"></i></a></button>
-            <span id="header"></span></h2>
-    </div>
+            <input type="radio" class="btn-check" name="timeperiod" id="hourly" autocomplete="off">
+            <label class="btn btn-secondary" for="hourly">Last Hour</label>
+
+            <input type="radio" class="btn-check" name="timeperiod" id="24hour" autocomplete="off" checked>
+            <label class="btn btn-secondary" for="24hour">24 Hours</label>
+
+            <input type="radio" class="btn-check" name="timeperiod" id="daily" autocomplete="off">
+            <label class="btn btn-secondary" for="daily">Today</label>
+
+            <input type="radio" class="btn-check" name="timeperiod" id="yesterday" autocomplete="off">
+            <label class="btn btn-secondary" for="yesterday">Yesterday</label>
+
+            <input type="radio" class="btn-check" name="timeperiod" id="weekly" autocomplete="off">
+            <label class="btn btn-secondary" for="weekly">Week</label>
+
+            <input type="radio" class="btn-check" name="timeperiod" id="monthly" autocomplete="off">
+            <label class="btn btn-secondary" for="monthly">Month</label>
+        </div>
     <div class="navbar-right">
     <div class="input-group input-group-sm">
         <input id="searchbar" class="form-control bg-dark border-darkish" type="text" placeholder="Search">
@@ -79,26 +89,9 @@
         </div>
 
         <div class="col scrollable bottom_margin" id="itemstablediv">
-            <div>
-            <input type="radio" class="btn-check" name="timeperiod" id="hourly" autocomplete="off" >
-            <label class="btn btn-secondary" for="hourly">Last Hour</label>
 
-            <input type="radio" class="btn-check" name="timeperiod" id="24hour" autocomplete="off" checked>
-            <label class="btn btn-secondary" for="24hour">24 Hours</label>
-
-            <input type="radio" class="btn-check" name="timeperiod" id="daily" autocomplete="off" checked>
-            <label class="btn btn-secondary" for="daily">Today</label>
-
-            <input type="radio" class="btn-check" name="timeperiod" id="yesterday" autocomplete="off">
-            <label class="btn btn-secondary" for="yesterday">Yesterday</label>
-
-            <input type="radio" class="btn-check" name="timeperiod" id="weekly" autocomplete="off">
-            <label class="btn btn-secondary" for="weekly">Week</label>
-
-            <input type="radio" class="btn-check" name="timeperiod" id="monthly" autocomplete="off">
-            <label class="btn btn-secondary" for="monthly">Month</label>
-                </div>
             <br>
+            <h2> <span id="header"></span></h2>
             <div>
             <table class="table table-dark table-condensed table-sm table-hover" id="itemstable" cellpadding="0" cellspacing="0">
             <tbody></tbody>

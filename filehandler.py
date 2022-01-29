@@ -1,7 +1,7 @@
 import logging
 import os
 import threading
-import traceback
+# import traceback
 import output
 
 from watchdog.events import FileModifiedEvent
@@ -33,7 +33,6 @@ class FileHandler:
     def _open_output(self) -> None:
         logging.debug("Opening output")
         self._output_engine = output.factory(self._output)(self._output)
-        # print(self._output_engine)
         self._output_engine.connect()
 
     def flush_output(self) -> None:
@@ -47,7 +46,6 @@ class FileHandler:
             stat_info = os.stat(self._path)
             self._inode = stat_info.st_ino
             self._dev = stat_info.st_dev
-            # print(self._dev, self._inode)
             self._file = open(self._path, "r")
             if inode != self._inode or dev != self._dev:
                 # we got the same file as before
@@ -55,10 +53,8 @@ class FileHandler:
                 self._pos = 0
             logging.debug("Starting at {}".format(self._pos))
             self._file.seek(self._pos)
-            # print(self._path, "starting at :", self._file.tell())
             self._read_contents()
         except OSError:
-            # traceback.print_exc()
             self._file = None
             self._inode = None
             self._dev = None
@@ -71,11 +67,7 @@ class FileHandler:
     def dump_state(self) -> Dict[str, Any]:
         with self._lock:
             _pos = self._pos
-        # print("aoaouo", {"pos": _pos, "path": self._path, 'inode': self._inode, 'device': self._dev})
         return {"pos": _pos, "path": self._path, 'inode': self._inode, 'device': self._dev}
-
-    # def add_parser(self, parser):
-    #     self._parsers.append(parser)
 
     def _match_line(self, line: str) -> None:
         if self._output_engine is None:
@@ -83,9 +75,7 @@ class FileHandler:
         for p in self._parsers:
             m = p.match(line)
             if m:
-                # print(self._output_engine)
                 self._output_engine.write(p.emit(m, self._name))
-                # print(self._name)
                 p.notify(m, self._name)
 
     def _process_line(self, line: str) -> bool:
@@ -103,7 +93,6 @@ class FileHandler:
             raise ValueError("File not initialised")
         while True:
             line = self._file.readline()
-            # print(line)
             if not line:
                 break
             if self._process_line(line):
@@ -116,7 +105,6 @@ class FileHandler:
 
     def on_deleted(self, event: FileModifiedEvent) -> None:
         if not event.is_directory and self._path == event.src_path:
-            # print('deleted', event)
             self._read_contents()
             if self._file is not None:
                 self._file.close()
@@ -124,7 +112,6 @@ class FileHandler:
 
     def on_moved(self, event: FileModifiedEvent) -> None:
         if not event.is_directory and self._path == event.src_path:
-            # print('moved', event)
             self._read_contents()
             if self._file is not None:
                 self._file.close()
@@ -132,11 +119,9 @@ class FileHandler:
 
     def on_created(self, event: FileModifiedEvent) -> None:
         if not event.is_directory and self._path == event.src_path:
-            # print("created", event)
             self._open_file(self._inode, self._dev)
             self._read_contents()
 
     def on_closed(self, event: FileModifiedEvent) -> None:
         if not event.is_directory and self._path == event.src_path:
-            # print("closed", event)
             self._read_contents()

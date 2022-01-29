@@ -2,7 +2,7 @@ import logging
 
 from watchdog.events import FileSystemEventHandler, FileModifiedEvent
 from filehandler import FileHandler
-from typing import List, Optional, Any, Dict
+from typing import List, Optional
 
 
 class LogHandler(FileSystemEventHandler):
@@ -11,7 +11,7 @@ class LogHandler(FileSystemEventHandler):
         self._file_list = {}
 
     def dump_state(self) -> List:
-        states = []
+        states: List = []
         for files in self._file_list.values():
             states.append(files.dump_state())
         return states
@@ -25,8 +25,8 @@ class LogHandler(FileSystemEventHandler):
             files.flush_output()
 
     def add_file(self, filename: str, pos: int = 0, parsers=None, inode: Optional[int] = None,
-                 dev: Optional[int] = None, output_type=None,
-                 name: Optional[str] = None, retention: Optional[int] = None) -> None:
+                 dev: Optional[int] = None, output_type=None, name: Optional[str] = None,
+                 retention: Optional[int] = None) -> None:
         self._file_list[filename] = FileHandler(filename, pos, parsers, inode, dev, output_type, name, retention)
 
     def match(self, event: FileModifiedEvent) -> FileHandler:
@@ -45,7 +45,6 @@ class LogHandler(FileSystemEventHandler):
             pass
         except AttributeError as e:
             logging.debug(str(e))
-            # print("error deletion", e, event, self)
 
     def on_modified(self, event: FileModifiedEvent) -> None:
         try:
@@ -54,8 +53,6 @@ class LogHandler(FileSystemEventHandler):
             pass
         except AttributeError as e:
             logging.debug(str(e))
-            # traceback.print_exc()
-            # print("error modified", e, event, self)
 
     def on_moved(self, event: FileModifiedEvent) -> None:
         try:
@@ -64,7 +61,6 @@ class LogHandler(FileSystemEventHandler):
             pass
         except AttributeError as e:
             logging.debug(str(e))
-            # print("error moved", e, event)
 
     def on_created(self, event: FileModifiedEvent) -> None:
         try:
@@ -73,7 +69,6 @@ class LogHandler(FileSystemEventHandler):
             pass
         except AttributeError as e:
             logging.debug(str(e))
-            # print("error created", e, event)
 
     def on_closed(self, event: FileModifiedEvent) -> None:
         try:
@@ -82,4 +77,3 @@ class LogHandler(FileSystemEventHandler):
             pass
         except AttributeError as e:
             logging.debug(str(e))
-            # print("error closed", e, event)

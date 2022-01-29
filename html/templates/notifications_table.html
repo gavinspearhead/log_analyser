@@ -1,31 +1,29 @@
 <tr>
-      {%set cntr = namespace(value=1)  %}
+{%set cntr = namespace(value=1) %}
 {% for x in keys %}
-
-<th onclick="w3.sortHTML('#itemstable','.table_item', 'td:nth-child({{ cntr.value }})')" style="cursor:pointer">{{ names[x] }} </th>
-      {% set cntr.value = cntr.value + 1 %}
-    {% endfor %}
+    <th onclick="w3.sortHTML('#itemstable','.table_item', 'td:nth-child({{ cntr.value }})')" style="cursor:pointer">{{ names[x] }}</th>
+    {% set cntr.value = cntr.value + 1 %}
+{% endfor %}
 </tr>
 
 {%if data|length > 0 %}
-{% for d in data %}
-<tr class="table_item">
-{% for k in keys %}
-        {% if k == 'ip_address' %}
-        <td><span title="{{d[k]}}" class="ip_addr">{{ d[k]| truncate(80) }}</span>
-        {% set flag = flags[d[k]] %}
-        {% if flag != '' %}
-            <img src="{{ url_for('static', filename='img/flags/' ~ flag ~ '.png') }}">
-        {% endif %}
-    {% else %}
-        <td> {{ d[k] }}
-    {% endif %}
-    </td>
-{% endfor %}
-</tr>
-{% endfor %}
+    {% for d in data %}
+        <tr class="table_item">
+        {% for k in keys %}
+            {% if k == 'ip_address' %}
+                <td><span title="{{d[k]}}" class="ip_addr" data-content="{{d[k]}}">{{ d[k]| truncate(80) }}</span>
+                {% set flag = flags[d[k]][0] %}
+                {% set country = flags[d[k]][1] %}
+                {% if flag != '' %}
+                    <img src="{{ url_for('static', filename='img/flags/' ~ flag ~ '.png') }}" title="{{country}}">
+                {% endif %}
+            {% else %}
+                <td> {{ d[k] }}
+            {% endif %}
+            </td>
+        {% endfor %}
+        </tr>
+    {% endfor %}
 {% else %}
-<tr>
-    <td> No items found </td>
-</tr>
+<tr> <td> No items found </td> </tr>
 {% endif %}
