@@ -152,7 +152,7 @@ function load_graph(canvas_id, type, name, period, to,from, title, host)
                 labels: res.fields,
                 datasets: data_sets
             }
-            console.log(data);
+//            console.log(data);
             if (res.data.length == 1) {
                  baroptions.annotateLabel = "<%=v2+': '+v3%>"
                  if (data.datasets[0].data.length > 10) {
