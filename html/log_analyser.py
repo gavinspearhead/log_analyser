@@ -295,7 +295,7 @@ def get_period_mask(period: str, to_time: Optional[str] = None, from_time: Optio
     elif period == '24hour':
         today_start = now - datetime.timedelta(hours=24)
         today_end = now
-        intervals = list([(today_start + datetime.timedelta(hours=x)).hour for x in range(24)])
+        intervals = list([(today_start + datetime.timedelta(hours=x+1)).hour for x in range(24)])
         return today_start, today_end, 'hour', intervals
     elif period == 'hour':
         today_start = now - datetime.timedelta(hours=1)
