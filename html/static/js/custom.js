@@ -16,18 +16,12 @@ function handle_request(name, type, search, title, title_type)
     g_search = search;
     g_title = title;
     g_title_type = title_type;
-    var period = 'today';
-    if ($("#daily").is(":checked")) {period = 'today';}
-    else if ($("#hourly").is(":checked")) {period = 'hour';}
-    else if ($("#24hour").is(":checked")) {period = '24hour';}
-    else if ($("#yesterday").is(":checked")) {period = 'yesterday';}
-    else if ($("#weekly").is(":checked")) {period = 'week';}
-    else if ($("#monthly").is(":checked")) {period = 'month';}
+    let {period, from, to} = get_period()
     $('#itemstable').html('');
     $.ajax({
         url: script_root + '/data/',
         type: 'POST',
-        data: JSON.stringify({'name': name, "type": type, 'period': period, 'search': search, 'host': host}),
+        data: JSON.stringify({'name': name, "type": type, 'period': period,  'to': to, 'from':from,'search': search, 'host': host}),
         cache: false,
         contentType: "application/json;charset=UTF-8",
     }).done(function(data) {
@@ -58,7 +52,9 @@ function set_log_handlers()
         handle_request(name, type, '', title, $(this).attr("data-type"))
     });
     $("[name^='timeperiod").click(function(event) {
-       handle_request(g_name, g_type, g_search, g_title, g_title_type);
+        if ($(this).attr('id') != 'custom')  {
+            handle_request(g_name, g_type, g_search, g_title, g_title_type);
+        }
     });
     $("#searchbutton").click(function(event) {
         handle_request(g_name, g_type, $("#searchbar").val(), g_title, g_title_type);
@@ -71,9 +67,19 @@ function set_log_handlers()
 
 $( document ).ready(function() {
     set_hosts()
+    $('.dropdown-toggle').dropdown()
     $('body').css('background-image', 'url("' + script_root + '/static/img/necronomicon.png")');
     $('body').css('background-size', 'contain');
     $('#itemstablediv').scrollTop(0);
     set_log_handlers();
+    $("#submit_custom").click(function() {
+        $("#custom").prop("checked", true);
+        $('#custom').dropdown('toggle');
+        handle_request(g_name, g_type, g_search, g_title, g_title_type);
+    });
+
+    $("#custom").click(function() {
+        $("#custom").prop("checked", true);
+    });
     handle_request('users', "ssh", '', 'Users', "SSH");
 });

@@ -8,6 +8,8 @@ import os.path
 import re
 import sys
 # import traceback
+import traceback
+
 import dns.resolver
 import pymongo
 import dateutil.parser
@@ -1197,10 +1199,36 @@ def reverse_dns(item) -> Tuple[str, int, Dict[str, str]]:
         wd = {}
     except Exception:
         wd = {}
-        print_exc()
+        # print_exc()
 
     return render_template("reverse_dns.html", result=data, item=item, whois_data=wd), 200, {
         'ContentType': 'application/json'}
+
+
+@app.route('/notifications_count/', methods=['POST'])
+def notifications_count():
+    try:
+        col = get_mongo_notifications()
+        period: str = request.json.get("period", '')
+        to_time: str = request.json.get("to", '')
+        from_time: str = request.json.get("from", '')
+        local_tz: str = str(tzlocal.get_localzone())
+        mask_range = get_period_mask(period, to_time, from_time, pytz.timezone(local_tz))
+        results = {}
+        for data_type in  ['ssh', 'apache']:
+            if data_type == 'apache':
+                type_mask = {"name": "apache_access"}
+            elif data_type == 'ssh':
+                type_mask = {"name": "auth_ssh"}
+            mask: Dict[str, Any] = {
+                "$and": [{"timestamp": {"$gte": mask_range[0]}}, {"timestamp": {"$lte": mask_range[1]}}, type_mask]}
+            res = col.count_documents(mask)
+            results[data_type]= res
+        return json.dumps({'success': True, 'counts': results}), 200, {'ContentType': 'application/json'}
+
+    except Exception as e:
+        # traceback.print_exc()
+        return json.dumps({'success': False, "message": str(e)}), 200, {'ContentType': 'application/json'}
 
 
 @app.route('/notifications_data/', methods=['POST'])
@@ -1213,6 +1241,7 @@ def notifications_data():
         to_time: str = request.json.get("to", '')
         from_time: str = request.json.get("from", '')
         local_tz: str = str(tzlocal.get_localzone())
+
         mask_range = get_period_mask(period, to_time, from_time, pytz.timezone(local_tz))
         if req_type == 'ssh':
             keys = ['host', 'hostname', 'timestamp', 'username', 'access', 'ip_address', 'port', 'protocol', 'type',

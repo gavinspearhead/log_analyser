@@ -29,3 +29,24 @@ function set_ip_click_handler() {
     })
 
 }
+
+function get_period()
+{
+    var to = null;
+    var from = null;
+    var period = 'today'
+    if ($("#daily").is(":checked")) {period = 'today';}
+    else if ($("#hourly").is(":checked")) {period = 'hour';}
+    else if ($("#24hour").is(":checked")) {period = '24hour';}
+    else if ($("#yesterday").is(":checked")) {period = 'yesterday';}
+    else if ($("#weekly").is(":checked")) {period = 'week';}
+    else if ($("#monthly").is(":checked")) {period = 'month';}
+    else if ($("#custom").is(":checked")) {
+        period = 'custom';
+        from = $("#from_date").val();
+        to = $("#to_date").val();
+    }
+    return {period, from, to}
+}
+
+

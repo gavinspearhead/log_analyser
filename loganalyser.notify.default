@@ -31,8 +31,49 @@
     "command_path": "/opt/signal-cli-0.9.2/bin/signal-cli",
     "note_to_self": true,
     "phone_number": ""
+},
+{
+    "name": "http",
+    "type": "http",
+    "url": "http://localhost:6000/",
+    "method": "get",
+    "resolve_ip": true
+},
+{
+    "name": "tcp",
+    "type": "tcp",
+    "port": "8888",
+    "host": "localhost",
+    "format": "text",
+    "resolve_ip": true
+},
+{
+    "name": "udp",
+    "type": "udp",
+    "port": "8888",
+    "host": "localhost",
+    "format": "text",
+    "resolve_ip": true
+},
+{
+    "name": "syslog",
+    "type": "syslog",
+    "facility": "USER",
+    "priority": "ERR",
+    "resolve_ip": true
+}, {
+    "name": "mongo",
+    "type": "mongo",
+    "database": "logs",
+    "collection": "notifications",
+    "username": "loganaliser",
+    "password": "secret",
+    "hostname": "localhost",
+    "port": "",
+    "auth_db": "logs",
+    "resolve_ip": true,
+    "retention": 90
 }
-
 
 
 ]

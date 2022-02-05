@@ -152,7 +152,6 @@ function load_graph(canvas_id, type, name, period, to,from, title, host)
                 labels: res.fields,
                 datasets: data_sets
             }
-//            console.log(data);
             if (res.data.length == 1) {
                  baroptions.annotateLabel = "<%=v2+': '+v3%>"
                  if (data.datasets[0].data.length > 10) {
@@ -169,26 +168,6 @@ function load_graph(canvas_id, type, name, period, to,from, title, host)
     });
     return false;
 }
-
-function get_period()
-{
-    var to = null;
-    var from = null;
-    var period = 'today';
-    if ($("#daily").is(":checked")) {period = 'today';}
-    else if ($("#hourly").is(":checked")) {period = 'hour';}
-    else if ($("#24hour").is(":checked")) {period = '24hour';}
-    else if ($("#yesterday").is(":checked")) {period = 'yesterday';}
-    else if ($("#weekly").is(":checked")) {period = 'week';}
-    else if ($("#monthly").is(":checked")) {period = 'month';}
-    else if ($("#custom").is(":checked")) {
-        period = 'custom';
-        from = $("#from_date").val();
-        to = $("#to_date").val();
-    }
-    return {period, from, to}
-}
-
 
 function load_all_graphs()
 {
@@ -219,7 +198,9 @@ $( document ).ready(function() {
      });
 
     $("[name^='timeperiod").click(function(event) {
-       load_all_graphs();
+        if ($(this).attr('id') != 'custom')  {
+           load_all_graphs();
+        }
     });
     calculate_height();
 
