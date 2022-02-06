@@ -1305,7 +1305,7 @@ def homepage() -> Tuple[str, int, Dict[str, str]]:
         return render_template("main.html", main_data_types=main_data_types, main_data_titles=main_data_titles,
                                prog_name=prog_name), 200, {'ContentType': 'application/json'}
     except Exception as e:
-        traceback.print_exc()
+        # traceback.print_exc()
         return json.dumps({'success': False, "message": str(e)}), 200, {'ContentType': 'application/json'}
 
 
