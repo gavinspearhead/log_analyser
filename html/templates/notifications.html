@@ -11,7 +11,6 @@
     <script type="text/javascript" src="{{ url_for('static', filename='js/jquery-3.6.0.min.js') }}"></script>
     <script type="text/javascript" src="{{ url_for('static', filename='js/popper.js') }}"></script>
     <script type="text/javascript" src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
-<!--    <script type="text/javascript" src="{{ url_for('static', filename='js/ChartNew.js') }}"></script>-->
 
 <style> {# included here because relative path #}
 @font-face {
@@ -83,15 +82,18 @@
 
 <div class="row max-height no-gutters">
  <div class="col-auto scrollable bottom_margin" id="logtypes">
-            <ul class="list-group">
-            <li class="list-unstyled components" id="log_list">
-                <hr>
-                <li class="list-unstyled components" data-type="apache">Apache <span id="apache_notification_count" class="badge bg-success">0</span></li>
-                <li class="list-unstyled components">&nbsp;</li>
-                <li class="list-inline components" data-type="ssh">SSH <span id="ssh_notification_count" class="badge bg-success">0</span></li>
-            </ul>
+                <hr><br>
+                <div class=" no-gutters">
+                {% for data_type in main_data_types %}
+                <div class="row no-gutters">
+                <div class="col-sm-9" data-type="{{data_type}}"><b>{{main_data_titles[data_type]}}</b></div>
+                <div class="col-sm-3"><span id="{{data_type}}_notification_count" class="badge bg-success">0</span></div>
+                <div class="row no-gutters"><div class="col">&nbsp;</div></div>
+                </div>
+                {% endfor %}
+                </div>
             <br>
-            <h6><small>{{ prog_name}}</small> </h6>
+            <h6><small>{{ prog_name }}</small> </h6>
         </div>
     <div class="col scrollable bottom_margin" id="itemstablediv">
         <br>

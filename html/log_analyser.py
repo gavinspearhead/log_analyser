@@ -7,7 +7,6 @@ import logging
 import os.path
 import re
 import sys
-# import traceback
 import traceback
 
 import dns.resolver
@@ -24,7 +23,6 @@ from flask import Flask, render_template, request, make_response, Response
 from humanfriendly import format_size
 from natsort import natsorted
 from copy import deepcopy
-from traceback import print_exc
 from collections import OrderedDict
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -226,7 +224,6 @@ class Data_set:
             field1_values_a = field1_values
 
         if self._field2 is not None:
-            # field2_values = natsorted(list(set([x[self._field2] for x in self._data])))
             field2_values = list(OrderedDict.fromkeys([x[self._field2] for x in self._data]))
         data_set: Dict[str, Dict[str, Union[str, int]]] = {}
         for t in field1_values:
@@ -297,7 +294,7 @@ def get_period_mask(period: str, to_time: Optional[str] = None, from_time: Optio
     elif period == '24hour':
         today_start = now - datetime.timedelta(hours=24)
         today_end = now
-        intervals = list([(today_start + datetime.timedelta(hours=x+1)).hour for x in range(24)])
+        intervals = list([(today_start + datetime.timedelta(hours=x + 1)).hour for x in range(24)])
         return today_start, today_end, 'hour', intervals
     elif period == 'hour':
         today_start = now - datetime.timedelta(hours=1)
@@ -1215,15 +1212,17 @@ def notifications_count():
         local_tz: str = str(tzlocal.get_localzone())
         mask_range = get_period_mask(period, to_time, from_time, pytz.timezone(local_tz))
         results = {}
-        for data_type in  ['ssh', 'apache']:
+        for data_type in ['ssh', 'apache']:
             if data_type == 'apache':
                 type_mask = {"name": "apache_access"}
             elif data_type == 'ssh':
                 type_mask = {"name": "auth_ssh"}
+            else:
+                raise ValueError("Unknown data type: {}".format(data_type))
             mask: Dict[str, Any] = {
                 "$and": [{"timestamp": {"$gte": mask_range[0]}}, {"timestamp": {"$lte": mask_range[1]}}, type_mask]}
             res = col.count_documents(mask)
-            results[data_type]= res
+            results[data_type] = res
         return json.dumps({'success': True, 'counts': results}), 200, {'ContentType': 'application/json'}
 
     except Exception as e:
@@ -1265,8 +1264,10 @@ def notifications_data():
             "$and": [{"timestamp": {"$gte": mask_range[0]}}, {"timestamp": {"$lte": mask_range[1]}}, type_mask]}
         res = col.find(mask)
         data = []
-        flags: Dict[str, str] = {}
+        flags: Dict[str, Tuple[str, str]] = {}
         for i in res:
+            local_tz: str = str(tzlocal.get_localzone())
+            i['timestamp'] = pytz.timezone('utc').localize(i['timestamp']).astimezone(pytz.timezone(local_tz))
             data.append(i)
             for k, v in i.items():
                 v = str(v)
@@ -1290,7 +1291,7 @@ def notifications_data():
 def notifications():
     try:
         prog_name = "{} {}".format(PROG_NAME_WEB, VERSION)
-        return render_template("notifications.html", prog_name=prog_name), 200, {
+        return render_template("notifications.html", prog_name=prog_name, main_data_types=main_data_types, main_data_titles=main_data_titles), 200, {
             'ContentType': 'application/json'}
     except Exception as e:
         # traceback.print_exc()
@@ -1301,10 +1302,10 @@ def notifications():
 def homepage() -> Tuple[str, int, Dict[str, str]]:
     try:
         prog_name = "{} {}".format(PROG_NAME_WEB, VERSION)
-        return render_template("main.html", data_types=main_data_types, prog_name=prog_name), 200, {
-            'ContentType': 'application/json'}
+        return render_template("main.html", main_data_types=main_data_types, main_data_titles=main_data_titles,
+                               prog_name=prog_name), 200, {'ContentType': 'application/json'}
     except Exception as e:
-        # traceback.print_exc()
+        traceback.print_exc()
         return json.dumps({'success': False, "message": str(e)}), 200, {'ContentType': 'application/json'}
 
 

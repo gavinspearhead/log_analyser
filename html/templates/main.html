@@ -93,27 +93,22 @@
             <ul class="list-group">
             <li class="list-unstyled components" id="log_list">
                 <hr>
-                <li class="list-unstyled components"><b>Apache</b>
-                    <ul class="">
-                    {% for x in data_types["apache"] %}
-                    <li class="list-unstyled" role="button" id="{{data_types['apache'][x][0]}}_{{data_types['apache'][x][1]}}" data-type="Apache">{{data_types['apache'][x][2]}}</li>
+                {% for data_type in main_data_types %}
+                <li class="list-unstyled components"><b> {{main_data_titles[data_type]}} </b>
+                 <ul class="">
+                    {% for x in main_data_types[data_type] %}
+                     {% set data = main_data_types[data_type][x] %}
+                    <li class="list-unstyled components" role="button" id="{{data[0]}}_{{data[1]}}" data-type="SSH">{{data[2]}}</li>
                     {% endfor %}
                     </ul>
                 </li>
-                <li class="list-inline components"><b>SSH</b>
-                    <ul class="">
-                    {% for x in data_types["ssh"] %}
-                    <li class="list-unstyled components" role="button" id="{{data_types['ssh'][x][0]}}_{{data_types['ssh'][x][1]}}" data-type="SSH">{{data_types['ssh'][x][2]}}</li>
-                    {% endfor %}
-                    </ul>
-                </li>
+                {% endfor %}
             </ul>
             <br>
             <h6><small>{{ prog_name}}</small> </h6>
         </div>
 
         <div class="col scrollable bottom_margin" id="itemstablediv">
-
             <br>
             <h2> <span id="header"></span></h2>
             <div>
@@ -143,8 +138,6 @@
   <span id="alert_error_text"></span>
 </div>
 </div>
-
-
 
 <div class="modal" tabindex="-1" id="dns_popup">
     <div class="modal-dialog modal-lg bg-dark">
