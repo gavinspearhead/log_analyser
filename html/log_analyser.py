@@ -19,6 +19,8 @@ import tzlocal
 import whois
 
 from typing import List, Dict, Any, Optional, Tuple, Union
+
+from bson import Code
 from flask import Flask, render_template, request, make_response, Response
 from humanfriendly import format_size
 from natsort import natsorted
@@ -34,8 +36,10 @@ from log_analyser_version import VERSION, PROG_NAME_WEB
 
 output_file_name: str = "loganalyser.output"
 hostnames_file_name: str = "loganalyser.hostnames"
-geolite_data_filename: str = "data/GeoLite2-Country.mmdb"
-geoip2_db = geoip2.database.Reader(os.path.join(os.path.dirname(__file__), geolite_data_filename))
+geolite_country_data_filename: str = "data/GeoLite2-Country.mmdb"
+geolite_asn_data_filename: str = "data/GeoLite2-ASN.mmdb"
+geoip2_country_db = geoip2.database.Reader(os.path.join(os.path.dirname(__file__), geolite_country_data_filename))
+geoip2_asn_db = geoip2.database.Reader(os.path.join(os.path.dirname(__file__), geolite_asn_data_filename))
 config_path: str = os.path.dirname(__file__)
 app = Flask(__name__)
 
@@ -247,7 +251,7 @@ def get_prefix(ip_address: str) -> Optional[str]:
     local_addresses = ["127.0.0.0/8", "10.0.0.0/8", "192.168.0.0/16", "172.16.0.0/12", "fc00::/7", "169.254.0.0/16",
                        "fe80::/10"]
     try:
-        r = geoip2_db.country(ip_address)
+        r = geoip2_country_db.country(ip_address)
         network_address = ipaddress.ip_interface("{}/{}".format(ip_address, r.traits._prefix_len))
         return str(network_address.network)
     except geoip2.errors.AddressNotFoundError:
@@ -275,7 +279,7 @@ def get_mongo_connection() -> pymongo.collection.Collection:
     output.parse_outputs(os.path.join(config_path, '..', output_file_name))
     config = output.get_output('mongo')
     if config is None:
-        raise ValueError("Configuration error: No Monge configured")
+        raise ValueError("Configuration error: No Mongo configured")
     mc = MongoConnector(config)
     col: pymongo.collection.Collection = mc.get_collection()
     return col
@@ -416,6 +420,7 @@ def get_ssh_user_time_data(search: str, mask: Dict[str, Any], raw: bool, time_ma
     local_tz: str = str(tzlocal.get_localzone())
     col = get_mongo_connection()
     search_q = get_search_mask_ssh(search)
+    orig_time_mask = time_mask.capitalize()
     if time_mask == 'day':
         time_mask = 'dayOfMonth'
     res = col.aggregate(
@@ -433,7 +438,7 @@ def get_ssh_user_time_data(search: str, mask: Dict[str, Any], raw: bool, time_ma
          {"$sort": {'_id.month': 1, '_id.time': 1, "total": -1}}
          ])
     data = Data_set('username', 'time', 'total')
-    data.set_keys([time_mask, 'Username', 'Type', 'Total', 'IPs', 'Hosts'])
+    data.set_keys([orig_time_mask, 'Username', 'Type', 'Total', 'IPs', 'Hosts'])
     if raw:
         data.prepare_time_output(time_mask, intervals,
                                  {'time': None, 'username': "", 'type': None, 'total': 0, 'ips': ""})
@@ -511,6 +516,7 @@ def get_ssh_time_ips_data(search: str, mask: Dict[str, Any], raw: bool, time_mas
     col = get_mongo_connection()
     search_q = get_search_mask_ssh(search)
     orig_time_mask = time_mask.capitalize()
+    print(orig_time_mask)
     if time_mask == 'day':
         time_mask = 'dayOfMonth'
 
@@ -903,6 +909,7 @@ def get_apache_time_urls_data(mask: Dict[str, Any], search: str, raw: bool,
     local_tz = str(tzlocal.get_localzone())
     search_q = get_search_mask_apache(search)
     col = get_mongo_connection()
+    orig_time_mask = time_mask.capitalize()
     if time_mask == 'day':
         time_mask = 'dayOfMonth'
     res = col.aggregate([
@@ -919,7 +926,7 @@ def get_apache_time_urls_data(mask: Dict[str, Any], search: str, raw: bool,
         }},
         {"$sort": {'_id.month': 1, '_id.time': 1, 'total': -1}}])
     data = Data_set('path', 'time', 'total')
-    data.set_keys([time_mask, 'Path', 'Total', 'IPs', 'Hosts'])
+    data.set_keys([orig_time_mask, 'Path', 'Total', 'IPs', 'Hosts'])
     if raw:
         data.prepare_time_output(time_mask, intervals, {'time': None, 'path': "", 'total': 0, 'ips': ""})
     for x in res:
@@ -1025,7 +1032,7 @@ def get_apache_data(name: str, period: str, search: str, raw: bool, to_time: Opt
 
 def get_flag(ip_address: str) -> Tuple[str, str]:
     try:
-        country = geoip2_db.country(ip_address.strip()).country
+        country = geoip2_country_db.country(ip_address.strip()).country
         return country.iso_code.lower(), country.name
     except (AttributeError, ValueError, geoip2.errors.AddressNotFoundError):
         return '', ''
@@ -1150,8 +1157,7 @@ def dashboard() -> Response:
                              {'ContentType': 'application/json'})
 
 
-@app.route('/reverse_dns/<item>/', methods=["GET"])
-def reverse_dns(item) -> Tuple[str, int, Dict[str, str]]:
+def get_dns_data(item):
     result = []
     result1 = []
     try:
@@ -1172,6 +1178,10 @@ def reverse_dns(item) -> Tuple[str, int, Dict[str, str]]:
         data.append(str(res))
     for res in result1:
         data.append(str(res))
+    return data
+
+
+def get_whois_data(item):
     try:
         whois_data = whois.whois(item, True)
         wd = {
@@ -1197,8 +1207,24 @@ def reverse_dns(item) -> Tuple[str, int, Dict[str, str]]:
     except Exception:
         wd = {}
         # print_exc()
+    return wd
 
-    return render_template("reverse_dns.html", result=data, item=item, whois_data=wd), 200, {
+
+def get_asn_info(item):
+    try:
+        asn = geoip2_asn_db.asn(item.strip())
+        return {'AS Number': asn.autonomous_system_number, 'AS Organisation': asn.autonomous_system_organization}
+    except geoip2.errors.AddressNotFoundError:
+        return {}
+
+
+@app.route('/reverse_dns/<item>/', methods=["GET"])
+def reverse_dns(item) -> Tuple[str, int, Dict[str, str]]:
+    dns_data = get_dns_data(item)
+    whois_data = get_whois_data(item)
+    asn_data = get_asn_info(item)
+
+    return render_template("reverse_dns.html", result=dns_data, item=item, whois_data=whois_data, asn_data=asn_data), 200, {
         'ContentType': 'application/json'}
 
 
@@ -1291,8 +1317,9 @@ def notifications_data():
 def notifications():
     try:
         prog_name = "{} {}".format(PROG_NAME_WEB, VERSION)
-        return render_template("notifications.html", prog_name=prog_name, main_data_types=main_data_types, main_data_titles=main_data_titles), 200, {
-            'ContentType': 'application/json'}
+        return render_template("notifications.html", prog_name=prog_name, main_data_types=main_data_types,
+                               main_data_titles=main_data_titles), 200, {
+                   'ContentType': 'application/json'}
     except Exception as e:
         # traceback.print_exc()
         return json.dumps({'success': False, "message": str(e)}), 200, {'ContentType': 'application/json'}

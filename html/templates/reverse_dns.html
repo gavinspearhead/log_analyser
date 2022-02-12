@@ -13,3 +13,12 @@
 	{% endfor %}
 </ul>
 {%endif%}
+
+{% if asn_data != {} %}
+<h4>ASN infor for {{item}}</h4>
+<ul>
+	{% for y in asn_data %}
+	<li>{{y}} : {{ asn_data[y] }} </li>
+	{% endfor %}
+</ul>
+{%endif%}
