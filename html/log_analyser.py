@@ -20,7 +20,6 @@ import whois
 
 from typing import List, Dict, Any, Optional, Tuple, Union
 
-from bson import Code
 from flask import Flask, render_template, request, make_response, Response
 from humanfriendly import format_size
 from natsort import natsorted
@@ -164,7 +163,7 @@ class Data_set:
     def _get_data(self) -> List[Dict[str, Union[int, str]]]:
         return self._data
 
-    def merge_prefixes(self, sum_list: List[str], join_list: List[str], hash_list: Optional[List[str]] = None) -> None:
+    def merge_prefixes(self, sum_list: List[str], join_list: List[str], hash_list: Optional[List[str]] = None, sort_by=None) -> None:
         rv2: Dict[str, Dict[str, Union[str, int]]] = {}
 
         for x in self._data:
@@ -185,10 +184,13 @@ class Data_set:
                 rv2[key].update(x)
                 del rv2[key]['ip_address']
         self._data = list(rv2.values())
+        if sort_by is not None:
+            self._data.sort(key=lambda r: r[sort_by], reverse=True)
 
     def format_size(self, field: str) -> None:
         for x in self._data:
             if field in x:
+                x['_unformatted_' + field] = x[field]
                 x[field] = format_size(x[field])
 
     def prepare_time_output(self, time_mask: str, intervals: List[Union[int, str, Tuple[int, int]]],
@@ -296,9 +298,10 @@ def get_period_mask(period: str, to_time: Optional[str] = None, from_time: Optio
         intervals = list(range(0, 24))
         return today_start, today_end, 'hour', intervals
     elif period == '24hour':
-        today_start = now - datetime.timedelta(hours=24)
+        today_start = now - datetime.timedelta(hours=23)
         today_end = now
-        intervals = list([(today_start + datetime.timedelta(hours=x + 1)).hour for x in range(24)])
+
+        intervals = list([(today_start + datetime.timedelta(hours=x)).hour for x in range(24)])
         return today_start, today_end, 'hour', intervals
     elif period == 'hour':
         today_start = now - datetime.timedelta(hours=1)
@@ -516,7 +519,6 @@ def get_ssh_time_ips_data(search: str, mask: Dict[str, Any], raw: bool, time_mas
     col = get_mongo_connection()
     search_q = get_search_mask_ssh(search)
     orig_time_mask = time_mask.capitalize()
-    print(orig_time_mask)
     if time_mask == 'day':
         time_mask = 'dayOfMonth'
 
@@ -963,7 +965,7 @@ def get_apache_size_ip_data(mask: Dict[str, Any], search: str, name: str, raw: b
         data.add_data_row(row)
     if name == 'size_prefix':
         data.set_keys(['IP Prefixes', 'Size', 'Hosts'])
-        data.merge_prefixes(['size'], [])
+        data.merge_prefixes(['size'], [], None, 'size')
     else:
         data.set_keys(['IP Addresses', 'Size', 'Hosts'])
     if not raw:
@@ -1224,8 +1226,8 @@ def reverse_dns(item) -> Tuple[str, int, Dict[str, str]]:
     whois_data = get_whois_data(item)
     asn_data = get_asn_info(item)
 
-    return render_template("reverse_dns.html", result=dns_data, item=item, whois_data=whois_data, asn_data=asn_data), 200, {
-        'ContentType': 'application/json'}
+    return render_template("reverse_dns.html", result=dns_data, item=item, whois_data=whois_data, asn_data=asn_data), \
+           200, {'ContentType': 'application/json'}
 
 
 @app.route('/notifications_count/', methods=['POST'])

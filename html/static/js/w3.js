@@ -170,15 +170,19 @@ w3.sortHTML = function(id, sel, sortvalue) {
         for (ii = 0; ii < (b.length - 1); ii++) {
           bytt = 0;
           if (sortvalue) {
-            v1 = b[ii].querySelector(sortvalue).innerText;
-            v2 = b[ii + 1].querySelector(sortvalue).innerText;
+            v1 = b[ii].querySelector(sortvalue).textContent;
+            v2 = b[ii + 1].querySelector(sortvalue).textContent;
           } else {
-            v1 = b[ii].innerText;
-            v2 = b[ii + 1].innerText;
+            v1 = b[ii].textContent;
+            v2 = b[ii + 1].textContent;
           }
           v1 = v1.toLowerCase();
           v2 = v2.toLowerCase();
-          if (v1.match(/^\d+$/) && v2.match(/^\d+$/)) {
+          console.log(v1, v2);
+          if (v1.match(/^\d+\.\d+/) && v2.match(/^\d+\.\d+/)) {
+              v1 = parseFloat(v1);
+              v2 = parseFloat(v2);
+          } else if (v1.match(/^\d+/) && v2.match(/^\d+/)) {
               v1 = parseInt(v1, 10);
               v2 = parseInt(v2, 10);
           }

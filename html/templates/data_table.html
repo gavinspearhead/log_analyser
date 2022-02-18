@@ -1,5 +1,5 @@
 <tr>
-    {%set cntr = namespace(value=1)  %}
+{%set cntr = namespace(value=1)  %}
 {% for x in keys %}
 <th onclick="w3.sortHTML('#itemstable','.table_item', 'td:nth-child({{ cntr.value }})')" style="cursor:pointer">{{ x }} </th>
     {% set cntr.value = cntr.value + 1 %}
@@ -9,43 +9,50 @@
 {% for d in data %}
 <tr class="table_item">
 {% for k in d %}
-    {% if k == 'ip_address' or k == 'ip_addresses' or k == 'ips' %}
-    {% set class_name="ip_addr" %}
-    {% else %}
-    {% set class_name="" %}
-    {% endif %}
-    {% if k == 'ip_address' -%}
-        {% if d[k] in hostnames -%}
-            {% set h = hostnames[d[k]] %}
+    {% if k[0] != '_' %}
+        {% if k == 'ip_address' or k == 'ip_addresses' or k == 'ips' %}
+            {% set class_name="ip_addr" %}
         {% else %}
-            {% set p = match_prefix(d[k], hostnames) %}
-            {% if p != "" %}  {% set h = p.strip(' \n\r') %}
+            {% set class_name="" %}
+        {% endif %}
+        {% if k == 'ip_address' -%}
+            {% if d[k] in hostnames -%}
+                {% set h = hostnames[d[k]] %}
             {% else %}
-                {% set h = d[k]|truncate(80)%}
+                {% set p = match_prefix(d[k], hostnames) %}
+                {% if p != "" %}  {% set h = p.strip(' \n\r') %}
+                {% else %}
+                    {% set h = d[k]|truncate(80)%}
+                {%endif %}
             {%endif %}
-        {%endif %}
-        {% set flag = flags[d[k]][0] %}
-        {% set country = flags[d[k]][1] %}
-        <td><span title="{{d[k]}}" class="{{class_name}}" data-content="{{d[k]}}">{{ h }}</span>{% if flag != '' %}<img src="{{ url_for('static', filename='img/flags/' ~ flag ~ '.png') }}" title="{{country}}"> {% endif %}
-    {%- elif k == 'ip_addresses' or k == 'ips' -%}
-        <td>
-    {% set ips = d[k].split(',') %}
-        {%- for x in ips -%}
-             {% set x = x.strip() %}
-             {% set flag = flags[x][0] %}
-             {% set country = flags[x][1] %}
-             {%- if x in hostnames -%}
-                {% set h = hostnames[x].strip() %}
-             {%- else -%}
-                {% set p = match_prefix(x, hostnames) %}
-                {% if p != "" %}{% set h = p.strip() %}
-                {% else -%}
-                    {% set h = x.strip() %}
-                {% endif %}
-             {%- endif -%}{%-if 0==0%}<span title="{{x}}" class="{{class_name}}" data-content="{{x}}">{{h}}</span>{%- if flag != '' -%}<img src="{{ url_for('static', filename='img/flags/' ~ flag ~ '.png') }}" title="{{country}}">{%- endif -%}{%- if not loop.last -%},{%- endif -%}{%-endif-%}
-        {%- endfor -%}
-    {% else -%}
-        <td><span title="{{d[k]}}" class="{{class_name}}">{{ d[k]| truncate(80) }}</span>
+            {% set flag = flags[d[k]][0] %}
+            {% set country = flags[d[k]][1] %}
+            <td><span title="{{d[k]}}" class="{{class_name}}" data-content="{{d[k]}}">{{ h }}</span>{% if flag != '' %}<img src="{{ url_for('static', filename='img/flags/' ~ flag ~ '.png') }}" title="{{country}}"> {% endif %}
+        {%- elif k == 'ip_addresses' or k == 'ips' -%}
+            <td>
+        {% set ips = d[k].split(',') %}
+            {%- for x in ips -%}
+                 {% set x = x.strip() %}
+                 {% set flag = flags[x][0] %}
+                 {% set country = flags[x][1] %}
+                 {%- if x in hostnames -%}
+                    {% set h = hostnames[x].strip() %}
+                 {%- else -%}
+                    {% set p = match_prefix(x, hostnames) %}
+                    {% if p != "" %}{% set h = p.strip() %}
+                    {% else -%}
+                        {% set h = x.strip() %}
+                    {% endif %}
+                 {%- endif -%}{%-if 0==0%}<span title="{{x}}" class="{{class_name}}" data-content="{{x}}">{{h}}</span>{%- if flag != '' -%}<img src="{{ url_for('static', filename='img/flags/' ~ flag ~ '.png') }}" title="{{country}}">{%- endif -%}{%- if not loop.last -%},{%- endif -%}{%-endif-%}
+            {%- endfor -%}
+        {% else -%}
+            {% if '_unformatted_' + k  in d %}
+                {% set value = '<div title="' + d[k] + '" class="' + class_name + '"><span class="hidden">' + d['_unformatted_' + k] + ' X </span>' + d[k] + '</div>' %}
+            {% else %}
+                {% set value = '<span title="' + d[k] + '" class="' + class_name + '">' + d[k]|truncate(80, True, '...', 5) + "</span>" %}
+            {% endif %}
+            <td>{{ value | safe }}
+        {% endif -%}
     {% endif -%}
     </td>
 {% endfor %}
