@@ -4,9 +4,6 @@ from pathlib import Path
 from typing import Dict
 
 
-# from pydbus import SystemBus
-
-
 class Notify_signal(notify_handler.Notify_handler):
     def __init__(self, config: Dict[str, str]):
         super().__init__(config)

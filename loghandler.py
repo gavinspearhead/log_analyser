@@ -25,9 +25,9 @@ class LogHandler(FileSystemEventHandler):
             files.flush_output()
 
     def add_file(self, filename: str, pos: int = 0, parsers=None, inode: Optional[int] = None,
-                 dev: Optional[int] = None, output_type=None, name: Optional[str] = None,
+                 dev: Optional[int] = None, output_conn=None, name: Optional[str] = None,
                  retention: Optional[int] = None) -> None:
-        self._file_list[filename] = FileHandler(filename, pos, parsers, inode, dev, output_type, name, retention)
+        self._file_list[filename] = FileHandler(filename, pos, parsers, inode, dev, output_conn, name, retention)
 
     def match(self, event: FileModifiedEvent) -> FileHandler:
         try:

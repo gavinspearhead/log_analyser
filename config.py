@@ -90,7 +90,7 @@ class Config:
                 return str(i['name'])
         return None
 
-    def get_filter(self, filename: str) -> Optional[Dict[str, Any]]:
+    def get_filter(self, filename: str) -> Optional[List[Dict[str, Any]]]:
         for i in self._config:
             if i['path'] == filename:
                 return i['filter']

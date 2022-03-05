@@ -5,7 +5,7 @@ import time
 import logging
 
 from watchdog.observers import Observer
-from log_analyser_version import VERSION
+from log_analyser_version import get_version
 from loghandler import LogHandler
 
 
@@ -23,17 +23,17 @@ class LogObserver:
         self._state_dump_timeout = state_dump_timeout
         self._notify_cleanup_handler = notify_cleanup_handler
 
-    def add(self, filepath: str, file_pos: int, parsers, file_inode: int, device: int, output_type, name,
+    def add(self, filepath: str, file_pos: int, parsers, file_inode: int, device: int, output_conn, name,
             retention: int) -> None:
         directory = os.path.dirname(filepath)
         if directory not in self._event_handlers:
             self._event_handlers[directory] = LogHandler()
 
-        self._event_handlers[directory].add_file(filepath, file_pos, parsers, file_inode, device, output_type, name,
+        self._event_handlers[directory].add_file(filepath, file_pos, parsers, file_inode, device, output_conn, name,
                                                  retention)
 
     def start(self) -> None:
-        logging.info('Starting log collector log_analyser_version.py {}'.format(VERSION))
+        logging.info('Starting log collector log_analyser_version.py {}'.format(get_version()))
         for directory in self._event_handlers:
             self._observer.schedule(self._event_handlers[directory], directory, recursive=False)
         self._observer.start()
@@ -66,21 +66,22 @@ class LogObserver:
             logging.warning("Cannot write file {}: {}".format(self._state_file, str(exc)))
 
     def flush_output(self) -> None:
-        logging.debug('flushing output')
+        logging.debug('Flushing output')
         for eh in self._event_handlers.values():
             eh.flush_output()
 
     def _cleanup(self) -> None:
         while True:
-            logging.debug("Cleaning up")
+            logging.debug("Cleaning up Log Handler")
             for eh in self._event_handlers.values():
                 eh.cleanup()
+            logging.debug("Cleaning up Notifiers")
             if self._notify_cleanup_handler is not None:
                 self._notify_cleanup_handler()
             time.sleep(self._cleanup_interval)
 
     def _start_cleanup_threat(self) -> None:
-        logging.debug("starting cleanup thread")
+        logging.debug("Starting cleanup thread")
         self._cleanup_threat = threading.Thread(target=self._cleanup)
         self._cleanup_threat.daemon = True
         self._cleanup_threat.start()

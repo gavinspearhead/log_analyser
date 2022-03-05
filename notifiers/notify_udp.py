@@ -13,10 +13,8 @@ class Notify_udp(notify_handler.Notify_handler):
             raise ValueError("Invalid port number {}".format(self._port))
         if self._host == "":
             raise ValueError("Host missing")
-        if self._format not in ['text', 'json']:
+        if not self.validate_format(self._format):
             raise ValueError("Invalid format: {}".format(self._format))
-        if self._format not in ('json', 'text'):
-            raise ValueError("Invalid format {}".format(self._format))
         self._socket = socket.socket(type=socket.SOCK_DGRAM)
 
     def _disconnect(self):

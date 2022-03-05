@@ -4,9 +4,8 @@ import logging
 import dateutil.parser
 from typing import Dict
 from config_checker import Config_Checker
-from log_analyser_version import PROG_NAME_COLLECTOR
 from notifiers import notify_handler
-from output import MongoConnector
+from outputters.output_mongo import MongoConnector
 
 
 class Notify_mongo(notify_handler.Notify_handler):
@@ -15,7 +14,6 @@ class Notify_mongo(notify_handler.Notify_handler):
     def __init__(self, config: Dict[str, str]):
         super().__init__(config)
         Config_Checker.config_validate(self._config_items, config)
-        self._ident = PROG_NAME_COLLECTOR
         mc = MongoConnector(config)
         self._collection = mc.get_collection()
         self._retention: int = config.get('retention', 0)
@@ -29,7 +27,7 @@ class Notify_mongo(notify_handler.Notify_handler):
         return "json"
 
     def cleanup(self) -> None:
-        logging.debug("cleaning up mongo")
+        logging.debug("Cleaning up mongo")
         if self._retention == 0:
             return
         upper_limit = datetime.datetime.now() - datetime.timedelta(days=self._retention)

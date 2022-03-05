@@ -219,7 +219,7 @@ $( document ).ready(function() {
         $.ajax({
             url: script_root + '/set_item/',
             type: 'PUT',
-            data:  JSON.stringify({ item: $(this).attr('name') , value: value} ),
+            data:  JSON.stringify({ item: $(this).attr('name'), value: value} ),
             contentType: "application/json;charset=UTF-8",
             cache: false
         }).done(function() {

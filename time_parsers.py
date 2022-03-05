@@ -3,7 +3,6 @@ import time
 import logging
 import datetime
 import dateutil.parser
-# import typing
 from traceback import print_exc
 from typing import Dict, Pattern, Match, Optional, Sequence
 
@@ -26,10 +25,8 @@ class TimestampParsers:
                 raise ValueError("Not found: {}".format(time_str))
             day: int = int(x[1])
             mnt: str = x[0].lower()
-            # print(mn)
             if mnt in self._months:
                 mon: int = self._months[mnt]
-                # print(mon)
             else:
                 raise ValueError("Unknown month: {}".format(mnt))
             year: int = datetime.datetime.now().year
@@ -41,7 +38,7 @@ class TimestampParsers:
                                                                                        tz)
             dateutil.parser.isoparse(time_out_str)
         except ValueError as e:
-            print_exc()
+            # print_exc()
             logging.info("Invalid Syslog Date {} {}".format(time_str, e))
             return ""
         return time_out_str

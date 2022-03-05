@@ -19,11 +19,11 @@ class State:
         self._state: List[Dict[str, Union[str, int]]] = []
 
     def parse_state(self, filename: str) -> None:
-        # print(filename)
         try:
             with open(filename, "r") as infile:
                 state = json.load(infile)
-        except FileNotFoundError:
+        except (FileNotFoundError, OSError, PermissionError):
+            logging.warning("State file could not be opened: {}".format(filename))
             state = []
         r_state = []
         for state_entry in state:

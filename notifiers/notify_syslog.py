@@ -3,7 +3,7 @@ from syslog import LOG_EMERG, LOG_ALERT, LOG_CRIT, LOG_ERR, LOG_WARNING, LOG_NOT
     LOG_NEWS, LOG_UUCP, LOG_CRON, LOG_SYSLOG, LOG_LOCAL0, LOG_LOCAL7, LOG_AUTHPRIV, LOG_LOCAL1, openlog, syslog, \
     closelog, LOG_PID
 from typing import Dict
-from log_analyser_version import PROG_NAME_COLLECTOR
+from log_analyser_version import get_prog_name
 from notifiers import notify_handler
 
 
@@ -45,7 +45,7 @@ class Notify_syslog(notify_handler.Notify_handler):
         super().__init__(config)
         self._facility = None
         self._priority = None
-        self._ident = PROG_NAME_COLLECTOR
+        self._ident = get_prog_name('collector')
 
         priority = str(config.get('priority', "")).upper()
         if priority in self._priorities:

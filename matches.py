@@ -1,6 +1,7 @@
 import functools
+import logging
 from typing import Any, Tuple, Dict
-from output import MongoOutput
+from outputters.output_abstract import AbstractOutput
 
 
 def false_only_cache(fn):
@@ -19,45 +20,48 @@ def false_only_cache(fn):
     return wrapper
 
 
-def apache_is_new_ipaddress(col: MongoOutput, value: str) -> bool:
-    return col.count({"ip_address": value, "name": "apache_access"}) == 0
+def apache_is_new_ipaddress(col: AbstractOutput, value: str) -> bool:
+    return 0 == col.count({"ip_address": value, "name": "apache_access"})
 
 
-def apache_is_new_username(col: MongoOutput, value: str) -> bool:
+def apache_is_new_username(col: AbstractOutput, value: str) -> bool:
     return 0 == col.count({"username": value, "name": "apache_access"})
 
 
-def ssh_is_new_ipaddress(col: MongoOutput, value: str) -> bool:
+def ssh_is_new_ipaddress(col: AbstractOutput, value: str) -> bool:
     return 0 == col.count({"ip_address": value, "name": "auth_ssh"})
 
 
-def ssh_is_new_username(col: MongoOutput, value: str) -> bool:
-    return col.count({"username": value, "name": "auth_ssh"}) == 0
+def ssh_is_new_username(col: AbstractOutput, value: str) -> bool:
+    return 0 == col.count({"username": value, "name": "auth_ssh"})
 
 
-def apache_is_new(col: MongoOutput, field: str, value: str) -> bool:
+def apache_is_new(col: AbstractOutput, field: str, value: str) -> bool:
     if field == 'ip_address':
         return apache_is_new_ipaddress(col, value)
     elif field == 'username':
         return apache_is_new_username(col, value)
     else:
+        logging.info('Unknown field {}:'.format(field))
         return False
 
 
-def ssh_is_new(col: MongoOutput, field: str, value: str) -> bool:
+def ssh_is_new(col: AbstractOutput, field: str, value: str) -> bool:
     if field == 'ip_address':
         return ssh_is_new_ipaddress(col, value)
     elif field == 'username':
         return ssh_is_new_username(col, value)
     else:
+        logging.info('Unknown field {}:'.format(field))
         return False
 
 
 @false_only_cache
-def is_new(col: MongoOutput, source: str, field: str, value: str) -> bool:
+def is_new(col: AbstractOutput, source: str, field: str, value: str) -> bool:
     if source == "auth_ssh":
         return ssh_is_new(col, field, value)
     elif source == 'apache_access':
         return apache_is_new(col, field, value)
     else:
+        logging.info('Unknown source {}:'.format(source))
         return False

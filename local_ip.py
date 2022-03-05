@@ -1,5 +1,6 @@
 import ipaddress
 import json
+import logging
 import typing
 
 
@@ -19,10 +20,16 @@ class Local_Addresses:
         return False
 
     def load_local_addresses(self, filename: str) -> None:
-        with open(filename, "r") as infile:
-            config = json.load(infile)
-        ranges = [ipaddress.ip_network(x) for x in config]
-        self.load_ranges(ranges)
+        try:
+            with open(filename, "r") as infile:
+                config = json.load(infile)
+            ranges = [ipaddress.ip_network(x) for x in config]
+            self.load_ranges(ranges)
+        except json.decoder.JSONDecodeError:
+            logging.warning("Incorrect JSON file format: {}".format(filename))
+            self._ranges = []
+        except (FileNotFoundError, PermissionError):
+            logging.warning("Cannot find open file: {}".format(filename))
 
 
 _local_addresses = Local_Addresses()

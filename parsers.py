@@ -1,18 +1,17 @@
-import datetime
 import ipaddress
 import json
 import logging
 import operator
 import re
 import dateutil.parser
-
-from util import load_data_set, dns_translate
+from datetime import datetime
+from outputters.output_abstract import AbstractOutput
+from util import load_data_set, dns_translate, get_flag
 from time_parsers import parse_apache_timestamp, parse_syslog_timestamp, parse_iso_timestamp
 from abc import ABC
 from dateutil.tz import tzoffset
-from matches import is_new
 from local_ip import is_local_address
-from typing import List, Tuple, Dict, Optional
+from typing import List, Tuple, Dict, Optional, Union, Any
 
 data_conversion = load_data_set()
 
@@ -24,7 +23,7 @@ class LogParser(ABC):
     def match(self, line: str):
         raise NotImplemented
 
-    def emit(self, matches, name: str):
+    def emit(self, matches: List[str], name: str):
         raise NotImplemented
 
     def notify(self, matches, name: str):
@@ -58,16 +57,16 @@ class RegexParser(LogParser):
     }
 
     def __init__(self, reg_ex: str, format_str: Dict[str, str], transform: Dict[str, str], notify,
-                 notifiers, output, log_name) -> None:
+                 notifiers, output: AbstractOutput, log_name) -> None:
         super().__init__()
         self._pattern, self._filters = self.parse_regexp(reg_ex)
         self._compiled_pattern = re.compile(self._pattern)
-        self._format_str = format_str
-        self._transform = transform
+        self._format_str: Dict[str, str] = format_str
+        self._transform: Dict[str, str] = transform
         self._notify = notify
         self._notifiers = notifiers
-        self._output = output
-        self._logname = log_name
+        self._output: AbstractOutput = output
+        self._log_name: str = log_name
 
     def __str__(self) -> str:
         return "{} : {}".format(self._pattern, self._format_str)
@@ -127,7 +126,7 @@ class RegexParser(LogParser):
             return []
         return list(res.groups())
 
-    def emit(self, matches, name):
+    def emit(self, matches: List[str], name: str) -> Dict[str, Union[datetime, int, str, float, bool]]:
         res = {}
         values = {}
         for idx, val in self._filters.items():
@@ -146,18 +145,23 @@ class RegexParser(LogParser):
         res['name'] = name
         return res
 
-    def notify(self, matches, name: str):
+    def notify(self, matches: List[str], name: str) -> None:
         res = self.emit(matches, name)
         for notifier in self._notify:
             if notifier != {}:
                 if self._match_notify_conditions(res, notifier['condition']):
                     try:
                         notifier = self._notifiers.get_notify(notifier['name'])
-                        if notifier['handler'].do_convert_dns():
+                        handler = notifier['handler']
+                        if handler.do_convert_dns():
                             rv = dns_translate(res['ip_address'])
                             if rv:
                                 res['remote_host'] = rv
-                        formatting = notifier['handler'].get_format()
+                        if handler.do_find_country():
+                            country_code, country_name = get_flag(res['ip_address'])
+                            if country_name != '':
+                                res['country'] = "{} ({})".format(country_name, country_code)
+                        formatting = handler.format
                         if formatting == "text":
                             msg = "".join(["{}: {}\n".format(x, y) for x, y in res.items()])
                         elif formatting == "json":
@@ -165,14 +169,13 @@ class RegexParser(LogParser):
                         else:
                             raise ValueError("Unknown format {}".format(formatting))
 
-                        notifier['handler'].send_msg(msg, self._logname)
-                        # self._notifiers.get_notify(self._notify['name'])['handler'].send_msg(text, self._logname)
+                        handler.send_msg(msg, self._log_name)
                     except (KeyError, ValueError) as e:
                         logging.warning("Can't send message: {}".format(str(e)))
         return None
 
     @staticmethod
-    def _compare(element: str, clause) -> bool:
+    def _get_operator(element: str) -> Tuple[str, Any]:
         if element.startswith("<="):
             val = element[2:]
             op = operator.le
@@ -192,7 +195,11 @@ class RegexParser(LogParser):
             val = element[1:]
             op = operator.ne
         else:
-            raise ValueError("Unknown operator")
+            raise ValueError("Unknown operator: {}".format(element))
+        return val, op
+
+    def _compare(self, element: str, clause: Union[str, int]) -> bool:
+        val, op = self._get_operator(element)
         try:
             val = val.strip()
             v = ipaddress.ip_address(val)
@@ -210,8 +217,35 @@ class RegexParser(LogParser):
         else:
             return op(clause, val)
 
-    def _match_notify_conditions(self, matches, conditions) -> Optional[bool]:
-        res = False
+    def _match_condition(self, elem: str, name: str, clause, matched_clause, res2: bool):
+        if elem == 'new':
+            if self._output.is_new(name, clause, matched_clause):
+                res2 = res2 and True
+            else:
+                res2 = False
+        elif elem == 'all' or elem == 'any':
+            res2 = res2 and True
+        elif elem == 'local':
+            try:
+                res2 = res2 and is_local_address(matched_clause)
+            except ValueError:
+                # only for IP addresses
+                res2 = False
+        elif elem == 'nonlocal':
+            try:
+                res2 = res2 and not is_local_address(matched_clause)
+            except ValueError:
+                # only for IP addresses
+                res2 = False
+        elif elem[0] in "=!<>":
+            res2 = res2 and self._compare(elem, matched_clause)
+        else:
+            res2 = False
+        return res2
+
+    def _match_notify_conditions(self, matches: Dict[str, str], conditions: List[Dict[str, List[str]]]) -> Optional[
+        bool]:
+        res: bool = False
         for condition in conditions:
             res2 = len(condition) > 0
             for clause in condition:
@@ -219,35 +253,13 @@ class RegexParser(LogParser):
                     if type(condition[clause]) != list:
                         condition[clause] = [condition[clause]]
                     for elem in condition[clause]:
-                        if elem == 'new':
-                            if is_new(self._output, matches['name'], clause, matches[clause]):
-                                res2 = res2 and True
-                            else:
-                                res2 = False
-                        elif elem == 'all' or elem == 'any':
-                            res2 = res2 and True
-                        elif elem == 'local':
-                            try:
-                                res2 = res2 and is_local_address(matches[clause])
-                            except ValueError:
-                                # only for IP addresses
-                                res2 = False
-                        elif elem == 'nonlocal':
-                            try:
-                                res2 = res2 and not is_local_address(matches[clause])
-                            except ValueError:
-                                # only for IP addresses
-                                res2 = False
-                        elif elem[0] in "=!<>":
-                            res2 = res2 and self._compare(elem, matches[clause])
-                        else:
-                            res2 = False
+                        res2 = self._match_condition(elem, matches['name'], clause, matches[clause], res2)
             res = res or res2
             if res:
                 return True
         return None
 
-    def _transform_value(self, rv, idx):
+    def _transform_value(self, rv: str, idx: str) -> Union[datetime, int, str, float, bool]:
         if idx in self._transform:
             if self._transform[idx] == 'date':
                 return dateutil.parser.isoparse(rv)
@@ -269,7 +281,7 @@ class RegexParser(LogParser):
         return rv
 
     @staticmethod
-    def parameter_expand(val):
+    def parameter_expand(val: str) -> str:
         matches = re.findall(r"([$]\w+)", val)
         for m in matches:
             val = val.replace(m, data_conversion.get(m, '-'))

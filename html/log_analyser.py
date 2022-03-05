@@ -12,8 +12,6 @@ import traceback
 import dns.resolver
 import pymongo
 import dateutil.parser
-import geoip2.database
-import geoip2.errors
 import pytz
 import tzlocal
 import whois
@@ -26,19 +24,18 @@ from natsort import natsorted
 from copy import deepcopy
 from collections import OrderedDict
 
+from outputters.output_mongo import MongoConnector
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from output import MongoConnector, Outputs
+from output import Outputs
 from notify import Notify
 from hostnames import Hostnames
-from log_analyser_version import VERSION, PROG_NAME_WEB
+from log_analyser_version import get_prog_name
+from filenames import output_file_name, notify_file_name, hostnames_file_name
+from util import get_flag
 
-output_file_name: str = "loganalyser.output"
-hostnames_file_name: str = "loganalyser.hostnames"
-geolite_country_data_filename: str = "data/GeoLite2-Country.mmdb"
-geolite_asn_data_filename: str = "data/GeoLite2-ASN.mmdb"
-geoip2_country_db = geoip2.database.Reader(os.path.join(os.path.dirname(__file__), geolite_country_data_filename))
-geoip2_asn_db = geoip2.database.Reader(os.path.join(os.path.dirname(__file__), geolite_asn_data_filename))
+
 config_path: str = os.path.dirname(__file__)
 app = Flask(__name__)
 
@@ -61,27 +58,27 @@ class Dashboard_data_types:
         "apache_size_user": ("apache", "size_user", "Apache - Volume per User"),
     }
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._enabled_data_types: Dict[str, bool] = {}
         for item in self._dashboard_data_types:
             self._enabled_data_types[item] = True
 
-    def toggle(self, item, value):
+    def toggle(self, item: str, value: bool) -> None:
         if item in self._enabled_data_types:
             self._enabled_data_types[item] = value
         else:
             raise ValueError("Item does not exist")
 
     @property
-    def data_types(self):
+    def data_types(self) -> Dict[str, Tuple[str, str, str]]:
         return self._dashboard_data_types
 
     @property
-    def enabled_data_types(self):
+    def enabled_data_types(self) -> Dict[str, bool]:
         return self._enabled_data_types
 
 
-main_data_titles = {
+main_data_titles: Dict[str, str] = {
     'ssh': "SSH",
     'apache': 'Apache'
 }
@@ -137,7 +134,7 @@ class Data_set:
         return self._raw_keys
 
     @property
-    def keys(self):
+    def keys(self) -> List[str]:
         return self._get_keys()
 
     def _get_keys(self) -> List[str]:
@@ -163,7 +160,8 @@ class Data_set:
     def _get_data(self) -> List[Dict[str, Union[int, str]]]:
         return self._data
 
-    def merge_prefixes(self, sum_list: List[str], join_list: List[str], hash_list: Optional[List[str]] = None, sort_by=None) -> None:
+    def merge_prefixes(self, sum_list: List[str], join_list: List[str], hash_list: Optional[List[str]] = None,
+                       sort_by=None) -> None:
         rv2: Dict[str, Dict[str, Union[str, int]]] = {}
 
         for x in self._data:
@@ -265,12 +263,11 @@ def get_prefix(ip_address: str) -> Optional[str]:
 
 def get_mongo_notifications() -> pymongo.collection.Collection:
     notify = Notify()
-    notify_file_name: str = "loganalyser.notify"
     notify_file = os.path.join(os.path.join(config_path, '..', notify_file_name))
     notify.parse_notify(notify_file)
     config = notify.get_notify('mongo')
     if config is None and 'config' in config:
-        raise ValueError("Configuration error: No Monge configured")
+        raise ValueError("Configuration error: No Mongo configured")
     mc = MongoConnector(config['config'])
     col: pymongo.collection.Collection = mc.get_collection()
     return col
@@ -697,7 +694,6 @@ def get_apache_methods_data(mask: Dict[str, Any], search: str) -> Data_set:
              'ip_addresses': {"$addToSet": "$ip_address"},
              'hosts': {"$addToSet": "$hostname"}}},
          {"$sort": {"total": -1}}
-
          ])
     data = Data_set('method', None, 'count')
     data.set_keys(['HTTP Method', 'Count', 'IP Addresses', 'Hosts'])
@@ -1032,12 +1028,6 @@ def get_apache_data(name: str, period: str, search: str, raw: bool, to_time: Opt
     return data
 
 
-def get_flag(ip_address: str) -> Tuple[str, str]:
-    try:
-        country = geoip2_country_db.country(ip_address.strip()).country
-        return country.iso_code.lower(), country.name
-    except (AttributeError, ValueError, geoip2.errors.AddressNotFoundError):
-        return '', ''
 
 
 @app.route('/data/', methods=['POST'])
@@ -1097,7 +1087,7 @@ def get_hosts() -> List[str]:
 
 @app.context_processor
 def utility_processor():
-    def match_prefix(ip, prefixes):
+    def match_prefix(ip: str, prefixes: Dict[str, str]) -> str:
         try:
             for x in prefixes:
                 if ipaddress.ip_address(ip.strip()) in ipaddress.ip_network(x.strip()):
@@ -1120,7 +1110,7 @@ def hosts() -> Tuple[str, int, Dict[str, str]]:
         return json.dumps({'success': False, "message": str(e)}), 200, {'ContentType': 'application/json'}
 
 
-def modify_enable_types(cookie_val):
+def modify_enable_types(cookie_val: str) -> None:
     if cookie_val is not None:
         cookie_val = json.loads(cookie_val)
         for item in dashboard_data_types.data_types:
@@ -1129,7 +1119,7 @@ def modify_enable_types(cookie_val):
 
 
 @app.route('/set_item/', methods=['PUT'])
-def set_item():
+def set_item() -> Response:
     cookie_val = request.cookies.get('dashboard_selects', None)
     modify_enable_types(cookie_val)
     item = request.json.get('item', '').strip()
@@ -1146,7 +1136,7 @@ def dashboard() -> Response:
     try:
         cookie_val = request.cookies.get('dashboard_selects', None)
         modify_enable_types(cookie_val)
-        program_name = "{} {}".format(PROG_NAME_WEB, VERSION)
+        program_name = get_prog_name('web')
         resp = make_response(
             render_template("dashboard.html", data_types=dashboard_data_types.data_types, prog_name=program_name,
                             main_data_types=main_data_types, enabled=dashboard_data_types.enabled_data_types,
@@ -1159,7 +1149,7 @@ def dashboard() -> Response:
                              {'ContentType': 'application/json'})
 
 
-def get_dns_data(item):
+def get_dns_data(item: str) -> List[str]:
     result = []
     result1 = []
     try:
@@ -1175,7 +1165,7 @@ def get_dns_data(item):
     except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout, dns.exception.DNSException):
         result = ['Not found']
         pass
-    data = []
+    data: List[str] = []
     for res in result:
         data.append(str(res))
     for res in result1:
@@ -1183,7 +1173,7 @@ def get_dns_data(item):
     return data
 
 
-def get_whois_data(item):
+def get_whois_data(item: str) -> Dict[str, str]:
     try:
         whois_data = whois.whois(item, True)
         wd = {
@@ -1212,7 +1202,7 @@ def get_whois_data(item):
     return wd
 
 
-def get_asn_info(item):
+def get_asn_info(item: str) -> Dict[str, str]:
     try:
         asn = geoip2_asn_db.asn(item.strip())
         return {'AS Number': asn.autonomous_system_number, 'AS Organisation': asn.autonomous_system_organization}
@@ -1226,12 +1216,12 @@ def reverse_dns(item) -> Tuple[str, int, Dict[str, str]]:
     whois_data = get_whois_data(item)
     asn_data = get_asn_info(item)
 
-    return render_template("reverse_dns.html", result=dns_data, item=item, whois_data=whois_data, asn_data=asn_data), \
+    return render_template("reverse_dns.html", dns_data=dns_data, item=item, whois_data=whois_data, asn_data=asn_data), \
            200, {'ContentType': 'application/json'}
 
 
 @app.route('/notifications_count/', methods=['POST'])
-def notifications_count():
+def notifications_count() -> Tuple[str, int, Dict[str, str]]:
     try:
         col = get_mongo_notifications()
         period: str = request.json.get("period", '')
@@ -1259,9 +1249,9 @@ def notifications_count():
 
 
 @app.route('/notifications_data/', methods=['POST'])
-def notifications_data():
+def notifications_data() -> Tuple[str, int, Dict[str, str]]:
     try:
-        prog_name = "{} {}".format(PROG_NAME_WEB, VERSION)
+        prog_name = get_prog_name('web')
         col = get_mongo_notifications()
         period: str = request.json.get("period", '')
         req_type: str = request.json.get("type", '')
@@ -1316,9 +1306,9 @@ def notifications_data():
 
 
 @app.route('/notifications/')
-def notifications():
+def notifications() -> Tuple[str, int, Dict[str, str]]:
     try:
-        prog_name = "{} {}".format(PROG_NAME_WEB, VERSION)
+        prog_name = get_prog_name('web')
         return render_template("notifications.html", prog_name=prog_name, main_data_types=main_data_types,
                                main_data_titles=main_data_titles), 200, {
                    'ContentType': 'application/json'}
@@ -1330,7 +1320,7 @@ def notifications():
 @app.route('/')
 def homepage() -> Tuple[str, int, Dict[str, str]]:
     try:
-        prog_name = "{} {}".format(PROG_NAME_WEB, VERSION)
+        prog_name = get_prog_name('web')
         return render_template("main.html", main_data_types=main_data_types, main_data_titles=main_data_titles,
                                prog_name=prog_name), 200, {'ContentType': 'application/json'}
     except Exception as e:
@@ -1341,18 +1331,22 @@ def homepage() -> Tuple[str, int, Dict[str, str]]:
 dashboard_data_types = Dashboard_data_types()
 
 
-def main():
-    logging.debug("{} {}".format(PROG_NAME_WEB, VERSION))
+def main() -> None:
+    prog_name: str = get_prog_name('web')
+    debug: bool = False
+    logging.debug(prog_name)
     parser = argparse.ArgumentParser(description="Log Analyser")
     parser.add_argument("-c", '--config', help="Config File Directory", default="", metavar="FILE")
+    parser.add_argument("-D", '--debug', help="Debug mode", action='store_true')
     args = parser.parse_args()
     if args.config:
         global config_path
         config_path = args.config
-
+    if args.debug:
+        debug = True
     app.jinja_env.trim_blocks = True
     app.jinja_env.lstrip_blocks = True
-    app.run(host='0.0.0.0', debug=True)
+    app.run(host='0.0.0.0', debug=debug)
 
 
 if __name__ == "__main__":

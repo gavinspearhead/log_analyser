@@ -1,31 +1,32 @@
 import logging
 import json
 from typing import Dict, Optional, Any, Type, List
-from notifiers import notify_syslog
-from notifiers import notify_http
-from notifiers import notify_telegram
-from notifiers import notify_signal
-from notifiers import notify_mqtt
-from notifiers import notify_udp
-from notifiers import notify_tcp
-from notifiers import notify_jabber
-from notifiers import notify_mail
+
+from notifiers.notify_http import Notify_http
+from notifiers.notify_jabber import Notify_jabber
+from notifiers.notify_mail import Notify_mail
+from notifiers.notify_mongo import Notify_mongo
+from notifiers.notify_mqtt import Notify_mqtt
+from notifiers.notify_signal import Notify_signal
+from notifiers.notify_syslog import Notify_syslog
 from notifiers import notify_handler
-from notifiers import notify_mongo
+from notifiers.notify_tcp import Notify_tcp
+from notifiers.notify_telegram import Notify_telegram
+from notifiers.notify_udp import Notify_udp
 
 
 class Notify:
     _notifiers = {
-        'telegram': notify_telegram.Notify_telegram,
-        'signal': notify_signal.Notify_signal,
-        'mail': notify_mail.Notify_mail,
-        'jabber': notify_jabber.Notify_jabber,
-        'tcp': notify_tcp.Notify_tcp,
-        'udp': notify_udp.Notify_udp,
-        'mqtt': notify_mqtt.Notify_mqtt,
-        'http': notify_http.Notify_http,
-        'syslog': notify_syslog.Notify_syslog,
-        'mongo': notify_mongo.Notify_mongo,
+        'telegram': Notify_telegram,
+        'signal': Notify_signal,
+        'mail': Notify_mail,
+        'jabber': Notify_jabber,
+        'tcp': Notify_tcp,
+        'udp': Notify_udp,
+        'mqtt': Notify_mqtt,
+        'http': Notify_http,
+        'syslog': Notify_syslog,
+        'mongo': Notify_mongo,
     }
 
     def __init__(self) -> None:

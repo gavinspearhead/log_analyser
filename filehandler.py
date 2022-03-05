@@ -2,16 +2,17 @@ import logging
 import os
 import threading
 # import traceback
-import output
 
 from watchdog.events import FileModifiedEvent
+
+from outputters.output_abstract import AbstractOutput
 from parsers import LogParser
 from typing import Any, Optional, Dict, List
 
 
 class FileHandler:
-    def __init__(self, filename: str, pos: int, parsers: List, inode: int, dev: int, output_type: str, name: str,
-                 retention: int) -> None:
+    def __init__(self, filename: str, pos: int, parsers: List, inode: int, dev: int, output_conn: AbstractOutput,
+                 name: str, retention: int) -> None:
         self._pos: int = pos
         self._lock = threading.Lock()
         self._path: str = filename
@@ -20,27 +21,21 @@ class FileHandler:
         self._file = None
         self._inode: int = -1
         self._dev: int = -1
-        self._output = output_type
-        self._output_engine = None
-        self._line: str = ""
+        self._output_engine: AbstractOutput = output_conn
+        self._line: str = ''
         self._parsers: List[LogParser] = parsers
-        self._open_output()
         self._open_file(inode, dev)
 
     def __str__(self) -> str:
-        return "path: {}, pos: {},  output: {}, name: {}".format(self._path, self._pos, self._output, self._name)
-
-    def _open_output(self) -> None:
-        logging.debug("Opening output")
-        self._output_engine = output.factory(self._output)(self._output)
-        self._output_engine.connect()
+        return "path: {}, pos: {},  output: {}, name: {}".format(
+            self._path, self._pos, self._output_engine.name, self._name)
 
     def flush_output(self) -> None:
         if self._output_engine is not None:
             self._output_engine.commit()
 
     def _open_file(self, inode: Optional[int] = None, dev: Optional[int] = None) -> None:
-        logging.debug("Opening file: {}".format(self._file))
+        logging.debug("Opening file: {} as {}".format(self._path, self._name))
         self._line = ''
         try:
             stat_info = os.stat(self._path)
@@ -54,14 +49,15 @@ class FileHandler:
             logging.debug("Starting at {}".format(self._pos))
             self._file.seek(self._pos)
             self._read_contents()
-        except OSError:
+        except (OSError, PermissionError):
+            logging.info('Cannot open file: {}'.format(self._path))
             self._file = None
-            self._inode = None
-            self._dev = None
+            self._inode = -1
+            self._dev = -1
 
     def cleanup(self) -> None:
         if self._output_engine is None:
-            raise ValueError("output engine not initialised")
+            raise ValueError("Output engine not initialised")
         self._output_engine.cleanup(self._name, self._retention)
 
     def dump_state(self) -> Dict[str, Any]:
@@ -92,7 +88,10 @@ class FileHandler:
         if self._file is None:
             raise ValueError("File not initialised")
         while True:
-            line = self._file.readline()
+            try:
+                line = self._file.readline()
+            except ValueError:
+                line = ''
             if not line:
                 break
             if self._process_line(line):
