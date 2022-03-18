@@ -17,15 +17,15 @@ class LogObserver:
         self._observer = Observer()
         self._lock = threading.Lock()
         self._event_handlers = {}
-        self._state_file = state_file_handle
+        self._state_file: str = state_file_handle
         self._cleanup_threat = None
-        self._cleanup_interval = cleanup_interval
-        self._state_dump_timeout = state_dump_timeout
+        self._cleanup_interval: int = cleanup_interval
+        self._state_dump_timeout: int = state_dump_timeout
         self._notify_cleanup_handler = notify_cleanup_handler
 
     def add(self, filepath: str, file_pos: int, parsers, file_inode: int, device: int, output_conn, name,
             retention: int) -> None:
-        directory = os.path.dirname(filepath)
+        directory: str = os.path.dirname(filepath)
         if directory not in self._event_handlers:
             self._event_handlers[directory] = LogHandler()
 

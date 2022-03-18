@@ -28,7 +28,7 @@ class LogAnalyserVersion:
         return "{}-{} (C) {} {}".format(self.MIN_YEAR, self.MAX_YEAR, self.LICENCE, self.AUTHOR)
 
 
-la = LogAnalyserVersion()
-get_version = la.get_version
-get_prog_name = la.get_prog_name
-get_copyright = la.get_copyright
+_la = LogAnalyserVersion()
+get_version = _la.get_version
+get_prog_name = _la.get_prog_name
+get_copyright = _la.get_copyright

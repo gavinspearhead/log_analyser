@@ -4,7 +4,6 @@ import threading
 # import traceback
 
 from watchdog.events import FileModifiedEvent
-
 from outputters.output_abstract import AbstractOutput
 from parsers import LogParser
 from typing import Any, Optional, Dict, List

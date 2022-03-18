@@ -67,6 +67,6 @@ class Notify:
             except Exception as e:
                 logging.info("Notifying failed: {}".format(str(e)))
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         for notifier in self._notify:
             notifier['handler'].cleanup()

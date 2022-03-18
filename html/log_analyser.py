@@ -7,8 +7,7 @@ import logging
 import os.path
 import re
 import sys
-import traceback
-
+# import traceback
 import dns.resolver
 import pymongo
 import dateutil.parser
@@ -17,7 +16,6 @@ import tzlocal
 import whois
 
 from typing import List, Dict, Any, Optional, Tuple, Union
-
 from flask import Flask, render_template, request, make_response, Response
 from humanfriendly import format_size
 from natsort import natsorted
@@ -33,8 +31,7 @@ from notify import Notify
 from hostnames import Hostnames
 from log_analyser_version import get_prog_name
 from filenames import output_file_name, notify_file_name, hostnames_file_name
-from util import get_flag
-
+from util import get_flag, get_prefix, get_asn_info
 
 config_path: str = os.path.dirname(__file__)
 app = Flask(__name__)
@@ -216,8 +213,8 @@ class Data_set:
         field2_values: List[str] = []
         if self._field1 == 'ip_address':
             # translate the ip addresses to hostnames
-            def map_hostname(ip):
-                hn = hostnames.translate(ip)
+            def map_hostname(ip: str) -> str:
+                hn: str = hostnames.translate(ip)
                 if hn is not None:
                     return "{} ({})".format(hn, ip)
                 else:
@@ -245,20 +242,6 @@ class Data_set:
         keys: List[str] = list(field1_values_a)
 
         return rv, keys
-
-
-def get_prefix(ip_address: str) -> Optional[str]:
-    local_addresses = ["127.0.0.0/8", "10.0.0.0/8", "192.168.0.0/16", "172.16.0.0/12", "fc00::/7", "169.254.0.0/16",
-                       "fe80::/10"]
-    try:
-        r = geoip2_country_db.country(ip_address)
-        network_address = ipaddress.ip_interface("{}/{}".format(ip_address, r.traits._prefix_len))
-        return str(network_address.network)
-    except geoip2.errors.AddressNotFoundError:
-        for x in local_addresses:
-            if ipaddress.ip_address(ip_address) in ipaddress.ip_network(x):
-                return x
-        return None
 
 
 def get_mongo_notifications() -> pymongo.collection.Collection:
@@ -1028,8 +1011,6 @@ def get_apache_data(name: str, period: str, search: str, raw: bool, to_time: Opt
     return data
 
 
-
-
 @app.route('/data/', methods=['POST'])
 def load_data() -> Tuple[str, int, Dict[str, str]]:
     hostnames = Hostnames(os.path.join(config_path, '..', hostnames_file_name)).get_hostnames()
@@ -1202,22 +1183,14 @@ def get_whois_data(item: str) -> Dict[str, str]:
     return wd
 
 
-def get_asn_info(item: str) -> Dict[str, str]:
-    try:
-        asn = geoip2_asn_db.asn(item.strip())
-        return {'AS Number': asn.autonomous_system_number, 'AS Organisation': asn.autonomous_system_organization}
-    except geoip2.errors.AddressNotFoundError:
-        return {}
-
-
 @app.route('/reverse_dns/<item>/', methods=["GET"])
 def reverse_dns(item) -> Tuple[str, int, Dict[str, str]]:
     dns_data = get_dns_data(item)
     whois_data = get_whois_data(item)
     asn_data = get_asn_info(item)
 
-    return render_template("reverse_dns.html", dns_data=dns_data, item=item, whois_data=whois_data, asn_data=asn_data), \
-           200, {'ContentType': 'application/json'}
+    return render_template("reverse_dns.html", dns_data=dns_data, item=item, whois_data=whois_data,
+                           asn_data=asn_data), 200, {'ContentType': 'application/json'}
 
 
 @app.route('/notifications_count/', methods=['POST'])
@@ -1298,8 +1271,8 @@ def notifications_data() -> Tuple[str, int, Dict[str, str]]:
                             flags[vv] = get_flag(vv)
         rhtml = render_template("notifications_table.html", keys=keys, data=data, names=names, prog_name=prog_name,
                                 flags=flags)
-        return json.dumps({'success': True, 'rhtml': rhtml, 'title_type': title_type}), 200, \
-               {'ContentType': 'application/json'}
+        return json.dumps({'success': True, 'rhtml': rhtml, 'title_type': title_type}),\
+               200, {'ContentType': 'application/json'}
     except Exception as e:
         # traceback.print_exc()
         return json.dumps({'success': False, "message": str(e)}), 200, {'ContentType': 'application/json'}

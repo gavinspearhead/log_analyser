@@ -12,7 +12,9 @@ class Outputs:
     _outputs_types = {
         'stdout': StdOutput,
         'mongo': MongoOutput,
-        'ignore': IgnoreOutput
+        'ignore': IgnoreOutput,
+        # 'mysql': MysqlOutput,
+        # 'sqlite': SqliteOutput,
     }
 
     def __init__(self) -> None:

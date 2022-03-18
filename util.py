@@ -1,3 +1,4 @@
+import ipaddress
 import logging
 import os
 import socket
@@ -7,6 +8,9 @@ from typing import Dict, Optional, Tuple
 from functools import lru_cache
 import geoip2.database
 import geoip2.errors
+
+from filenames import hostnames_file_name
+from hostnames import Hostnames
 
 geolite_country_data_filename: str = "html/data/GeoLite2-Country.mmdb"
 geolite_asn_data_filename: str = "html/data/GeoLite2-ASN.mmdb"
@@ -75,6 +79,37 @@ def write_pidfile(pid_file: str) -> None:
 @lru_cache(maxsize=64)
 def dns_translate(ip_address: str) -> Optional[str]:
     try:
+        config_path: str = os.path.dirname(__file__)
+        hostnames = Hostnames(os.path.join(config_path, hostnames_file_name))
+        name = hostnames.translate(ip_address)
+        if name is not None:
+            return name
+    except Exception:
+        pass
+
+    try:
         return str(dns.resolver.resolve(dns.resolver.resolve_address(ip_address).name, 'ptr', lifetime=3.0).rrset[0])
     except dns.exception.DNSException:
         return None
+
+
+def get_prefix(ip_address: str) -> Optional[str]:
+    local_addresses = ["127.0.0.0/8", "10.0.0.0/8", "192.168.0.0/16", "172.16.0.0/12", "fc00::/7", "169.254.0.0/16",
+                       "fe80::/10"]
+    try:
+        r = geoip2_country_db.country(ip_address)
+        network_address = ipaddress.ip_interface("{}/{}".format(ip_address, r.traits._prefix_len))
+        return str(network_address.network)
+    except geoip2.errors.AddressNotFoundError:
+        for x in local_addresses:
+            if ipaddress.ip_address(ip_address) in ipaddress.ip_network(x):
+                return x
+        return None
+
+
+def get_asn_info(item: str) -> Dict[str, str]:
+    try:
+        asn = geoip2_asn_db.asn(item.strip())
+        return {'AS Number': asn.autonomous_system_number, 'AS Organisation': asn.autonomous_system_organization}
+    except geoip2.errors.AddressNotFoundError:
+        return {}
