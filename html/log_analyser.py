@@ -22,10 +22,8 @@ from natsort import natsorted
 from copy import deepcopy
 from collections import OrderedDict
 
-from outputters.output_mongo import MongoConnector
-
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
+from outputters.output_mongo import MongoConnector
 from output import Outputs
 from notify import Notify
 from hostnames import Hostnames
