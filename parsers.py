@@ -211,11 +211,16 @@ class RegexParser(LogParser):
             else:
                 raise ValueError("Can't compare ipaddress")
         except ValueError:
+            # not an IP address
             pass
         if (type(val) == int or val.isnumeric()) and (type(clause) == int or clause.isnumeric()):
             return op(int(clause), int(val))
         else:
             return op(clause, val)
+
+    @staticmethod
+    def _compare_regex(elem, clause):
+        return re.match(elem[1:], str(clause)) is not None
 
     def _match_condition(self, elem: str, name: str, clause, matched_clause, res2: bool):
         if elem == 'new':
@@ -239,12 +244,13 @@ class RegexParser(LogParser):
                 res2 = False
         elif elem[0] in "=!<>":
             res2 = res2 and self._compare(elem, matched_clause)
+        elif elem[0] in "~":
+            res2 = res2 and self._compare_regex(elem, matched_clause)
         else:
             res2 = False
         return res2
 
-    def _match_notify_conditions(self, matches: Dict[str, str], conditions: List[Dict[str, List[str]]]) -> Optional[
-        bool]:
+    def _match_notify_conditions(self, matches: Dict[str, str], conditions: List[Dict[str, List[str]]]) -> Optional[bool]:
         res: bool = False
         for condition in conditions:
             res2 = len(condition) > 0

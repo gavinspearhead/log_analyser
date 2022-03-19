@@ -99,7 +99,7 @@
          },
         "notify" :[ {
 	        "name": "telegram",
-	        "condition": [ {"ip_address": ["nonlocal", "new"}, {"username": "new"}]
+	        "condition": [ {"ip_address": ["nonlocal", "new"}, {"username": "~^test$"}]
 	    }
 	    }]
      ]
