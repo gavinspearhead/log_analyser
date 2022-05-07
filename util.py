@@ -1,3 +1,4 @@
+import datetime
 import ipaddress
 import logging
 import os
@@ -9,6 +10,7 @@ from functools import lru_cache
 import geoip2.database
 import geoip2.errors
 
+import log_analyser_version
 from filenames import hostnames_file_name
 from hostnames import Hostnames
 
@@ -47,13 +49,33 @@ def get_own_ip(ip_version: int = 4) -> str:
     return address
 
 
-def load_data_set() -> Dict[str, str]:
-    return {
-        '$fqdn': socket.getfqdn(),
-        '$hostname': socket.gethostname().lower(),
-        '$host_ip': get_own_ip(4),
-        '$host_ipv6': get_own_ip(6)
+class DataSet:
+    _data = {
+        '$fqdn': lambda: socket.getfqdn(),
+        '$hostname': lambda: socket.gethostname().lower(),
+        '$host_ip': lambda: get_own_ip(4),
+        '$host_ipv6': lambda: get_own_ip(6),
+        '$time': lambda: datetime.datetime.now().strftime("%H:%M:%S"),
+        '$date': lambda: datetime.datetime.now().strftime("%Y:%m:%d"),
+        '$isotime': lambda: datetime.datetime.now().isoformat(),
+        '$pid': lambda: str(os.getpid()),
+        '$version': lambda: log_analyser_version.get_version(),
     }
+
+    def __init__(self):
+        pass
+
+    def __getitem__(self, item):
+        if item in self._data:
+            return self._data[item]()
+        else:
+            raise IndexError(item)
+
+    def get(self, item, default):
+        try:
+            return self[item]
+        except IndexError:
+            return default
 
 
 def pid_running(pid_filename: str) -> bool:

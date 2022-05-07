@@ -1,6 +1,6 @@
 class LogAnalyserVersion:
     MAJOR_VERSION: int = 0
-    MINOR_VERSION: int = 5
+    MINOR_VERSION: int = 6
     PATCH_NUMBER: int = 0
     PROG_NAME_COLLECTOR: str = "Log Collector"
     PROG_NAME_WEB: str = "Log Analyser"
@@ -12,6 +12,10 @@ class LogAnalyserVersion:
     @property
     def version(self) -> str:
         return "{}.{}.{}".format(self.MAJOR_VERSION, self.MINOR_VERSION, self.PATCH_NUMBER)
+
+    @property
+    def copyright(self) -> str:
+        return "{}-{} (C) {} {}".format(self.MIN_YEAR, self.MAX_YEAR, self.LICENCE, self.AUTHOR)
 
     def get_prog_name(self, type_of_program: str) -> str:
         if type_of_program == 'web':
@@ -25,7 +29,7 @@ class LogAnalyserVersion:
         return self.version
 
     def get_copyright(self) -> str:
-        return "{}-{} (C) {} {}".format(self.MIN_YEAR, self.MAX_YEAR, self.LICENCE, self.AUTHOR)
+        return self.copyright
 
 
 _la = LogAnalyserVersion()

@@ -6,14 +6,14 @@ import re
 import dateutil.parser
 from datetime import datetime
 from outputters.output_abstract import AbstractOutput
-from util import load_data_set, dns_translate, get_flag
+from util import DataSet, dns_translate, get_flag
 from time_parsers import parse_apache_timestamp, parse_syslog_timestamp, parse_iso_timestamp
 from abc import ABC
 from dateutil.tz import tzoffset
 from local_ip import is_local_address
-from typing import List, Tuple, Dict, Optional, Union, Any
+from typing import List, Tuple, Dict, Union, Any
 
-data_conversion = load_data_set()
+data_conversion = DataSet()
 
 
 class LogParser(ABC):
@@ -26,7 +26,7 @@ class LogParser(ABC):
     def emit(self, matches: List[str], name: str):
         raise NotImplemented
 
-    def notify(self, matches, name: str):
+    def notify(self, output_dict, name: str):
         raise NotImplemented
 
 
@@ -145,27 +145,27 @@ class RegexParser(LogParser):
         res['name'] = name
         return res
 
-    def notify(self, matches: List[str], name: str) -> None:
-        res = self.emit(matches, name)
+    def notify(self, output_dict: List[str], name: str) -> None:
+        # res = self.emit(matches, name)
         for notifier in self._notify:
             if notifier != {}:
-                if self._match_notify_conditions(res, notifier['condition']):
+                if self._match_notify_conditions(output_dict, notifier['condition']):
                     try:
                         notifier = self._notifiers.get_notify(notifier['name'])
                         handler = notifier['handler']
                         if handler.do_convert_dns():
-                            rv = dns_translate(res['ip_address'])
+                            rv = dns_translate(output_dict['ip_address'])
                             if rv:
-                                res['remote_host'] = rv
+                                output_dict['remote_host'] = rv
                         if handler.do_find_country():
-                            country_code, country_name = get_flag(res['ip_address'])
+                            country_code, country_name = get_flag(output_dict['ip_address'])
                             if country_name != '':
-                                res['country'] = "{} ({})".format(country_name, country_code)
+                                output_dict['country'] = "{} ({})".format(country_name, country_code)
                         formatting = handler.format
                         if formatting == "text":
-                            msg = "".join(["{}: {}\n".format(x, y) for x, y in res.items()])
+                            msg = "".join(["{}: {}\n".format(x, y) for x, y in output_dict.items()])
                         elif formatting == "json":
-                            msg = json.dumps({x: str(y) for x, y in res.items()})
+                            msg = json.dumps({x: str(y) for x, y in output_dict.items()})
                         else:
                             raise ValueError("Unknown format {}".format(formatting))
 
@@ -219,10 +219,10 @@ class RegexParser(LogParser):
             return op(clause, val)
 
     @staticmethod
-    def _compare_regex(elem, clause):
+    def _compare_regex(elem: str, clause: Union[str, int]) -> bool:
         return re.match(elem[1:], str(clause)) is not None
 
-    def _match_condition(self, elem: str, name: str, clause, matched_clause, res2: bool):
+    def _match_condition(self, elem: str, name: str, clause: str, matched_clause: str, res2: bool) -> bool:
         if elem == 'new':
             if self._output.is_new(name, clause, matched_clause):
                 res2 = res2 and True
@@ -250,7 +250,7 @@ class RegexParser(LogParser):
             res2 = False
         return res2
 
-    def _match_notify_conditions(self, matches: Dict[str, str], conditions: List[Dict[str, List[str]]]) -> Optional[bool]:
+    def _match_notify_conditions(self, matches: Dict[str, str], conditions: List[Dict[str, List[str]]]) -> bool:
         res: bool = False
         for condition in conditions:
             res2 = len(condition) > 0
@@ -263,7 +263,7 @@ class RegexParser(LogParser):
             res = res or res2
             if res:
                 return True
-        return None
+        return False
 
     def _transform_value(self, rv: str, idx: str) -> Union[datetime, int, str, float, bool]:
         if idx in self._transform:
@@ -291,6 +291,7 @@ class RegexParser(LogParser):
         matches = re.findall(r"([$]\w+)", val)
         for m in matches:
             val = val.replace(m, data_conversion.get(m, '-'))
+        print(val)
         return val
 
 

@@ -64,14 +64,19 @@ class FileHandler:
             _pos = self._pos
         return {"pos": _pos, "path": self._path, 'inode': self._inode, 'device': self._dev}
 
+    @staticmethod
+    def _filter_output(output_dict):
+        return {key: val for key, val in output_dict.items() if not key.startswith('!')}
+
     def _match_line(self, line: str) -> None:
         if self._output_engine is None:
             raise ValueError("output engine not initialised")
         for p in self._parsers:
             m = p.match(line)
             if m:
-                self._output_engine.write(p.emit(m, self._name))
-                p.notify(m, self._name)
+                output = p.emit(m, self._name)
+                p.notify(output, self._name)
+                self._output_engine.write(self._filter_output(output))
 
     def _process_line(self, line: str) -> bool:
         logging.debug(line)
