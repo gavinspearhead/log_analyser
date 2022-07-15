@@ -31,13 +31,16 @@ class LogParser(ABC):
 
 
 class RegexParser(LogParser):
+    _ip4_regex = '\\d+\\.\\d+\\.\\d+\\.\\d+'
+    _ip6_regex = '(?:[a-fA-F0-9]{0,4}:){0,7}(?:[a-fA-F0-9]{0,4})'
     _patterns = {
-        "IP": ('(?:\\d+\\.\\d+\\.\\d+\\.\\d+)|(?:(?:[a-fA-F0-9]{0,4}:){0,7}(?:[a-fA-F0-9]{0,4}))', str),
-        "IP4": ('\\d+\\.\\d+\\.\\d+\\.\\d+', str),
-        "IP6": ('[a-fA-F0-9]{0,4}:){0,7}(?:[a-fA-F0-9]{0,4})', str),
+        "IP": ('(?:' + _ip4_regex + ')|(?:' + _ip6_regex + ')', str),
+        "IP4": (_ip4_regex, str),
+        "IP6": (_ip6_regex, str),
         'NUM': ('[+-]?\\d+', int),
         'ALNUM': ('[a-zA-Z0-9]+', str),
-        'FLOAT': ('[+-]?\\d*.?\\d+(?e[+-]?\\d+)', float),
+        'HOST': ('(?:[-a-zA-Z0-9.]+)|(?:' + _ip4_regex + ')|(?:' + _ip6_regex + ')', str),
+        'FLOAT': ('[+-]?\\d*.?\\d+(?:e[+-]?\\d+)', float),
         'ALPHA': ('[a-zA-Z]+', str),
         'STR': ('\\S+', str),
         'SPACE': ('\\s+', str),
@@ -60,6 +63,7 @@ class RegexParser(LogParser):
                  notifiers, output: AbstractOutput, log_name) -> None:
         super().__init__()
         self._pattern, self._filters = self.parse_regexp(reg_ex)
+        # print(self._pattern)
         self._compiled_pattern = re.compile(self._pattern)
         self._format_str: Dict[str, str] = format_str
         self._transform: Dict[str, str] = transform
@@ -124,6 +128,7 @@ class RegexParser(LogParser):
         res = self._compiled_pattern.search(line)
         if res is None:
             return []
+        # print(res.groups())
         return list(res.groups())
 
     def emit(self, matches: List[str], name: str) -> Dict[str, Union[datetime, int, str, float, bool]]:

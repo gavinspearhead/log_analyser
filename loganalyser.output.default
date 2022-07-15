@@ -12,5 +12,12 @@
 },
 {
     "name": "stdout",
-    "type": "stdout"
-}]
+    "type": "stdout",
+    "indent": 4,
+    "sort_keys": false
+},
+{
+    "name": "ignore",
+    "type": "ignore"
+}
+]

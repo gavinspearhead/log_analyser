@@ -48,6 +48,7 @@ doNotify:function(img,notification_title,notification_body) {
 
 var ssh_count = -1;
 var apache_count = -1;
+var nntp_proxy_count = -1;
 function handle_request(search, type)
 {
     g_search = search;
@@ -69,6 +70,7 @@ function handle_request(search, type)
         set_ip_click_handler();
         ssh_count = -1;
         apache_count = -1;
+        nntp_proxy_count = -1;
         load_notification_count();
     });
     return false;
@@ -88,8 +90,10 @@ function load_notification_count()
         var res = JSON.parse(data);
         var ssh = res['counts']['ssh'];
         var apache = res['counts']['apache'];
+        var nntp_proxy = res['counts']['nntp_proxy'];
         $("#ssh_notification_count").text(ssh);
         $("#apache_notification_count").text(apache);
+        $("#nntp_proxy_notification_count").text(nntp_proxy);
         if (ssh == 0) {
             $("#ssh_notification_count").addClass('bg-success');
             $("#ssh_notification_count").removeClass('bg-danger');
@@ -104,13 +108,23 @@ function load_notification_count()
             $("#apache_notification_count").removeClass('bg-success');
             $("#apache_notification_count").addClass('bg-danger');
         }
+        if (nntp_proxy == 0) {
+            $("#nntp_proxy_notification_count").addClass('bg-success');
+            $("#nntp_proxy_notification_count").removeClass('bg-danger');
+        } else {
+            $("#nntp_proxy_notification_count").removeClass('bg-success');
+            $("#nntp_proxy_notification_count").addClass('bg-danger');
+        }
         if (ssh > ssh_count && ssh_count >=0 ) {
             DesktopNotifications.doNotify(null,"New SSH login notification")
         } else if (apache > apache_count  && apache_count >= 0) {
             DesktopNotifications.doNotify(null,"New Apache notification")
+        } else if (nntp_proxy > nntp_proxy_count  && nntp_proxy_count >= 0) {
+            DesktopNotifications.doNotify(null,"New NNTP  proxy notification")
         }
         ssh_count = ssh;
         apache_count = apache;
+        nntp_proxy_count = nntp_proxy;
     });
     return false;
 }
@@ -124,6 +138,7 @@ $( document ).ready(function() {
     $('#itemstablediv').scrollTop(0);
     $("[data-type^='apache']").click(function(event) { handle_request(  $("#searchbar").val(),'apache') });
     $("[data-type^='ssh']").click(function(event) { handle_request(  $("#searchbar").val(), 'ssh') });
+    $("[data-type^='nntp_proxy']").click(function(event) { handle_request(  $("#searchbar").val(), 'nntp_proxy') });
     $("[name^='timeperiod").click(function(event) {
         if ($(this).attr('id') != 'custom')  {
              handle_request( g_search, g_type);

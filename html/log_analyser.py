@@ -51,6 +51,7 @@ class Dashboard_data_types:
         "apache_size_ip": ("apache", "size_ip", "Apache - Volume per IP"),
         "apache_size_prefix": ("apache", "size_prefix", "Apache - Volume per IP Prefix"),
         "apache_size_user": ("apache", "size_user", "Apache - Volume per User"),
+        "nntp_proxy_time_ips": ("nntp_proxy", "time_ips", "NNTP - IP Addresses"),
     }
 
     def __init__(self) -> None:
@@ -75,13 +76,14 @@ class Dashboard_data_types:
 
 main_data_titles: Dict[str, str] = {
     'ssh': "SSH",
-    'apache': 'Apache'
+    'apache': 'Apache',
+    'nntp_proxy': 'NNTP'
 }
 
 main_data_types: Dict[str, Dict[str, Tuple[str, str, str]]] = {
     'ssh': {
         "ssh_users": ("ssh", "users", "Users"),
-        "ssh_new_users": ("ssh", "new_users", "SSH New Users"),
+        "ssh_new_users": ("ssh", "new_users", "New Users"),
         "ssh_time_users": ("ssh", "time_users", "Users per Time"),
         "ssh_time_ips": ("ssh", "time_ips", "IPs per Time"),
         "ssh_ip_addresses": ("ssh", "ip_addresses", "IP Addresses"),
@@ -101,6 +103,11 @@ main_data_types: Dict[str, Dict[str, Tuple[str, str, str]]] = {
         "apache_size_ip": ("apache", "size_ip", "Volume per IP"),
         "apache_size_prefix": ("apache", "size_prefix", "Volume per IP Prefix"),
         "apache_size_user": ("apache", "size_user", "Volume per User"),
+    },
+    "nntp_proxy": {
+        "nntp_proxy_ip_addresses": ("nntp_proxy", "ip_addresses", "IP Addresses"),
+        "nntp_proxy_new_ips": ("nntp_proxy", "new_ips", "New IP Addresses"),
+        "nntp_proxy_time_ips": ("nntp_proxy", "time_ips", "IPs per Time"),
     }
 }
 
@@ -368,6 +375,13 @@ def match_ip_address(search: str) -> Optional[Dict[str, Any]]:
     except ValueError:
         pass
     return None
+
+
+def get_search_mask_nntp(search: str) -> Optional[Dict[str, Any]]:
+    s = match_ip_address(search)
+    if s is not None:
+        return s
+    return {"port": {"$regex": re.escape(search)}}
 
 
 def get_search_mask_ssh(search: str) -> Optional[Dict[str, Any]]:
@@ -1009,6 +1023,140 @@ def get_apache_data(name: str, period: str, search: str, raw: bool, to_time: Opt
     return data
 
 
+def get_nntp_proxy_new_ips_data(mask: Dict[str, Any], search: str, start_time: datetime.datetime) -> Data_set:
+    search_q = get_search_mask_nntp(search)
+    col = get_mongo_connection()
+    ips: Dict[str, Tuple[int, datetime.date]] = {}
+    res = col.aggregate(
+        [{"$match": {"$and": [{"name": "nntp_proxy"}]}},
+         {"$group": {
+             "_id": {"ip_address": "$ip_address"},
+             "total": {"$sum": 1},
+             "oldest": {"$min": "$timestamp"}}},
+         {"$sort": {"total": -1}}
+         ])
+    for x in res:
+        ip: str = x['_id']['ip_address']
+        t: int = x['total']
+        o = pytz.UTC.localize(x['oldest'])
+        if ip not in ips:
+            ips[ip] = (t, o)
+    res = col.aggregate(
+        [{"$match": {"$and": [{"name": "nntp_proxy"}, mask, search_q]}},
+         {"$group": {
+             "_id": {"ip_address": "$ip_address"},
+             "total": {"$sum": 1},
+             'hosts': {"$addToSet": "$hostname"},
+         }},
+         {"$sort": {"total": -1}}
+         ])
+    new_ips: Dict[str, Tuple[int, str, str]] = {}
+    for x in res:
+        ip1: str = x['_id']['ip_address']
+        ts: int = x['total']
+        th: str = ", ".join(sorted(x['hosts']))
+        if ip1 not in ips or (ips[ip1][0] < (2 * ts)) or ips[ip1][1] >= start_time:
+            if ip1 not in new_ips:
+                new_ips[ip1] = (ts, None, th)
+
+    data = Data_set(None, None, None)
+    data.set_keys(['IP address', 'Count', 'Types', 'Hosts'])
+    for ip2 in new_ips:
+        data.add_data_row({
+            'ip_address': ip2,
+            'count': new_ips[ip2][0],
+            'types': new_ips[ip2][1],
+            'hosts': new_ips[ip2][2]}
+        )
+    return data
+
+
+def get_nntp_proxy_time_ips_data(mask: Dict[str, Any], search: str, raw: bool,
+                                 intervals: List[Union[int, str, Tuple[int, int]]], time_mask: str) -> Data_set:
+    local_tz = str(tzlocal.get_localzone())
+    search_q = get_search_mask_nntp(search)
+    col: pymongo.collection.Collection = get_mongo_connection()
+    orig_time_mask = time_mask.capitalize()
+    if time_mask == 'day':
+        time_mask = 'dayOfMonth'
+    res = col.aggregate([
+        {"$match": {"$and": [{"name": "nntp_proxy"}, mask, search_q]}},
+        {"$group": {
+            "_id": {"time": {"$" + time_mask: {"date": "$timestamp", "timezone": local_tz}},
+                    "month": {"$month": {"date": "$timestamp", "timezone": local_tz}},
+                    "ip_address": "$ip_address"},
+            "total": {"$sum": 1},
+            'hosts': {"$addToSet": "$hostname"},
+            'hour': {"$addToSet": {"$hour": {"date": "$timestamp", "timezone": local_tz}}},
+            # 'month': {"$addToSet": {"$month": {"date": "$timestamp", "timezone": local_tz}}}
+        }},
+        {"$sort": {'_id.month': 1, '_id.time': 1, 'total': -1}}])
+
+    data = Data_set('ip_address', 'time', 'total')
+    data.set_keys([orig_time_mask, 'IP Address', 'Total', 'Hosts'])
+    if raw:
+        data.prepare_time_output(time_mask, intervals, {'time': None, 'ip_address': "", 'total': 0})
+    for x in res:
+        time_str = format_time(time_mask, x['_id']['month'], x['hour'][0], x['_id']['time'])
+        row = {
+            'time': time_str,
+            'ip_address': x['_id']['ip_address'],
+            'total': x['total'],
+            'hosts': ", ".join(sorted(x['hosts']))
+        }
+        data.add_data_row(row)
+    return data
+
+
+def get_nntp_proxy_ips_data(mask: Dict[str, Any], search: str, name: str) -> Data_set:
+    search_q = get_search_mask_nntp(search)
+    col = get_mongo_connection()
+    res = col.aggregate(
+        [{"$match": {"$and": [{"name": "nntp_proxy"}, mask, search_q]}},
+         {"$group": {"_id": "$ip_address", "total": {"$sum": 1},
+                     'hosts': {"$addToSet": "$hostname"},
+                     }},
+         {"$sort": {"total": -1}}
+         ])
+    data = Data_set('prefix' if name == 'ip_prefixes' else 'ip_address', None, 'count')
+    if name == 'ip_addresses':
+        data.set_keys(['IP Address', 'Count', 'Hosts'])
+    else:
+        data.set_keys(['IP Prefix', 'Count', "Hosts"])
+
+    for x in res:
+        logging.error(x)
+        row = {
+            'ip_address': x['_id'],
+            'count': x['total'],
+            'hosts': ", ".join(sorted(x['hosts']))
+        }
+        data.add_data_row(row)
+    if name == 'ip_prefixes':
+        data.merge_prefixes(['count'], ['users', 'codes', 'hosts'])
+    return data
+
+
+def get_nntp_proxy_data(name: str, period: str, search: str, raw: bool, to_time: Optional[str] = None,
+                        from_time: Optional[str] = None, host: str = "*") -> Data_set:
+    local_tz: str = str(tzlocal.get_localzone())
+    mask_range = get_period_mask(period, to_time, from_time, pytz.timezone(local_tz))
+    time_mask: str = mask_range[2]
+    intervals = mask_range[3]
+    mask: Dict[str, Any] = {"$and": [{"timestamp": {"$gte": mask_range[0]}}, {"timestamp": {"$lte": mask_range[1]}}]}
+    if host not in ["*", '']:
+        mask['$and'].append({"hostname": {"$regex": host, "$options": "i"}})
+    if name == 'ip_addresses' or name == 'ip_prefixes':
+        data = get_nntp_proxy_ips_data(mask, search, name)
+    elif name == 'new_ips':
+        data = get_nntp_proxy_new_ips_data(mask, search, mask_range[0])
+    elif name == 'time_ips':
+        data = get_nntp_proxy_time_ips_data(mask, search, raw, intervals, time_mask)
+    else:
+        raise ValueError("Invalid item: {}".format(name))
+    return data
+
+
 @app.route('/data/', methods=['POST'])
 def load_data() -> Tuple[str, int, Dict[str, str]]:
     hostnames = Hostnames(os.path.join(config_path, '..', hostnames_file_name)).get_hostnames()
@@ -1024,6 +1172,8 @@ def load_data() -> Tuple[str, int, Dict[str, str]]:
         data: Data_set = get_ssh_data(name, period, search, raw, to_time, from_time, host)
     elif rtype == 'apache':
         data = get_apache_data(name, period, search, raw, to_time, from_time, host)
+    elif rtype == 'nntp_proxy':
+        data = get_nntp_proxy_data(name, period, search, raw, to_time, from_time, host)
     else:
         raise ValueError("Unknown type: {}".format(rtype))
     if raw:
@@ -1201,11 +1351,13 @@ def notifications_count() -> Tuple[str, int, Dict[str, str]]:
         local_tz: str = str(tzlocal.get_localzone())
         mask_range = get_period_mask(period, to_time, from_time, pytz.timezone(local_tz))
         results = {}
-        for data_type in ['ssh', 'apache']:
+        for data_type in ['ssh', 'apache', 'nntp_proxy']:
             if data_type == 'apache':
                 type_mask = {"name": "apache_access"}
             elif data_type == 'ssh':
                 type_mask = {"name": "auth_ssh"}
+            elif data_type == 'nntp_proxy':
+                type_mask = {"name": "nntp_proxy"}
             else:
                 raise ValueError("Unknown data type: {}".format(data_type))
             mask: Dict[str, Any] = {
@@ -1247,6 +1399,11 @@ def notifications_data() -> Tuple[str, int, Dict[str, str]]:
                      'code': "Code", 'size': "Size", 'remote_host': "Remote Host"}
             type_mask = {"name": "apache_access"}
             title_type = "Apache"
+        elif req_type == 'nntp_proxy':
+            keys = ['hostname', 'ip_address', 'dest_address', 'timestamp', 'port', 'dest_port', 'status']
+            names = {'hostname': "Hostname", 'ip_address': "IP Address", 'dest_address': "Destination", 'timestamp': "Time", 'port': "Port", 'dest_port': "Destination Port", 'status': "Status" }
+            type_mask = {"name": "nntp_proxy"}
+            title_type = "NNTP"
         else:
             raise ValueError("Unknown type")
         mask: Dict[str, Any] = {
@@ -1269,7 +1426,7 @@ def notifications_data() -> Tuple[str, int, Dict[str, str]]:
                             flags[vv] = get_flag(vv)
         rhtml = render_template("notifications_table.html", keys=keys, data=data, names=names, prog_name=prog_name,
                                 flags=flags)
-        return json.dumps({'success': True, 'rhtml': rhtml, 'title_type': title_type}),\
+        return json.dumps({'success': True, 'rhtml': rhtml, 'title_type': title_type}), \
                200, {'ContentType': 'application/json'}
     except Exception as e:
         # traceback.print_exc()

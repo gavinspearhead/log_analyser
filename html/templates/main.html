@@ -98,7 +98,7 @@
                  <ul class="">
                     {% for x in main_data_types[data_type] %}
                      {% set data = main_data_types[data_type][x] %}
-                    <li class="list-unstyled components" role="button" id="{{data[0]}}_{{data[1]}}" data-type="SSH">{{data[2]}}</li>
+                    <li class="list-unstyled components" role="button" id="{{data[0]}}_{{data[1]}}" data-type="{{main_data_titles[data_type]}}">{{data[2]}}</li>
                     {% endfor %}
                     </ul>
                 </li>

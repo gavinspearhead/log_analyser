@@ -39,6 +39,7 @@ function set_log_handlers()
 {
     $("[id^='ssh_']").unbind('click');
     $("[id^='apache_']").unbind('click');
+    $("[id^='nntp_proxy_']").unbind('click');
     $("[id^='ssh_']").click(function(event) {
         var type = "ssh";
         var name = $(this).attr("id").replace('ssh_', '');
@@ -48,6 +49,12 @@ function set_log_handlers()
     $("[id^='apache_']").click(function(event) {
         var type = "apache";
         var name = $(this).attr("id").replace('apache_', '');
+        var title =$(this).text();
+        handle_request(name, type, '', title, $(this).attr("data-type"))
+    });
+    $("[id^='nntp_proxy_']").click(function(event) {
+        var type = "nntp_proxy";
+        var name = $(this).attr("id").replace('nntp_proxy_', '');
         var title =$(this).text();
         handle_request(name, type, '', title, $(this).attr("data-type"))
     });
