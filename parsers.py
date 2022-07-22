@@ -296,7 +296,7 @@ class RegexParser(LogParser):
         matches = re.findall(r"([$]\w+)", val)
         for m in matches:
             val = val.replace(m, data_conversion.get(m, '-'))
-        print(val)
+        # print(val)
         return val
 
 
@@ -310,4 +310,4 @@ if __name__ == "__main__":
     conds = [{'ip_address': ['new', "local"]}]  # , {'username': 'new'}]
 
     xx = r._match_notify_conditions(rs, conds)
-    print(xx)
+    # print(xx)
