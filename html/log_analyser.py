@@ -52,6 +52,8 @@ class Dashboard_data_types:
         "apache_size_prefix": ("apache", "size_prefix", "Apache - Volume per IP Prefix"),
         "apache_size_user": ("apache", "size_user", "Apache - Volume per User"),
         "nntp_proxy_time_ips": ("nntp_proxy", "time_ips", "NNTP - IP Addresses"),
+        "nntp_proxy_size_ip": ("nntp_proxy", "size_ip", "NNTP - Volume per IP"),
+        "nntp_proxy_size_prefix": ("nntp_proxy", "size_prefix", "NNTP - Volume per Prefix"),
     }
 
     def __init__(self) -> None:
@@ -108,6 +110,8 @@ main_data_types: Dict[str, Dict[str, Tuple[str, str, str]]] = {
         "nntp_proxy_ip_addresses": ("nntp_proxy", "ip_addresses", "IP Addresses"),
         "nntp_proxy_new_ips": ("nntp_proxy", "new_ips", "New IP Addresses"),
         "nntp_proxy_time_ips": ("nntp_proxy", "time_ips", "IPs per Time"),
+        "nntp_proxy_size_ip": ("nntp_proxy", "size_ip", "Volume per IP"),
+        "nntp_proxy_size_prefix": ("nntp_proxy", "size_prefix", "Volume per Prefix"),
     }
 }
 
@@ -1137,6 +1141,39 @@ def get_nntp_proxy_ips_data(mask: Dict[str, Any], search: str, name: str) -> Dat
     return data
 
 
+def get_nntp_proxy_size_ip_data(mask: Dict[str, Any], search: str, name: str, raw: bool) -> Data_set:
+    search_q = get_search_mask_nntp(search)
+    col = get_mongo_connection()
+    res = col.aggregate(
+        [{"$match": {"$and": [{"name": "nntp_proxy"}, mask, search_q]}},
+         {"$group": {
+             "_id": {"ip_address": "$ip_address"},
+             'hosts': {"$addToSet": "$hostname"},
+             "total_up": {"$sum": "$up_size"},
+             "total_down": {"$sum": "$down_size"}}},
+    {"$sort": {"total": -1}}
+         ])
+    data = Data_set('prefix' if name == 'size_prefix' else 'ip_address', None, 'size')
+    for x in res:
+        row = {
+            'ip_address': x['_id']['ip_address'],
+            'size_up': x['total_up'],
+            'size_down': x['total_down'],
+            'hosts': ", ".join(sorted(x['hosts']))
+        }
+        data.add_data_row(row)
+    if name == 'size_prefix':
+        data.set_keys(['IP Prefixes', 'Size Up', 'Size Down', 'Hosts'])
+        data.merge_prefixes(['size_up', 'size_down'], [], None, 'size_up')
+    else:
+        data.set_keys(['IP Addresses', 'Size Up', 'Size Down', 'Hosts'])
+    if not raw:
+        data.format_size('size_up')
+        data.format_size('size_down')
+    print(data)
+    return data
+
+
 def get_nntp_proxy_data(name: str, period: str, search: str, raw: bool, to_time: Optional[str] = None,
                         from_time: Optional[str] = None, host: str = "*") -> Data_set:
     local_tz: str = str(tzlocal.get_localzone())
@@ -1152,6 +1189,10 @@ def get_nntp_proxy_data(name: str, period: str, search: str, raw: bool, to_time:
         data = get_nntp_proxy_new_ips_data(mask, search, mask_range[0])
     elif name == 'time_ips':
         data = get_nntp_proxy_time_ips_data(mask, search, raw, intervals, time_mask)
+    elif name == 'size_ip':
+        data = get_nntp_proxy_size_ip_data(mask, search, name, raw)
+    elif name == 'size_prefix':
+        data = get_nntp_proxy_size_ip_data(mask, search, name, raw)
     else:
         raise ValueError("Invalid item: {}".format(name))
     return data

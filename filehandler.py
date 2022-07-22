@@ -75,8 +75,8 @@ class FileHandler:
             m = p.match(line)
             if m:
                 output = p.emit(m, self._name)
-                p.notify(output, self._name)
                 self._output_engine.write(self._filter_output(output))
+                p.notify(output, self._name)
 
     def _process_line(self, line: str) -> bool:
         logging.debug(line)

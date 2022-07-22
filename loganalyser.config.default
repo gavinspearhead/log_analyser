@@ -103,5 +103,71 @@
 	    }
 	    }]
      ]
+ },
+{
+     "path": "/var/log/syslog",
+     "name": "nntp_proxy",
+     "output": "mongo",
+     "retention": 90,
+     "filter": [
+     {
+         "regex": "(%SYSLOG_TIMESTAMP:timestamp) (%NAME:hostname) simpleproxy.*: Connect from (%IP4:address) [(](%HOST:from_address):(%NUM:port)->(%HOST:dest_address):(%NUM:dest_port)[)]$",
+         "emit":
+             {
+	         "hostname": "$hostname",
+             "ip_address": "{address}",
+             "dest_address": "{dest_address}",
+             "from_address": "{from_address}",
+             "timestamp": "{timestamp}",
+             "port": "{port}",
+             "dest_port": "{dest_port}",
+             "status": "open"
+        },
+        "transform": {
+            "timestamp": "date",
+            "size": "int",
+            "post": "int",
+            "dest_port": "int"
+         },
+
+        "notify" : [{
+	        "name": "mongo",
+	        "condition": [ {"ip_address": ["any" ]}]
+	    }
+	     ]
+
+	    },
+        {
+         "regex": "(%SYSLOG_TIMESTAMP:timestamp) (%NAME:hostname) simpleproxy.*: Connect from (%IP4:address) [(](%HOST:from_address):(%NUM:port)->(%HOST:dest_address):(%NUM:dest_port)[)] closed. Up: (%NUM:up_bytes) bytes, Down: (%NUM:down_bytes) bytes",
+         "emit":
+             {
+	         "hostname": "$hostname",
+             "ip_address": "{address}",
+             "dest_address": "{dest_address}",
+             "from_address": "{from_address}",
+             "timestamp": "{timestamp}",
+             "port": "{port}",
+             "dest_port": "{dest_port}",
+             "status": "closed",
+             "down_size": "{down_bytes}",
+             "up_size": "{up_bytes}"
+        },
+        "transform": {
+            "timestamp": "date",
+            "size": "int",
+            "post": "int",
+            "dest_port": "int",
+            "down_size": "int",
+            "up_size": "int"
+         },
+
+        "notify" : [{
+	        "name": "mongo",
+	        "condition": [ {"ip_address": ["any" ]}]
+	   }]
+
+	    }
+     ]
  }
+
 ]

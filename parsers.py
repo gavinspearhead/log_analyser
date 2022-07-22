@@ -158,11 +158,11 @@ class RegexParser(LogParser):
                     try:
                         notifier = self._notifiers.get_notify(notifier['name'])
                         handler = notifier['handler']
-                        if handler.do_convert_dns():
+                        if handler.do_convert_dns() and 'remote_host' not in output_dict:
                             rv = dns_translate(output_dict['ip_address'])
                             if rv:
                                 output_dict['remote_host'] = rv
-                        if handler.do_find_country():
+                        if handler.do_find_country() and 'country' not in output_dict:
                             country_code, country_name = get_flag(output_dict['ip_address'])
                             if country_name != '':
                                 output_dict['country'] = "{} ({})".format(country_name, country_code)
