@@ -21,9 +21,9 @@ from hostnames import Hostnames
 from log_analyser_version import get_prog_name
 from filenames import notify_file_name, hostnames_file_name
 from util import get_flag, get_asn_info
-from ssh import get_ssh_data
-from apache import get_apache_data
-from nntp_proxy import get_nntp_proxy_data
+from ssh_data import get_ssh_data
+from apache_data import get_apache_data
+from nntp_proxy_data import get_nntp_proxy_data
 
 config_path: str = os.path.dirname(__file__)
 app = Flask(__name__)

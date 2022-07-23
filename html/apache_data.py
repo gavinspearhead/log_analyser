@@ -1,7 +1,5 @@
 import datetime
-import os.path
 import re
-import sys
 import pymongo
 import pytz
 import tzlocal
@@ -9,8 +7,6 @@ import tzlocal
 from typing import List, Dict, Any, Optional, Tuple, Union
 from functions import match_ip_address, get_mongo_connection, format_time, get_period_mask
 from data_set import Data_set
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
 def get_search_mask_apache(search: str) -> Dict[str, Any]:
