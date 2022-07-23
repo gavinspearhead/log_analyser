@@ -135,3 +135,4 @@ def get_asn_info(item: str) -> Dict[str, str]:
         return {'AS Number': asn.autonomous_system_number, 'AS Organisation': asn.autonomous_system_organization}
     except geoip2.errors.AddressNotFoundError:
         return {}
+

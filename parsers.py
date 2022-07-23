@@ -5,6 +5,8 @@ import operator
 import re
 import dateutil.parser
 from datetime import datetime
+
+from matches import address_in_prefix
 from outputters.output_abstract import AbstractOutput
 from util import DataSet, dns_translate, get_flag
 from time_parsers import parse_apache_timestamp, parse_syslog_timestamp, parse_iso_timestamp
@@ -228,7 +230,20 @@ class RegexParser(LogParser):
         return re.match(elem[1:], str(clause)) is not None
 
     def _match_condition(self, elem: str, name: str, clause: str, matched_clause: str, res2: bool) -> bool:
-        if elem == 'new':
+        if type(elem) == dict:
+            for k, v in elem.items():
+                if k.lower() == 'in':
+                    if type(v) == list:
+                        v = [str(t) for t in v]
+                        res2 = res2 and matched_clause in v
+                    elif address_in_prefix(matched_clause, v):
+                        res2 = res2 and True
+                    else:
+                        logging.info("in expects a list or an IP address range")
+                        res2 = False
+                else:
+                    logging.info("Unknown operator {}".format(k))
+        elif elem == 'new':
             if self._output.is_new(name, clause, matched_clause):
                 res2 = res2 and True
             else:

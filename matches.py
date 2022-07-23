@@ -1,5 +1,6 @@
 import functools
 import logging
+import ipaddress
 from typing import Any, Tuple, Dict
 from outputters.output_abstract import AbstractOutput
 
@@ -21,59 +22,29 @@ def false_only_cache(fn):
 
 
 def _is_new(col: AbstractOutput, value: str, field: str, name: str) -> bool:
-    res = (0 == col.count({field: value, "name": name}))
+    res: bool = (0 == col.count({field: value, "name": name}))
     return res
 
 
-def apache_is_new_ipaddress(col: AbstractOutput, value: str) -> bool:
-    return 0 == col.count({"ip_address": value, "name": "apache_access"})
-
-
-def apache_is_new_username(col: AbstractOutput, value: str) -> bool:
-    return 0 == col.count({"username": value, "name": "apache_access"})
-
-
-def ssh_is_new_ipaddress(col: AbstractOutput, value: str) -> bool:
-    return 0 == col.count({"ip_address": value, "name": "auth_ssh"})
-
-
-def nntp_is_new_dest_address(col: AbstractOutput, value: str) -> bool:
-    return 0 == col.count({"dest_address": value, "name": "nntp_proxy"})
-
-
-def nntp_is_new_ipaddress(col: AbstractOutput, value: str) -> bool:
-    return 0 == col.count({"ip_address": value, "name": "nntp_proxy"})
-
-
-def ssh_is_new_username(col: AbstractOutput, value: str) -> bool:
-    return 0 == col.count({"username": value, "name": "auth_ssh"})
-
-
 def apache_is_new(col: AbstractOutput, field: str, value: str) -> bool:
-    if field == 'ip_address':
-        return apache_is_new_ipaddress(col, value)
-    elif field == 'username':
-        return apache_is_new_username(col, value)
+    if field in ['ip_address', 'username']:
+        return _is_new(col, value, field, 'apache_access')
     else:
         logging.info('Unknown field {}:'.format(field))
         return False
 
 
 def ssh_is_new(col: AbstractOutput, field: str, value: str) -> bool:
-    if field == 'ip_address':
-        return ssh_is_new_ipaddress(col, value)
-    elif field == 'username':
-        return ssh_is_new_username(col, value)
+    if field in ['ip_address', 'username']:
+        return _is_new(col, value, field, 'auth_ssh')
     else:
         logging.info('Unknown field {}:'.format(field))
         return False
 
 
 def nntp_is_new(col: AbstractOutput, field: str, value: str) -> bool:
-    if field == 'ip_address':
-        return _is_new(col, value, 'ip_address', 'nntp_proxy')
-    elif field == 'dest_address':
-        return _is_new(col, value, 'dest_address', 'nntp_proxy')
+    if field in ['ip_address', 'dest_address']:
+        return _is_new(col, value, field, 'nntp_proxy')
     else:
         logging.info('Unknown field {}:'.format(field))
         return False
@@ -90,3 +61,11 @@ def is_new(col: AbstractOutput, source: str, field: str, value: str) -> bool:
     else:
         logging.info('Unknown source {}:'.format(source))
         return False
+
+
+def address_in_prefix(address,prefix):
+    try:
+        return ipaddress.ip_address(address) in ipaddress.ip_network(prefix)
+    except Exception:
+        return False
+
