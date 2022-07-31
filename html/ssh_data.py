@@ -114,7 +114,7 @@ def get_ssh_ip_data(search: str, mask: Dict[str, Any], name: str) -> Data_set:
         data.set_keys(['IP Prefixes', 'Count', 'Type', 'Users', 'Hosts'])
         data.merge_prefixes(['count'], ['users', 'hosts'], ['type'])
     else:
-        data.set_keys(['IP Addresses', 'type', 'count', 'users', 'Hosts'], )
+        data.set_keys(['IP Addresses', 'Count', 'Type', 'Users', 'Hosts'], )
     return data
 
 

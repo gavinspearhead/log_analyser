@@ -13,6 +13,10 @@ from typing import List, Dict, Any, Tuple
 from flask import Flask, render_template, request, make_response, Response
 from data_set import Data_set
 from functions import get_period_mask, get_mongo_connection, get_dns_data, get_whois_data
+from util import get_flag, get_asn_info
+from ssh_data import get_ssh_data
+from apache_data import get_apache_data
+from nntp_proxy_data import get_nntp_proxy_data
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from outputters.output_mongo import MongoConnector
@@ -20,10 +24,6 @@ from notify import Notify
 from hostnames import Hostnames
 from log_analyser_version import get_prog_name
 from filenames import notify_file_name, hostnames_file_name
-from util import get_flag, get_asn_info
-from ssh_data import get_ssh_data
-from apache_data import get_apache_data
-from nntp_proxy_data import get_nntp_proxy_data
 
 config_path: str = os.path.dirname(__file__)
 app = Flask(__name__)

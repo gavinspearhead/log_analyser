@@ -16,7 +16,7 @@ from functions import join_str_list
 
 
 class Data_set:
-    def __init__(self, field1: Optional[str], field2: Optional[str], field3: Optional[str]):
+    def __init__(self, field1: Optional[str], field2: Optional[str], field3: Optional[Union[str, List]]):
         self._field1: Optional[str] = field1
         self._field2: Optional[str] = field2
         self._field3: Optional[str] = field3
@@ -33,16 +33,10 @@ class Data_set:
 
     @property
     def raw_keys(self) -> List[str]:
-        return self._get_raw_keys()
-
-    def _get_raw_keys(self) -> List[str]:
         return self._raw_keys
 
     @property
     def keys(self) -> List[str]:
-        return self._get_keys()
-
-    def _get_keys(self) -> List[str]:
         return self._keys
 
     def add_data_row(self, row: Dict[str, Union[int, str]]) -> None:
@@ -50,9 +44,6 @@ class Data_set:
 
     @property
     def raw_data(self) -> Dict[str, Dict[str, Union[int, str]]]:
-        return self._get_raw_data()
-
-    def _get_raw_data(self) -> Dict[str, Dict[str, Union[int, str]]]:
         if (self._field1 is None and type(self._field3) != list) or self._field3 is None:
             raise ValueError("Can't get raw data")
         rv, self._raw_keys = self._get_raw_data_internal()
@@ -60,9 +51,6 @@ class Data_set:
 
     @property
     def data(self) -> List[Dict[str, Union[int, str]]]:
-        return self._get_data()
-
-    def _get_data(self) -> List[Dict[str, Union[int, str]]]:
         return self._data
 
     def merge_prefixes(self, sum_list: List[str], join_list: List[str], hash_list: Optional[List[str]] = None,
@@ -116,11 +104,12 @@ class Data_set:
             self._data.append(deepcopy(template))
 
     def _get_raw_data_internal(self) -> Tuple[Dict[str, Dict[str, Union[str, int]]], List[str]]:
-        config_path: str = os.path.dirname(__file__)
-        hostnames = Hostnames(os.path.join(config_path, '..', hostnames_file_name))
         field1_values: List[str] = natsorted(list(set([x[self._field1] for x in self._data])))
         field2_values: List[str] = []
         if self._field1 == 'ip_address':
+            config_path: str = os.path.dirname(__file__)
+            hostnames = Hostnames(os.path.join(config_path, '..', hostnames_file_name))
+
             # translate the ip addresses to hostnames
             def map_hostname(ip_address: str) -> str:
                 hn: str = hostnames.translate(ip_address)
@@ -135,16 +124,13 @@ class Data_set:
         data_set: Dict[str, Dict[str, Union[str, int]]] = {}
 
         if type(self._field3) == list:
-            # field1_values = self._field3
             for t in self._field3:
                 data_set[t] = {}
                 for y in field1_values:
                     data_set[t][y] = 0
             for item in self._data:
                 for field in self._field3:
-                    ip = item[self._field1]
                     val = item[field]
-
                     data_set[field][item[self._field1]] = val
             field1_values_a = self._field3
         elif self._field2 is not None:
@@ -157,7 +143,6 @@ class Data_set:
                         data_set[t][u] = 0
             for item in self._data:
                 data_set[item[self._field1]][item[self._field2]] += item[self._field3]
-
         else:
             for t in field1_values:
                 data_set[t] = {}
@@ -170,67 +155,5 @@ class Data_set:
                 else:
                     data_set[item[self._field1]] = item[self._field3]
 
-        rv = data_set
         keys: List[str] = list(field1_values_a)
-
-        return rv, keys
-
-
-    def _get_raw_data_internal_old(self) -> Tuple[Dict[str, Dict[str, Union[str, int]]], List[str]]:
-        config_path: str = os.path.dirname(__file__)
-        hostnames = Hostnames(os.path.join(config_path, '..', hostnames_file_name))
-
-        ### option 1
-        # f2 = None
-
-
-        ## Option 2
-        # f3 is list
-
-
-        if self._field1 is not None and type(self._field3) is list:
-            field1_values: List[str] = natsorted(list(set([x[self._field1] for x in self._data])))
-        else:
-            field1_values = self._field3
-        field2_values: List[str] = []
-        if self._field1 == 'ip_address':
-            # translate the ip addresses to hostnames
-            def map_hostname(ip: str) -> str:
-                hn: str = hostnames.translate(ip)
-                if hn is not None:
-                    return "{} ({})".format(hn, ip)
-                else:
-                    return ip
-
-            field1_values_a = [map_hostname(x) for x in field1_values]
-        else:
-            field1_values_a = field1_values
-
-        if self._field2 is not None:
-            field2_values = list(OrderedDict.fromkeys([x[self._field2] for x in self._data]))
-
-        data_set: Dict[str, Dict[str, Union[str, int]]] = {}
-        if type(self._field3) != list:
-            for t in field1_values:
-                data_set[t] = {}
-                if self._field2 is not None:
-                    for u in field2_values:
-                        data_set[t][u] = 0
-        else:
-            for t in self._field2:
-                data_set[t] = {}
-                for y in field1_values:
-                    data_set[t][y] = 0
-        for item in self._data:
-            if type(self._field3) == list:
-                for x in self._field3:
-                    data_set[x][item[self._field3]] = item[x]
-            elif self._field2 is not None:
-                data_set[item[self._field1]][item[self._field2]] += item[self._field3]
-            else:
-                data_set[item[self._field1]] = item[self._field3]
-
-        rv = data_set
-        keys: List[str] = list(field1_values_a)
-        # print(rv)
-        return rv, keys
+        return data_set, keys

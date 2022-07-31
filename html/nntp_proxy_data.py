@@ -55,7 +55,7 @@ def get_nntp_proxy_new_ips_data(mask: Dict[str, Any], search: str, start_time: d
         th: str = ", ".join(sorted(x['hosts']))
         if ip1 not in ips or (ips[ip1][0] < (2 * ts)) or ips[ip1][1] >= start_time:
             if ip1 not in new_ips:
-                new_ips[ip1] = (ts, None, th)
+                new_ips[ip1] = (ts, '', th)
 
     data = Data_set(None, None, None)
     data.set_keys(['IP address', 'Count', 'Types', 'Hosts'])
@@ -113,25 +113,29 @@ def get_nntp_proxy_ips_data(mask: Dict[str, Any], search: str, name: str) -> Dat
         [{"$match": {"$and": [{"name": "nntp_proxy"}, mask, search_q]}},
          {"$group": {"_id": "$ip_address", "total": {"$sum": 1},
                      'hosts': {"$addToSet": "$hostname"},
+                     'ports': {"$addToSet": "$port"},
+                     'dest_ports': {"$addToSet": "$dest_port"},
                      }},
          {"$sort": {"total": -1}}
          ])
     data = Data_set('prefix' if name == 'ip_prefixes' else 'ip_address', None, 'count')
     if name == 'ip_addresses':
-        data.set_keys(['IP Address', 'Count', 'Hosts'])
+        data.set_keys(['IP Address', 'Count', 'Hosts', 'Ports', 'Destination Ports'])
     else:
-        data.set_keys(['IP Prefix', 'Count', "Hosts"])
+        data.set_keys(['IP Prefix', 'Count', "Hosts", 'Ports', "Destination Ports"])
 
     for x in res:
         logging.error(x)
         row = {
             'ip_address': x['_id'],
             'count': x['total'],
-            'hosts': ", ".join(sorted(x['hosts']))
+            'hosts': ", ".join(sorted(x['hosts'])),
+            'ports': ", ".join(sorted([str(y) for y in x['ports']])),
+            'dest_ports': ", ".join((sorted([str(y) for y in x['dest_ports']])))
         }
         data.add_data_row(row)
     if name == 'ip_prefixes':
-        data.merge_prefixes(['count'], ['users', 'codes', 'hosts'])
+        data.merge_prefixes(['count'], ['users', 'codes', 'hosts', 'port', 'dest_ports'])
     return data
 
 
@@ -151,16 +155,17 @@ def get_nntp_proxy_size_ip_data(mask: Dict[str, Any], search: str, name: str, ra
     for x in res:
         row = {
             'ip_address': x['_id']['ip_address'],
-            'size_up': x['total_up'],
             'size_down': x['total_down'],
+            'size_up': x['total_up'],
             'hosts': ", ".join(sorted(x['hosts']))
         }
+        print(row)
         data.add_data_row(row)
     if name == 'size_prefix':
-        data.set_keys(['IP Prefixes', 'Size Up', 'Size Down', 'Hosts'])
+        data.set_keys(['IP Prefixes', 'Size Down', 'Size Up', 'Hosts'])
         data.merge_prefixes(['size_up', 'size_down'], [], None, 'size_up')
     else:
-        data.set_keys(['IP Addresses', 'Size Up', 'Size Down', 'Hosts'])
+        data.set_keys(['IP Addresses', 'Size Down', 'Size Up', 'Hosts'])
     if not raw:
         data.format_size('size_up')
         data.format_size('size_down')

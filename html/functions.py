@@ -10,11 +10,10 @@ import whois
 
 from typing import List, Dict, Any, Optional, Tuple, Union
 from filenames import output_file_name
-
 from output import Outputs
 from outputters.output_mongo import MongoConnector
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+# sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
 def get_period_mask(period: str, to_time: Optional[str] = None, from_time: Optional[str] = None,
@@ -165,7 +164,6 @@ def get_dns_data(item: str) -> List[str]:
         result1 = dns.resolver.resolve(item, 'AAAA')
     except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout, dns.exception.DNSException):
         result = ['Not found']
-        pass
     data: List[str] = []
     for res in result:
         data.append(str(res))

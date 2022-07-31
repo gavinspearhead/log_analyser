@@ -1,6 +1,6 @@
 class LogAnalyserVersion:
     MAJOR_VERSION: int = 0
-    MINOR_VERSION: int = 6
+    MINOR_VERSION: int = 7
     PATCH_NUMBER: int = 0
     PROG_NAME_COLLECTOR: str = "Log Collector"
     PROG_NAME_WEB: str = "Log Analyser"

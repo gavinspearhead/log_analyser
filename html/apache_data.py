@@ -221,7 +221,7 @@ def get_apache_time_ips_data(mask: Dict[str, Any], search: str, raw: bool,
         {"$sort": {'_id.month': 1, '_id.time': 1, 'total': -1}}])
 
     data = Data_set('ip_address', 'time', 'total')
-    data.set_keys([orig_time_mask, 'IP Address', 'Total', 'Codes', 'Hosts'])
+    data.set_keys([orig_time_mask, 'IP Address', 'Count', 'Codes', 'Hosts'])
     if raw:
         data.prepare_time_output(time_mask, intervals, {'time': None, 'ip_address': "", 'total': 0, 'codes': ""})
     for x in res:

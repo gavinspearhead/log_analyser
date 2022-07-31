@@ -47,7 +47,7 @@
             {%- endfor -%}
         {% else -%}
             {% if '_unformatted_' + k  in d %}
-                {% set value = '<div title="' + d[k] + '" class="' + class_name + '"><span class="hidden">' + d['_unformatted_' + k] + ' X </span>' + d[k] + '</div>' %}
+                {% set value = '<div title="' + d[k] + '" class="' + class_name + '"><span class="hidden">' + d['_unformatted_' + k] + '</span>' + d[k] + '</div>' %}
             {% else %}
                 {% set value = '<span title="' + d[k] + '" class="' + class_name + '">' + d[k]|truncate(80, True, '...', 5) + "</span>" %}
             {% endif %}

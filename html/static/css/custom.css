@@ -126,6 +126,11 @@ div.float-right {
   border:0;
 }
 
+span, div {
+  background-color: transparent !important;
+}
+
+
 .table th, table td {
   max-width: 200px;
 }
