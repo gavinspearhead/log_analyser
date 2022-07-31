@@ -125,7 +125,6 @@ def get_nntp_proxy_ips_data(mask: Dict[str, Any], search: str, name: str) -> Dat
         data.set_keys(['IP Prefix', 'Count', "Hosts", 'Ports', "Destination Ports"])
 
     for x in res:
-        logging.error(x)
         row = {
             'ip_address': x['_id'],
             'count': x['total'],
