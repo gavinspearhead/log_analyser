@@ -131,7 +131,8 @@ function load_graph(canvas_id, type, name, period, to,from, title, host)
             scaleFontColor: "#ddd",
             graphTitleFontColor: "#bbb",
         };
-        if (res.labels.length == 0 || res.data.length == 0) {
+//        console.log(res)
+        if (res.labels.length == 0 || res.data.length == 0 || res.fields.length == 0) {
         // for an empty graph
             var data_sets = {
                 labels : [''],

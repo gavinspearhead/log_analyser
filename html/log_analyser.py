@@ -178,6 +178,7 @@ def load_data() -> Tuple[str, int, Dict[str, str]]:
                             flags[vv] = get_flag(vv)
             # Force every thing to string, so we can truncate stuff in the template
             res3.append({k: str(v) for k, v in x.items()})
+        # print(res3, keys, flags)
         rhtml = render_template("data_table.html", data=res3, keys=keys, flags=flags, hostnames=hostnames)
         return json.dumps({'success': True, 'rhtml': rhtml}), 200, {'ContentType': 'application/json'}
 
