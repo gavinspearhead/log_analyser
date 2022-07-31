@@ -159,7 +159,7 @@ def get_nntp_proxy_size_ip_data(mask: Dict[str, Any], search: str, name: str, ra
             'size_up': x['total_up'],
             'hosts': ", ".join(sorted(x['hosts']))
         }
-        print(row)
+        # print(row)
         data.add_data_row(row)
     if name == 'size_prefix':
         data.set_keys(['IP Prefixes', 'Size Down', 'Size Up', 'Hosts'])
