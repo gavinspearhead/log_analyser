@@ -13,7 +13,7 @@ from typing import List, Dict, Any, Tuple
 from flask import Flask, render_template, request, make_response, Response
 from data_set import Data_set
 from functions import get_period_mask, get_mongo_connection, get_dns_data, get_whois_data
-from util import get_flag, get_asn_info
+from util import get_flag, get_asn_info, get_prefix, get_location_info
 from ssh_data import get_ssh_data
 from apache_data import get_apache_data
 from nntp_proxy_data import get_nntp_proxy_data
@@ -250,8 +250,13 @@ def reverse_dns(item) -> Tuple[str, int, Dict[str, str]]:
     dns_data = get_dns_data(item)
     whois_data = get_whois_data(item)
     asn_data = get_asn_info(item)
+    prefix = get_prefix(item)
+    if prefix:
+        asn_data['Prefix'] = prefix
+    location = get_location_info(item)
 
-    return render_template("reverse_dns.html", dns_data=dns_data, item=item, whois_data=whois_data,
+
+    return render_template("reverse_dns.html", dns_data=dns_data, item=item, whois_data=whois_data, location=location,
                            asn_data=asn_data), 200, {'ContentType': 'application/json'}
 
 

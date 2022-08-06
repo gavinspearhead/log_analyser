@@ -16,9 +16,11 @@ from hostnames import Hostnames
 
 geolite_country_data_filename: str = "html/data/GeoLite2-Country.mmdb"
 geolite_asn_data_filename: str = "html/data/GeoLite2-ASN.mmdb"
+geolite_city_data_filename: str = "html/data/GeoLite2-City.mmdb"
 
 geoip2_country_db = geoip2.database.Reader(os.path.join(os.path.dirname(__file__), geolite_country_data_filename))
 geoip2_asn_db = geoip2.database.Reader(os.path.join(os.path.dirname(__file__), geolite_asn_data_filename))
+geoip2_city_db = geoip2.database.Reader(os.path.join(os.path.dirname(__file__), geolite_city_data_filename))
 
 
 def get_flag(ip_address: str) -> Tuple[str, str]:
@@ -136,3 +138,37 @@ def get_asn_info(item: str) -> Dict[str, str]:
     except geoip2.errors.AddressNotFoundError:
         return {}
 
+def get_location_info(ip_address:str):
+
+        # country = geoip2_country_db.country(ip_address.strip())
+        city = geoip2_city_db.city(ip_address.strip())
+        rv = {}
+        try:
+            rv['city'] = city.city.names['en']
+        except KeyError:
+            pass
+        try:
+            rv['continent'] = city.continent.names['en']
+        except KeyError:
+            pass
+        try:
+            rv['postal'] = city.postal.code
+        except KeyError:
+            pass
+        try:
+            rv['country'] = city.country.names['en']
+        except KeyError:
+            pass
+        try:
+            rv['location'] = "{} {}".format( city.location.latitude, city.location.longitude)
+        except KeyError:
+            pass
+        try:
+            rv['timezone'] = city.location.time_zone
+        except KeyError:
+            pass
+        try:
+            rv['area'] = city.subdivisions.most_specific.names['en']
+        except KeyError:
+            pass
+        return rv

@@ -17,6 +17,8 @@ from functions import join_str_list
 
 class Data_set:
     def __init__(self, field1: Optional[str], field2: Optional[str], field3: Optional[Union[str, List]]):
+        config_path: str = os.path.dirname(__file__)
+        self.hostnames = Hostnames(os.path.join(config_path, '..', hostnames_file_name))
         self._field1: Optional[str] = field1
         self._field2: Optional[str] = field2
         self._field3: Optional[str] = field3
@@ -103,22 +105,24 @@ class Data_set:
 
             self._data.append(deepcopy(template))
 
+    def _map_hostname(self, ip_address: str) -> str:
+        # translate the ip addresses to hostnames
+        hn: str = self.hostnames.translate(ip_address)
+        if hn is not None:
+            return "{} ({})".format(hn, ip_address)
+        else:
+            return ip_address
+
+    def _map_ip_addresses_to_hostname(self, values):
+        values = [self._map_hostname(x) for x in values]
+        return values
+
     def _get_raw_data_internal(self) -> Tuple[Dict[str, Dict[str, Union[str, int]]], List[str]]:
+        # this function is still crap... needs rewrite
         field1_values: List[str] = natsorted(list(set([x[self._field1] for x in self._data])))
         field2_values: List[str] = []
         if self._field1 == 'ip_address':
-            config_path: str = os.path.dirname(__file__)
-            hostnames = Hostnames(os.path.join(config_path, '..', hostnames_file_name))
-
-            # translate the ip addresses to hostnames
-            def map_hostname(ip_address: str) -> str:
-                hn: str = hostnames.translate(ip_address)
-                if hn is not None:
-                    return "{} ({})".format(hn, ip_address)
-                else:
-                    return ip_address
-
-            field1_values_a = [map_hostname(x) for x in field1_values]
+            field1_values_a = self._map_ip_addresses_to_hostname(field1_values)
         else:
             field1_values_a = field1_values
         data_set: Dict[str, Dict[str, Union[str, int]]] = {}
@@ -126,8 +130,13 @@ class Data_set:
         if type(self._field3) == list:
             for t in self._field3:
                 data_set[t] = {}
-                for y in field1_values:
+                for y in field1_values_a:
                     data_set[t][y] = 0
+
+            if self._field1 == 'ip_address':
+                for item in self._data:
+                    item['ip_address'] = self._map_hostname(item['ip_address'])
+
             for item in self._data:
                 for field in self._field3:
                     val = item[field]
@@ -135,22 +144,31 @@ class Data_set:
             field1_values_a = self._field3
         elif self._field2 is not None:
             field2_values = list(OrderedDict.fromkeys([x[self._field2] for x in self._data]))
+            if self._field2 == 'ip_address':
+                field2_values = self._map_ip_addresses_to_hostname(field2_values)
             data_set: Dict[str, Dict[str, Union[str, int]]] = {}
             for t in field1_values:
                 data_set[t] = {}
                 if self._field2 is not None:
                     for u in field2_values:
                         data_set[t][u] = 0
+            if self._field2 == 'ip_address':
+                for item in self._data:
+                    item['ip_address'] = self._map_hostname(item['ip_address'])
             for item in self._data:
                 data_set[item[self._field1]][item[self._field2]] += item[self._field3]
         else:
             for t in field1_values:
                 data_set[t] = {}
                 if self._field2 is not None:
+                    if self._field2 == 'ip_address':
+                        field2_values = self._map_ip_addresses_to_hostname(field2_values)
                     for u in field2_values:
                         data_set[t][u] = 0
             for item in self._data:
                 if self._field2 is not None:
+                    for an_item in self._data:
+                        an_item['ip_address'] = self._map_hostname(an_item['ip_address'])
                     data_set[item[self._field1]][item[self._field2]] += item[self._field3]
                 else:
                     data_set[item[self._field1]] = item[self._field3]

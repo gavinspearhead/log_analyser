@@ -15,10 +15,19 @@
 {%endif%}
 
 {% if asn_data != {} %}
-<h4>ASN infor for {{item}}</h4>
+<h4>ASN information for {{item}}</h4>
 <ul>
 	{% for y in asn_data %}
 	<li>{{y}} : {{ asn_data[y] }} </li>
+	{% endfor %}
+</ul>
+{%endif%}
+
+{% if location != {} %}
+<h4>Location information for {{item}}</h4>
+<ul>
+	{% for y in location %}
+	<li>{{y}} : {{ location[y] }} </li>
 	{% endfor %}
 </ul>
 {%endif%}

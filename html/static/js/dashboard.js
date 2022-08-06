@@ -248,6 +248,5 @@ $( document ).ready(function() {
         $("#left_button").hide();
         $("#right_button").show();
     }
-
     load_all_graphs();
 });
