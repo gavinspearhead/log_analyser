@@ -193,7 +193,7 @@ def get_ssh_new_ips_data(search: str, mask: Dict[str, Any], start_time: datetime
             if ip1 not in new_ips:
                 new_ips[ip1] = (ts, ty, th)
 
-    data = Data_set(None, None, None)
+    data = Data_set()
     data.set_keys(['IP address', 'Count', 'Types', 'Hosts'])
     for ip2 in new_ips:
         data.add_data_row({
@@ -245,7 +245,7 @@ def get_ssh_new_user_data(search: str, mask: Dict[str, Any], start_time: datetim
                 new_users[u1] = {}
             new_users[u1][ip1] = (ts, ty, th)
 
-    data = Data_set(None, None, None)
+    data = Data_set()
     data.set_keys(['Username', 'IP address', 'Count', 'Types', 'Hosts'])
     for u2 in new_users:
         for ip2 in new_users[u2]:

@@ -57,7 +57,7 @@ def get_nntp_proxy_new_ips_data(mask: Dict[str, Any], search: str, start_time: d
             if ip1 not in new_ips:
                 new_ips[ip1] = (ts, '', th)
 
-    data = Data_set(None, None, None)
+    data = Data_set()
     data.set_keys(['IP address', 'Count', 'Types', 'Hosts'])
     for ip2 in new_ips:
         data.add_data_row({
@@ -80,7 +80,8 @@ def get_nntp_proxy_time_ips_data(mask: Dict[str, Any], search: str, raw: bool,
     res = col.aggregate([
         {"$match": {"$and": [{"name": "nntp_proxy"}, mask, search_q]}},
         {"$group": {
-            "_id": {"time": {"$" + time_mask: {"date": "$timestamp", "timezone": local_tz}},
+            "_id": {
+                "time": {"$" + time_mask: {"date": "$timestamp", "timezone": local_tz}},
                     "month": {"$month": {"date": "$timestamp", "timezone": local_tz}},
                     "ip_address": "$ip_address"},
             "total": {"$sum": 1},
@@ -111,7 +112,8 @@ def get_nntp_proxy_ips_data(mask: Dict[str, Any], search: str, name: str) -> Dat
     col = get_mongo_connection()
     res = col.aggregate(
         [{"$match": {"$and": [{"name": "nntp_proxy"}, mask, search_q]}},
-         {"$group": {"_id": "$ip_address", "total": {"$sum": 1},
+         {"$group": {"_id": "$ip_address",
+                     "total": {"$sum": 1},
                      'hosts': {"$addToSet": "$hostname"},
                      'ports': {"$addToSet": "$port"},
                      'dest_ports': {"$addToSet": "$dest_port"},

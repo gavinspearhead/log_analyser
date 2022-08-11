@@ -1,7 +1,6 @@
 import datetime
 import ipaddress
 import os.path
-import sys
 import dateutil.parser
 import pymongo
 import pytz
@@ -12,8 +11,6 @@ from typing import List, Dict, Any, Optional, Tuple, Union
 from filenames import output_file_name
 from output import Outputs
 from outputters.output_mongo import MongoConnector
-
-# sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
 def get_period_mask(period: str, to_time: Optional[str] = None, from_time: Optional[str] = None,
@@ -175,27 +172,31 @@ def get_dns_data(item: str) -> List[str]:
 def get_whois_data(item: str) -> Dict[str, str]:
     try:
         whois_data = whois.whois(item, True)
-        wd = {
-            "name": whois_data.name,
-            "registrar": whois_data.registrar,
-            "registrar address": whois_data.registrar_address,
-            "registrar zip code": whois_data.registrar_zip_code,
-            "registrar city": whois_data.registrar_city,
-            "registrar country": whois_data.registrant_country,
-            "creation date": whois_data.creation_date,
-            'expiration data': whois_data.expiration_date,
-            'last_updated': whois_data.last_updated,
-            'status': whois_data.status,
-            "statuses": whois_data.statuses,
-            "dnssec": whois_data.dnssec,
-            'name_servers': ", ".join(whois_data.name_servers) if whois_data.name_servers is not None else None,
-            'emails': ", ".join(whois_data.emails) if whois_data.emails is not None else None,
-            "whois_server": whois_data.whois_server,
-        }
-        wd = {i: wd[i] for i in wd if wd[i] is not None}
+        alist = ["name", "registrar", "registrar_address", "registrar_zip_code", "registrar_city", "registrar_country",
+                 "creation_date", 'expiration_data', 'last_updated', 'status', "statuses", "dnssec", 'name_servers',
+                 'emails', "whois_server", 'domain_name' ]
+        wd = {}
+        for item in alist:
+            t = whois_data.get(item)
+            if type(t) == list:
+                t = ", ".join([str(x) for x in t])
+            elif t is not None:
+                t = str(t)
+            wd[item] = t
+
+        wd = {i.replace('_', ' ').title(): wd[i] for i in wd if wd[i] is not None}
     except whois.parser.PywhoisError:
         wd = {}
     except Exception:
         wd = {}
         # print_exc()
     return wd
+
+
+if __name__ == '__main__':
+    print('fao')
+    print(get_whois_data('101.3.4.5'))
+    print(get_whois_data('84.243.238.30'))
+    print(get_whois_data('85.104.118.11'))
+    print(get_whois_data('84.53.185.170'))
+    print('aoeua')

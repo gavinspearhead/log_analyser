@@ -1,4 +1,6 @@
 import datetime
+import json
+import os
 import re
 import pymongo
 import pytz
@@ -7,6 +9,20 @@ import tzlocal
 from typing import List, Dict, Any, Optional, Tuple, Union
 from functions import match_ip_address, get_mongo_connection, format_time, get_period_mask
 from data_set import Data_set
+
+
+class http_codes:
+    def __init__(self):
+        self.http_codes_filename = os.path.join(os.path.join(os.path.dirname(__file__), "data"), 'http_codes.json')
+        self.http_codes = []
+        with open(self.http_codes_filename) as http_codes_file:
+            self.http_codes = json.load(http_codes_file)
+
+    def map_code(self, code: str):
+        for x in self.http_codes:
+            if x['code'] == code:
+                return x['phrase']
+        pass
 
 
 def get_search_mask_apache(search: str) -> Dict[str, Any]:
@@ -45,6 +61,8 @@ def get_apache_methods_data(mask: Dict[str, Any], search: str) -> Data_set:
 
 def get_apache_codes_data(mask: Dict[str, Any], search: str) -> Data_set:
     search_q = get_search_mask_apache(search)
+    http_codes_list = http_codes()
+
     col = get_mongo_connection()
     res = col.aggregate(
         [{"$match": {"$and": [{"name": "apache_access"}, mask, search_q]}},
@@ -60,6 +78,7 @@ def get_apache_codes_data(mask: Dict[str, Any], search: str) -> Data_set:
     for x in res:
         row = {
             'code': x['_id'],
+            'code_description': http_codes_list.map_code(x['_id']),
             'count': x['total'],
             'ip_addresses': ", ".join(x['ip_addresses']),
             'hosts': ", ".join(x['hosts'])
@@ -109,12 +128,16 @@ def get_apache_ips_data(mask: Dict[str, Any], search: str, name: str) -> Data_se
     else:
         data.set_keys(['IP Prefix', 'Count', 'Users', 'Codes', "Hosts"])
 
+    http_codes_list = http_codes()
     for x in res:
+        codes = sorted(x['codes'])
+        code_names = [http_codes_list.map_code(code) for code in codes]
         row = {
             'ip_address': x['_id'],
             'count': x['total'],
             'users': ", ".join(sorted(x['usernames'])),
-            'codes': ", ".join(sorted(x['codes'])),
+            'codes': ", ".join(codes),
+            'code_descriptions': ", ".join(code_names),
             'hosts': ", ".join(sorted(x['hosts']))
         }
         data.add_data_row(row)
@@ -160,7 +183,7 @@ def get_apache_new_ips_data(mask: Dict[str, Any], search: str, start_time: datet
             if ip1 not in new_ips:
                 new_ips[ip1] = (ts, ty, th)
 
-    data = Data_set(None, None, None)
+    data = Data_set()
     data.set_keys(['IP address', 'Count', 'Types', 'Hosts'])
     for ip2 in new_ips:
         data.add_data_row({
@@ -184,7 +207,7 @@ def get_apache_urls_data(mask: Dict[str, Any], search: str) -> Data_set:
              "total": {"$sum": 1}}},
          {"$sort": {"total": -1}}
          ])
-    data = Data_set(None, None, None)
+    data = Data_set()
     data.set_keys(['Path', 'Code', 'Count', 'IP Addresses', 'Hosts'])
     for x in res:
         row = {

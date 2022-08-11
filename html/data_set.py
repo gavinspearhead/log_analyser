@@ -16,7 +16,8 @@ from functions import join_str_list
 
 
 class Data_set:
-    def __init__(self, field1: Optional[str], field2: Optional[str], field3: Optional[Union[str, List]]):
+    def __init__(self, field1: Optional[str] = None, field2: Optional[str] = None,
+                 field3: Optional[Union[str, List]] = None):
         config_path: str = os.path.dirname(__file__)
         self.hostnames = Hostnames(os.path.join(config_path, '..', hostnames_file_name))
         self._field1: Optional[str] = field1
@@ -45,11 +46,11 @@ class Data_set:
         self._data.append(row)
 
     @property
-    def raw_data(self) -> Dict[str, Dict[str, Union[int, str]]]:
+    def raw_data(self) -> Tuple[Dict[str, Dict[str, Union[int, str]]], List[str]]:
         if (self._field1 is None and type(self._field3) != list) or self._field3 is None:
             raise ValueError("Can't get raw data")
         rv, self._raw_keys = self._get_raw_data_internal()
-        return rv
+        return rv, self._raw_keys
 
     @property
     def data(self) -> List[Dict[str, Union[int, str]]]:
@@ -119,59 +120,29 @@ class Data_set:
 
     def _get_raw_data_internal(self) -> Tuple[Dict[str, Dict[str, Union[str, int]]], List[str]]:
         # this function is still crap... needs rewrite
-        field1_values: List[str] = natsorted(list(set([x[self._field1] for x in self._data])))
-        field2_values: List[str] = []
-        if self._field1 == 'ip_address':
-            field1_values_a = self._map_ip_addresses_to_hostname(field1_values)
-        else:
-            field1_values_a = field1_values
+        for item in self._data:
+            if 'ip_address' in item:
+                item['ip_address'] = self._map_hostname(item['ip_address'])
+        keys: List[str] = natsorted(list(set([x[self._field1] for x in self._data])))
         data_set: Dict[str, Dict[str, Union[str, int]]] = {}
 
         if type(self._field3) == list:
             for t in self._field3:
-                data_set[t] = {}
-                for y in field1_values_a:
-                    data_set[t][y] = 0
-
-            if self._field1 == 'ip_address':
-                for item in self._data:
-                    item['ip_address'] = self._map_hostname(item['ip_address'])
-
+                data_set[t] = {u: 0 for u in keys}
             for item in self._data:
                 for field in self._field3:
-                    val = item[field]
-                    data_set[field][item[self._field1]] = val
-            field1_values_a = self._field3
+                    data_set[field][item[self._field1]] = item[field]
+            keys = self._field3
         elif self._field2 is not None:
-            field2_values = list(OrderedDict.fromkeys([x[self._field2] for x in self._data]))
-            if self._field2 == 'ip_address':
-                field2_values = self._map_ip_addresses_to_hostname(field2_values)
-            data_set: Dict[str, Dict[str, Union[str, int]]] = {}
-            for t in field1_values:
-                data_set[t] = {}
-                if self._field2 is not None:
-                    for u in field2_values:
-                        data_set[t][u] = 0
-            if self._field2 == 'ip_address':
-                for item in self._data:
-                    item['ip_address'] = self._map_hostname(item['ip_address'])
+            field2_values: List[str] = list(OrderedDict.fromkeys([x[self._field2] for x in self._data]))
+            for t in keys:
+                data_set[t] = {u: 0 for u in field2_values}
             for item in self._data:
                 data_set[item[self._field1]][item[self._field2]] += item[self._field3]
         else:
-            for t in field1_values:
+            for t in keys:
                 data_set[t] = {}
-                if self._field2 is not None:
-                    if self._field2 == 'ip_address':
-                        field2_values = self._map_ip_addresses_to_hostname(field2_values)
-                    for u in field2_values:
-                        data_set[t][u] = 0
             for item in self._data:
-                if self._field2 is not None:
-                    for an_item in self._data:
-                        an_item['ip_address'] = self._map_hostname(an_item['ip_address'])
-                    data_set[item[self._field1]][item[self._field2]] += item[self._field3]
-                else:
-                    data_set[item[self._field1]] = item[self._field3]
+                data_set[item[self._field1]] = item[self._field3]
 
-        keys: List[str] = list(field1_values_a)
         return data_set, keys

@@ -15,6 +15,7 @@
         {% else %}
             {% set class_name="" %}
         {% endif %}
+
         {% if k == 'ip_address' -%}
             {% if d[k] in hostnames -%}
                 {% set h = hostnames[d[k]] %}
@@ -45,6 +46,10 @@
                     {% endif %}
                  {%- endif -%}{%-if 0==0%}<span title="{{x}}" class="{{class_name}}" data-content="{{x}}">{{h}}</span>{%- if flag != '' -%}<img src="{{ url_for('static', filename='img/flags/' ~ flag ~ '.png') }}" title="{{country}}">{%- endif -%}{%- if not loop.last -%},{%- endif -%}{%-endif-%}
             {%- endfor -%}
+        {% elif k == 'code' %}
+            <td><span title="{{d['code_description']}}" class="{{class_name}}" data-content="{{d[k]}}">{{ d[k] }}</span> </td>
+        {% elif k == 'codes' %}
+        <td><span title="{{d['code_descriptions']}}" class="{{class_name}}" data-content="{{d[k]}}">{{ d[k] }}</span> </td>
         {% else -%}
             {% if '_unformatted_' + k  in d %}
                 {% set value = '<div title="' + d[k] + '" class="' + class_name + '"><span class="hidden">' + d['_unformatted_' + k] + '</span>' + d[k] + '</div>' %}

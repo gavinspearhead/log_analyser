@@ -150,8 +150,7 @@ def load_data() -> Tuple[str, int, Dict[str, str]]:
     else:
         raise ValueError("Unknown type: {}".format(rtype))
     if raw:
-        res1 = data.raw_data
-        keys: List[str] = data.raw_keys
+        res1, keys = data.raw_data
         if keys != [] and keys[0] in res1 and type(res1[keys[0]]) == dict:
             fields = list(res1[keys[0]].keys())
             res2 = [[y for y in x.values()] for x in res1.values()]
@@ -254,7 +253,6 @@ def reverse_dns(item) -> Tuple[str, int, Dict[str, str]]:
     if prefix:
         asn_data['Prefix'] = prefix
     location = get_location_info(item)
-
 
     return render_template("reverse_dns.html", dns_data=dns_data, item=item, whois_data=whois_data, location=location,
                            asn_data=asn_data), 200, {'ContentType': 'application/json'}
