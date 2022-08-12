@@ -45,7 +45,10 @@ class Dashboard_data_types:
         "apache_size_ip": ("apache", "size_ip", "Apache - Volume per IP"),
         "apache_size_prefix": ("apache", "size_prefix", "Apache - Volume per IP Prefix"),
         "apache_size_user": ("apache", "size_user", "Apache - Volume per User"),
+        "apache_size_time": ("apache", "size_time", "Apache - Volume per time"),
         "nntp_proxy_time_ips": ("nntp_proxy", "time_ips", "NNTP - IP Addresses"),
+        "nntp_proxy_size_up_time": ("nntp_proxy", "size_up_time", "NNTP - Volume per time up"),
+        "nntp_proxy_size_down_time": ("nntp_proxy", "size_down_time", "NNTP - Volume per time down"),
         "nntp_proxy_size_ip": ("nntp_proxy", "size_ip", "NNTP - Volume per IP"),
         "nntp_proxy_size_prefix": ("nntp_proxy", "size_prefix", "NNTP - Volume per Prefix"),
     }
@@ -107,12 +110,16 @@ main_data_types: Dict[str, Dict[str, Tuple[str, str, str]]] = {
         "apache_size_ip": ("apache", "size_ip", "Volume per IP"),
         "apache_size_prefix": ("apache", "size_prefix", "Volume per IP Prefix"),
         "apache_size_user": ("apache", "size_user", "Volume per User"),
+        "apache_size_time": ("apache", "size_time", "Volume per Time"),
     },
     "nntp_proxy": {
         "nntp_proxy_ip_addresses": ("nntp_proxy", "ip_addresses", "IP Addresses"),
         "nntp_proxy_new_ips": ("nntp_proxy", "new_ips", "New IP Addresses"),
         "nntp_proxy_time_ips": ("nntp_proxy", "time_ips", "IPs per Time"),
         "nntp_proxy_size_ip": ("nntp_proxy", "size_ip", "Volume per IP"),
+        "nntp_proxy_size_time": ("nntp_proxy", "size_time", "Volume per time"),
+        "nntp_proxy_size_up_time": ("nntp_proxy", "size_up_time", "Volume up per time"),
+        "nntp_proxy_size_down_time": ("nntp_proxy", "size_down_time", "Volume down per time"),
         "nntp_proxy_size_prefix": ("nntp_proxy", "size_prefix", "Volume per Prefix"),
     }
 }
@@ -215,11 +222,11 @@ def hosts() -> Tuple[str, int, Dict[str, str]]:
 
 @app.route('/set_item/', methods=['PUT'])
 def set_item() -> Response:
-    cookie_val = request.cookies.get('dashboard_selects', None)
-    modify_enable_types(cookie_val)
     item = request.json.get('item', '').strip()
     value = request.json.get('value', None)
     resp = make_response(('ok', 200, {'ContentType': 'application/json'}))
+    cookie_val = request.cookies.get('dashboard_selects', None)
+    modify_enable_types(cookie_val)
     if item != '' and value is not None:
         dashboard_data_types.toggle(item, value)
         resp.set_cookie('dashboard_selects', json.dumps(dashboard_data_types.enabled_data_types))

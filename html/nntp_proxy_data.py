@@ -70,7 +70,7 @@ def get_nntp_proxy_new_ips_data(mask: Dict[str, Any], search: str, start_time: d
 
 
 def get_nntp_proxy_time_ips_data(mask: Dict[str, Any], search: str, raw: bool,
-                                 intervals: List[Union[int, str, Tuple[int, int]]], time_mask: str) -> Data_set:
+                                 intervals: List[Union[int, str, Tuple[int, int]]], time_mask: str, name:str) -> Data_set:
     local_tz = str(tzlocal.get_localzone())
     search_q = get_search_mask_nntp(search)
     col: pymongo.collection.Collection = get_mongo_connection()
@@ -85,22 +85,38 @@ def get_nntp_proxy_time_ips_data(mask: Dict[str, Any], search: str, raw: bool,
                     "month": {"$month": {"date": "$timestamp", "timezone": local_tz}},
                     "ip_address": "$ip_address"},
             "total": {"$sum": 1},
+            "total_up": {"$sum": "$up_size"},
+            "total_down": {"$sum": "$down_size"},
             'hosts': {"$addToSet": "$hostname"},
             'hour': {"$addToSet": {"$hour": {"date": "$timestamp", "timezone": local_tz}}},
             # 'month': {"$addToSet": {"$month": {"date": "$timestamp", "timezone": local_tz}}}
         }},
         {"$sort": {'_id.month': 1, '_id.time': 1, 'total': -1}}])
 
-    data = Data_set('ip_address', 'time', 'total')
-    data.set_keys([orig_time_mask, 'IP Address', 'Total', 'Hosts'])
+    if name == "size_up_time":
+        data = Data_set('ip_address', 'time', 'total_up')
+    elif name == 'size_down_time':
+        data = Data_set('ip_address', 'time', 'total_down')
+    else:
+        data = Data_set('ip_address', 'time', 'total')
     if raw:
-        data.prepare_time_output(time_mask, intervals, {'time': None, 'ip_address': "", 'total': 0})
+        if name == "size_up_time":
+            data.set_keys([orig_time_mask, 'IP Address', 'Total_up', 'Total_down', 'Hosts'])
+            data.prepare_time_output(time_mask, intervals, {'time': None, 'ip_address': "", 'total_up': 0})
+        elif name == "size_down_time":
+                data.set_keys([orig_time_mask, 'IP Address', 'Total_up', 'Total_down', 'Hosts'])
+                data.prepare_time_output(time_mask, intervals, {'time': None, 'ip_address': "", 'total_down': 0})
+        else:
+            data.set_keys([orig_time_mask, 'IP Address', 'Total', 'Hosts'])
+            data.prepare_time_output(time_mask, intervals, {'time': None, 'ip_address': "", 'total': 0})
     for x in res:
         time_str = format_time(time_mask, x['_id']['month'], x['hour'][0], x['_id']['time'])
         row = {
             'time': time_str,
             'ip_address': x['_id']['ip_address'],
             'total': x['total'],
+            'total_up': x['total_up'],
+            'total_down': x['total_down'],
             'hosts': ", ".join(sorted(x['hosts']))
         }
         data.add_data_row(row)
@@ -149,7 +165,8 @@ def get_nntp_proxy_size_ip_data(mask: Dict[str, Any], search: str, name: str, ra
              "_id": {"ip_address": "$ip_address"},
              'hosts': {"$addToSet": "$hostname"},
              "total_up": {"$sum": "$up_size"},
-             "total_down": {"$sum": "$down_size"}}},
+             "total_down": {"$sum": "$down_size"}
+         }},
          {"$sort": {"total": -1}}
          ])
     data = Data_set('prefix' if name == 'size_prefix' else 'ip_address', None, ['size_up', 'size_down'])
@@ -187,7 +204,9 @@ def get_nntp_proxy_data(name: str, period: str, search: str, raw: bool, to_time:
     elif name == 'new_ips':
         data = get_nntp_proxy_new_ips_data(mask, search, mask_range[0])
     elif name == 'time_ips':
-        data = get_nntp_proxy_time_ips_data(mask, search, raw, intervals, time_mask)
+        data = get_nntp_proxy_time_ips_data(mask, search, raw, intervals, time_mask, name)
+    elif name == 'size_up_time' or name == 'size_down_time':
+        data = get_nntp_proxy_time_ips_data(mask, search, raw, intervals, time_mask, name)
     elif name == 'size_ip':
         data = get_nntp_proxy_size_ip_data(mask, search, name, raw)
     elif name == 'size_prefix':

@@ -90,7 +90,9 @@
         <br/>
         <ul class="list-group">
         {% for y in main_data_types %}
-        <li class="list-unstyled components"><b>{{ main_data_titles[y] }}</b>
+        <li class="list-unstyled components">
+            <input class="form-check-input" type="checkbox" name="{{y}}" id="top_checkbox_{{y}}" {% if enabled[y] %}checked{%endif%} >
+            <b>{{ main_data_titles[y] }}</b>
             <ul class="list-group">
                 {% for x in main_data_types[y] %}
                 {% if x in data_types %}

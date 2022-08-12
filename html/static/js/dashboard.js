@@ -88,6 +88,8 @@ function load_graph(canvas_id, type, name, period, to,from, title, host)
             highLight: true,
             fmtXLabel: "text",
             fmtYLabel: "number",
+            fmtV3: "number",
+
             rotateLabels: "smart",
             annotateLabel: "<%=v2+': '+v1+' '+v3%>",
             annotateDisplay: true,
@@ -117,6 +119,7 @@ function load_graph(canvas_id, type, name, period, to,from, title, host)
             xScaleLabelsMinimumWidth: 10,
             fmtXLabel: "text",
             fmtYLabel: "number",
+            fmtV3: "number",
             annotateLabel: "<%=v2+': '+v1+' '+v3%>",
             annotateDisplay: true,
             inGraphDataShow : true,
@@ -213,6 +216,14 @@ $( document ).ready(function() {
 
     $("#host_selector").change(function() { load_all_graphs(); })
     $('#itemstablediv').scrollTop(0);
+    $("[id^='top_checkbox_'").click(function(event) {
+        var value = !$(this)[0].checked;
+        var name = $(this).attr("name")
+        $("[id^='checkbox_" + name + "'").each(function(event){
+                $(this).prop('checked', value);
+                $(this).click()
+        });
+    });
 
     $("[id^='checkbox_'").click(function(event) {
         var value = $(this)[0].checked;
@@ -220,9 +231,10 @@ $( document ).ready(function() {
         $.ajax({
             url: script_root + '/set_item/',
             type: 'PUT',
-            data:  JSON.stringify({ item: $(this).attr('name'), value: value} ),
+            data: JSON.stringify({ item: $(this).attr('name'), value: value} ),
             contentType: "application/json;charset=UTF-8",
-            cache: false
+            cache: false,
+            async: false
         }).done(function() {
             var name = $("#"+ this_id)[0].name;
             var checkbox_val= $("#"+ this_id)[0].checked;

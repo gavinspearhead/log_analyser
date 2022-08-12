@@ -13,16 +13,16 @@ from data_set import Data_set
 
 class http_codes:
     def __init__(self):
-        self.http_codes_filename = os.path.join(os.path.join(os.path.dirname(__file__), "data"), 'http_codes.json')
-        self.http_codes = []
+        self.http_codes_filename: str = os.path.join(os.path.join(os.path.dirname(__file__), "data"), 'http_codes.json')
+        self.http_codes: List[Dict[str, str]] = []
         with open(self.http_codes_filename) as http_codes_file:
             self.http_codes = json.load(http_codes_file)
 
-    def map_code(self, code: str):
+    def map_code(self, code: str) -> str:
         for x in self.http_codes:
             if x['code'] == code:
                 return x['phrase']
-        pass
+        return ''
 
 
 def get_search_mask_apache(search: str) -> Dict[str, Any]:
@@ -115,11 +115,13 @@ def get_apache_ips_data(mask: Dict[str, Any], search: str, name: str) -> Data_se
     col = get_mongo_connection()
     res = col.aggregate(
         [{"$match": {"$and": [{"name": "apache_access"}, mask, search_q]}},
-         {"$group": {"_id": "$ip_address", "total": {"$sum": 1},
-                     'usernames': {"$addToSet": "$username"},
-                     'hosts': {"$addToSet": "$hostname"},
-                     "codes": {"$addToSet": "$code"}
-                     }},
+         {"$group": {
+             "_id": "$ip_address",
+             "total": {"$sum": 1},
+             'usernames': {"$addToSet": "$username"},
+             'hosts': {"$addToSet": "$hostname"},
+             "codes": {"$addToSet": "$code"}
+         }},
          {"$sort": {"total": -1}}
          ])
     data = Data_set('prefix' if name == 'ip_prefixes' else 'ip_address', None, 'count')
@@ -222,7 +224,7 @@ def get_apache_urls_data(mask: Dict[str, Any], search: str) -> Data_set:
 
 
 def get_apache_time_ips_data(mask: Dict[str, Any], search: str, raw: bool,
-                             intervals: List[Union[int, str, Tuple[int, int]]], time_mask: str) -> Data_set:
+                             intervals: List[Union[int, str, Tuple[int, int]]], time_mask: str, name: str) -> Data_set:
     local_tz = str(tzlocal.get_localzone())
     search_q = get_search_mask_apache(search)
     col: pymongo.collection.Collection = get_mongo_connection()
@@ -232,10 +234,12 @@ def get_apache_time_ips_data(mask: Dict[str, Any], search: str, raw: bool,
     res = col.aggregate([
         {"$match": {"$and": [{"name": "apache_access"}, mask, search_q]}},
         {"$group": {
-            "_id": {"time": {"$" + time_mask: {"date": "$timestamp", "timezone": local_tz}},
-                    "month": {"$month": {"date": "$timestamp", "timezone": local_tz}},
-                    "ip_address": "$ip_address"},
+            "_id": {
+                "time": {"$" + time_mask: {"date": "$timestamp", "timezone": local_tz}},
+                "month": {"$month": {"date": "$timestamp", "timezone": local_tz}},
+                "ip_address": "$ip_address"},
             "total": {"$sum": 1},
+            "volume": {"$sum": "$size"},
             "codes": {"$addToSet": "$code"},
             'hosts': {"$addToSet": "$hostname"},
             'hour': {"$addToSet": {"$hour": {"date": "$timestamp", "timezone": local_tz}}},
@@ -243,16 +247,23 @@ def get_apache_time_ips_data(mask: Dict[str, Any], search: str, raw: bool,
         }},
         {"$sort": {'_id.month': 1, '_id.time': 1, 'total': -1}}])
 
-    data = Data_set('ip_address', 'time', 'total')
-    data.set_keys([orig_time_mask, 'IP Address', 'Count', 'Codes', 'Hosts'])
+    if name == 'size_time':
+        data = Data_set('ip_address', 'time', 'volume')
+    else:
+        data = Data_set('ip_address', 'time', 'total')
+    data.set_keys([orig_time_mask, 'IP Address', 'Count', "Volume", 'Codes', 'Hosts'])
     if raw:
-        data.prepare_time_output(time_mask, intervals, {'time': None, 'ip_address': "", 'total': 0, 'codes': ""})
+        if name == 'size_time':
+            data.prepare_time_output(time_mask, intervals, {'time': None, 'ip_address': "", 'volume': 0, 'codes': ""})
+        else:
+            data.prepare_time_output(time_mask, intervals, {'time': None, 'ip_address': "", 'total': 0, 'codes': ""})
     for x in res:
         time_str = format_time(time_mask, x['_id']['month'], x['hour'][0], x['_id']['time'])
         row = {
             'time': time_str,
             'ip_address': x['_id']['ip_address'],
             'total': x['total'],
+            'volume': x['volume'],
             'codes': ", ".join(sorted(x['codes'])),
             'hosts': ", ".join(sorted(x['hosts']))
         }
@@ -374,13 +385,15 @@ def get_apache_data(name: str, period: str, search: str, raw: bool, to_time: Opt
     elif name == 'urls':
         data = get_apache_urls_data(mask, search)
     elif name == 'time_ips':
-        data = get_apache_time_ips_data(mask, search, raw, intervals, time_mask)
+        data = get_apache_time_ips_data(mask, search, raw, intervals, time_mask, name)
     elif name == 'time_urls':
         data = get_apache_time_urls_data(mask, search, raw, intervals, time_mask)
     elif name == "size_ip" or name == 'size_prefix':
         data = get_apache_size_ip_data(mask, search, name, raw)
     elif name == "size_user":
         data = get_apache_size_user_data(mask, search, raw)
+    elif name == "size_time":
+        data = get_apache_time_ips_data(mask, search, raw, intervals, time_mask, name)
     else:
         raise ValueError("Invalid item: {}".format(name))
     return data
