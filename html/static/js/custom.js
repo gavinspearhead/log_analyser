@@ -85,6 +85,12 @@ $( document ).ready(function() {
         handle_request(g_name, g_type, g_search, g_title, g_title_type);
     });
 
+    $("#note_button").click(function() {
+        window.location.replace("notifications/");
+    });
+    $("#dash_button").click(function() {
+        window.location.replace("dashboard/");
+    });
     $("#custom").click(function() {
         $("#custom").prop("checked", true);
     });

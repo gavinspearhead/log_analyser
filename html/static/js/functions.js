@@ -17,14 +17,22 @@ function set_hosts(selected)
 function set_ip_click_handler() {
     $(".ip_addr").unbind("click");
     $(".ip_addr").click(function(event) {
+        var ip_address = $(this).attr('data-content') ;
         $("#dns_popup").modal('show');
         $("#dns_popup_content").text("Loading....");
         $.ajax({
-            url: script_root +"/reverse_dns/"+ encodeURIComponent($(this).attr('data-content')) ,
+            url: script_root +"/reverse_dns/"+ encodeURIComponent(ip_address),
             type: "GET"
         }).done(function(data) {
             $("#dns_popup_content").html(data);
-            $("#dns_popup").modal("handleUpdate")
+            $("#dns_popup").modal("handleUpdate");
+            $.ajax({
+                url: script_root +"/passive_dns/"+ encodeURIComponent(ip_address) ,
+                type: "GET"
+            }).done(function(data) {
+//                var res = JSON.parse(data);
+                $("#passive_dns_data").html(data);
+            });
         });
     })
 

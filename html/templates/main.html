@@ -25,8 +25,8 @@
 <div id="maindiv" class="container-fluid max-height no-overflow">
     <nav class="navbar navbar-fixed-top">
         <div>
-            <button class="btn btn-secondary"><a href="dashboard/"><i class="fas fa-table"></i></a></button>
-            <button class="btn btn-secondary"><a href="notifications/"><i class="fas fa-envelope"></i></a></button>
+            <button class="btn btn-secondary" id="dash_button"><i class="fas fa-table"></i></button>
+            <button class="btn btn-secondary" id="note_button"><i class="fas fa-envelope"></i></button>
             <input type="radio" class="btn-check" name="timeperiod" id="hourly" autocomplete="off">
             <label class="btn btn-secondary" for="hourly">Last Hour</label>
 
@@ -140,7 +140,7 @@
 </div>
 
 <div class="modal" tabindex="-1" id="dns_popup">
-    <div class="modal-dialog modal-lg bg-dark">
+    <div class="modal-dialog modal-xl bg-dark">
         <div class="modal-content bg-dark">
             <div class="modal-header bg-dark">
                 <h5 class="modal-title">DNS Info</h5>

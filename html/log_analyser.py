@@ -5,8 +5,11 @@ import json
 import logging
 import os.path
 import sys
+from datetime import datetime
+
 import pymongo
 import pytz
+import requests
 import tzlocal
 
 from typing import List, Dict, Any, Tuple
@@ -249,6 +252,26 @@ def dashboard() -> Response:
     except Exception as e:
         return make_response(json.dumps({'success': False, "message": str(e)}), 200,
                              {'ContentType': 'application/json'})
+
+
+@app.route('/passive_dns/<item>/', methods=["GET"])
+def passive_dns(item) -> Tuple[str, int, Dict[str, str]]:
+    try:
+        url = "https://api.mnemonic.no/pdns/v3/"
+        response = requests.get(url + item)
+        dns_data = response.json()
+        for x in dns_data['data']:
+            x['createdTimestamp'] = datetime.utcfromtimestamp(x['createdTimestamp'] // 1000).strftime(
+                '%Y-%m-%d %H:%M:%S')
+            x['lastUpdatedTimestamp'] = datetime.utcfromtimestamp(x['lastUpdatedTimestamp'] // 1000).strftime('%Y-%m-%d %H:%M:%S')
+            x['firstSeenTimestamp'] = datetime.utcfromtimestamp(x['firstSeenTimestamp'] // 1000).strftime('%Y-%m-%d %H:%M:%S')
+            x['lastSeenTimestamp'] = datetime.utcfromtimestamp(x['lastSeenTimestamp'] // 1000).strftime( '%Y-%m-%d %H:%M:%S')
+        print(dns_data, dns_data['size'])
+    except Exception as e:
+        print(e)
+        return make_response(json.dumps({'success': False, "message": str(e)}), 200,
+                             {'ContentType': 'application/json'})
+    return render_template("passive_dns.html", dns_data=dns_data, item=item), 200, {'ContentType': 'application/json'}
 
 
 @app.route('/reverse_dns/<item>/', methods=["GET"])

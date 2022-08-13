@@ -144,6 +144,12 @@ $( document ).ready(function() {
              handle_request( g_search, g_type);
         }
     });
+    $("#dash_button").click(function() {
+        window.location.replace("../dashboard/");
+    });
+    $("#home_button").click(function() {
+        window.location.replace("../");
+    });
 
     $("#submit_custom").click(function() {
         $("#custom").prop("checked", true);

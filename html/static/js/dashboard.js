@@ -260,5 +260,12 @@ $( document ).ready(function() {
         $("#left_button").hide();
         $("#right_button").show();
     }
+
+    $("#note_button").click(function() {
+        window.location.replace("../notifications/");
+    });
+    $("#home_button").click(function() {
+        window.location.replace("../");
+    });
     load_all_graphs();
 });

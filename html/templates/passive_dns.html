@@ -1,0 +1,24 @@
+{% if dns_data.size > 0 %}
+<h4>Passive DNS data for {{item}}</h4>
+<table width="100%">
+    <tr>
+        <th>Query</th>
+        <th>Answer</th>
+        <th>Created</th>
+        <th>Updated</th>
+        <th style="text-align:right">Count</th>
+        <th style="text-align:right">RR Type</th>
+    </tr>
+    {% for x in dns_data.data  %}
+    <tr>
+        <td>{{x.query}}</td>
+        <td>{{x.answer}}</td>
+        <td>{{x.firstSeenTimestamp}}</td>
+        <td>{{x.lastSeenTimestamp}}</td>
+        <td style="text-align:right">{{x.times}}</td>
+        <td style="text-align:right">{{x.rrtype}}</td>
+    </tr>
+    {% endfor %}
+
+</table>
+{%endif%}
