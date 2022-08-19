@@ -120,9 +120,8 @@ main_data_types: Dict[str, Dict[str, Tuple[str, str, str]]] = {
         "nntp_proxy_new_ips": ("nntp_proxy", "new_ips", "New IP Addresses"),
         "nntp_proxy_time_ips": ("nntp_proxy", "time_ips", "IPs per Time"),
         "nntp_proxy_size_ip": ("nntp_proxy", "size_ip", "Volume per IP"),
-        "nntp_proxy_size_time": ("nntp_proxy", "size_time", "Volume per time"),
-        "nntp_proxy_size_up_time": ("nntp_proxy", "size_up_time", "Volume up per time"),
-        "nntp_proxy_size_down_time": ("nntp_proxy", "size_down_time", "Volume down per time"),
+        "nntp_proxy_size_up_time": ("nntp_proxy", "size_up_time", "Volume Up per Time"),
+        "nntp_proxy_size_down_time": ("nntp_proxy", "size_down_time", "Volume Down per Time"),
         "nntp_proxy_size_prefix": ("nntp_proxy", "size_prefix", "Volume per Prefix"),
     }
 }
@@ -269,9 +268,13 @@ def passive_dns(item) -> Tuple[str, int, Dict[str, str]]:
         print(dns_data, dns_data['size'])
     except Exception as e:
         print(e)
-        return make_response(json.dumps({'success': False, "message": str(e)}), 200,
-                             {'ContentType': 'application/json'})
+        return make_response(json.dumps({'success': False, "message": str(e)}), 200, {'ContentType': 'application/json'})
     return render_template("passive_dns.html", dns_data=dns_data, item=item), 200, {'ContentType': 'application/json'}
+
+
+@app.route('/threat_links/<item>/', methods=["GET"])
+def threat_links(item) -> Tuple[str, int, Dict[str, str]]:
+    return render_template("threat_links.html", item=item), 200, {'ContentType': 'application/json'}
 
 
 @app.route('/reverse_dns/<item>/', methods=["GET"])

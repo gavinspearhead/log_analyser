@@ -95,19 +95,19 @@ def get_nntp_proxy_time_ips_data(mask: Dict[str, Any], search: str, raw: bool,
 
     if name == "size_up_time":
         data = Data_set('ip_address', 'time', 'total_up')
+        data.set_keys([orig_time_mask, 'IP Address', 'Count', 'Total up', 'Total down', 'Hosts'])
     elif name == 'size_down_time':
         data = Data_set('ip_address', 'time', 'total_down')
+        data.set_keys([orig_time_mask, 'IP Address', 'Count', 'Total up', 'Total down', 'Hosts'])
     else:
         data = Data_set('ip_address', 'time', 'total')
+        data.set_keys([orig_time_mask, 'IP Address', 'Total', 'Hosts'])
     if raw:
         if name == "size_up_time":
-            data.set_keys([orig_time_mask, 'IP Address', 'Total_up', 'Total_down', 'Hosts'])
             data.prepare_time_output(time_mask, intervals, {'time': None, 'ip_address': "", 'total_up': 0})
         elif name == "size_down_time":
-                data.set_keys([orig_time_mask, 'IP Address', 'Total_up', 'Total_down', 'Hosts'])
-                data.prepare_time_output(time_mask, intervals, {'time': None, 'ip_address': "", 'total_down': 0})
+            data.prepare_time_output(time_mask, intervals, {'time': None, 'ip_address': "", 'total_down': 0})
         else:
-            data.set_keys([orig_time_mask, 'IP Address', 'Total', 'Hosts'])
             data.prepare_time_output(time_mask, intervals, {'time': None, 'ip_address': "", 'total': 0})
     for x in res:
         time_str = format_time(time_mask, x['_id']['month'], x['hour'][0], x['_id']['time'])
@@ -120,6 +120,9 @@ def get_nntp_proxy_time_ips_data(mask: Dict[str, Any], search: str, raw: bool,
             'hosts': ", ".join(sorted(x['hosts']))
         }
         data.add_data_row(row)
+    if not raw:
+        data.format_size('total_up')
+        data.format_size('total_down')
     return data
 
 

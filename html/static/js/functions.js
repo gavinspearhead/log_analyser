@@ -26,13 +26,19 @@ function set_ip_click_handler() {
         }).done(function(data) {
             $("#dns_popup_content").html(data);
             $("#dns_popup").modal("handleUpdate");
-            $.ajax({
-                url: script_root +"/passive_dns/"+ encodeURIComponent(ip_address) ,
-                type: "GET"
-            }).done(function(data) {
-//                var res = JSON.parse(data);
-                $("#passive_dns_data").html(data);
-            });
+
+        });
+        $.ajax({
+            url: script_root +"/passive_dns/"+ encodeURIComponent(ip_address) ,
+            type: "GET"
+        }).done(function(data) {
+            $("#passive_dns_data").html(data);
+        });
+        $.ajax({
+            url: script_root +"/threat_links/"+ encodeURIComponent(ip_address) ,
+            type: "GET"
+        }).done(function(data) {
+            $("#threat_links").html(data);
         });
     })
 
