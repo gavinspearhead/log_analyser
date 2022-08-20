@@ -265,9 +265,8 @@ def passive_dns(item) -> Tuple[str, int, Dict[str, str]]:
             x['lastUpdatedTimestamp'] = datetime.utcfromtimestamp(x['lastUpdatedTimestamp'] // 1000).strftime('%Y-%m-%d %H:%M:%S')
             x['firstSeenTimestamp'] = datetime.utcfromtimestamp(x['firstSeenTimestamp'] // 1000).strftime('%Y-%m-%d %H:%M:%S')
             x['lastSeenTimestamp'] = datetime.utcfromtimestamp(x['lastSeenTimestamp'] // 1000).strftime( '%Y-%m-%d %H:%M:%S')
-        print(dns_data, dns_data['size'])
+        # print(dns_data, dns_data['size'])
     except Exception as e:
-        print(e)
         return make_response(json.dumps({'success': False, "message": str(e)}), 200, {'ContentType': 'application/json'})
     return render_template("passive_dns.html", dns_data=dns_data, item=item), 200, {'ContentType': 'application/json'}
 

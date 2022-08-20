@@ -19,7 +19,9 @@ function set_ip_click_handler() {
     $(".ip_addr").click(function(event) {
         var ip_address = $(this).attr('data-content') ;
         $("#dns_popup").modal('show');
-        $("#dns_popup_content").text("Loading....");
+        $("#dns_popup_content").html("Loading....<br>");
+        $("#passive_dns_data").text("");
+        $("#threat_links").text("");
         $.ajax({
             url: script_root +"/reverse_dns/"+ encodeURIComponent(ip_address),
             type: "GET"

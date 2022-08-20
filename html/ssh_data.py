@@ -81,9 +81,9 @@ def get_ssh_user_data(search: str, mask: Dict[str, Any]) -> Data_set:
             'username': x['_id']['username'],
             'type': x['_id']['type'],
             'count': x['total'],
-            'ips': ", ".join(x['ips']),
+            'ips': ", ".join(sorted(x['ips'])),
             'hosts': ", ".join(x['hosts']),
-            'times': ", ".join(x['times'])
+            'times': ", ".join(sorted(x['times']))
         }
         data.add_data_row(row)
     return data
