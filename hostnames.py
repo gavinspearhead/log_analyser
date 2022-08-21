@@ -22,4 +22,4 @@ class Hostnames:
         return self._hostnames
 
     def translate(self, ip_address: str) -> Optional[str]:
-        return self._hostnames.get(ip_address)
+        return self._hostnames.get(ip_address.strip())

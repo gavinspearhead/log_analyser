@@ -78,7 +78,7 @@ def get_apache_codes_data(mask: Dict[str, Any], search: str) -> Data_set:
     for x in res:
         row = {
             'code': x['_id'],
-            'code_description': http_codes_list.map_code(x['_id']),
+            '_code_description': http_codes_list.map_code(x['_id']),
             'count': x['total'],
             'ip_addresses': ", ".join(x['ip_addresses']),
             'hosts': ", ".join(x['hosts'])
@@ -139,7 +139,7 @@ def get_apache_ips_data(mask: Dict[str, Any], search: str, name: str) -> Data_se
             'count': x['total'],
             'users': ", ".join(sorted(x['usernames'])),
             'codes': ", ".join(codes),
-            'code_descriptions': ", ".join(code_names),
+            '_code_descriptions': ", ".join(code_names),
             'hosts': ", ".join(sorted(x['hosts']))
         }
         data.add_data_row(row)
@@ -257,14 +257,18 @@ def get_apache_time_ips_data(mask: Dict[str, Any], search: str, raw: bool,
             data.prepare_time_output(time_mask, intervals, {'time': None, 'ip_address': "", 'volume': 0, 'codes': ""})
         else:
             data.prepare_time_output(time_mask, intervals, {'time': None, 'ip_address': "", 'total': 0, 'codes': ""})
+    http_codes_list = http_codes()
     for x in res:
         time_str = format_time(time_mask, x['_id']['month'], x['hour'][0], x['_id']['time'])
+        codes = sorted(x['codes'])
+        code_names = [http_codes_list.map_code(code) for code in codes]
         row = {
             'time': time_str,
             'ip_address': x['_id']['ip_address'],
             'total': x['total'],
             'volume': x['volume'],
             'codes': ", ".join(sorted(x['codes'])),
+            '_code_descriptions': ", ".join(code_names),
             'hosts': ", ".join(sorted(x['hosts']))
         }
         data.add_data_row(row)

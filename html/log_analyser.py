@@ -30,6 +30,7 @@ from filenames import notify_file_name, hostnames_file_name
 
 config_path: str = os.path.dirname(__file__)
 app = Flask(__name__)
+hostnames = Hostnames(os.path.join(config_path, '..', hostnames_file_name))
 
 
 class Dashboard_data_types:
@@ -141,7 +142,7 @@ def get_mongo_notifications() -> pymongo.collection.Collection:
 
 @app.route('/data/', methods=['POST'])
 def load_data() -> Tuple[str, int, Dict[str, str]]:
-    hostnames = Hostnames(os.path.join(config_path, '..', hostnames_file_name)).get_hostnames()
+    hostnames_list = hostnames.get_hostnames()
     name: str = request.json.get('name', '').strip()
     rtype: str = request.json.get('type', '').strip()
     period: str = request.json.get('period', '').strip()
@@ -166,32 +167,20 @@ def load_data() -> Tuple[str, int, Dict[str, str]]:
         else:
             fields = keys
             res2 = [[x for x in res1.values()]]
-        # print(res2, keys, fields)
-        return json.dumps({'success': True, "data": res2, "labels": keys, "fields": fields, "hostnames": hostnames}), \
-               200, {'ContentType': 'application/json'}
+        return json.dumps({'success': True, "data": res2, "labels": keys, "fields": fields,
+                           "hostnames": hostnames_list}), 200, {'ContentType': 'application/json'}
     else:
         res3: List[Dict[str, str]] = []
         keys = data.keys
-        flags: Dict[str, Tuple[str, str]] = {}
         res = data.data
         for x in res:
-            for k, v in x.items():
-                v = str(v)
-                if k == 'ip_address' and v not in flags:
-                    flags[v] = get_flag(v)
-                elif k in ['ips', 'ip_addresses']:
-                    for vv in v.split(','):
-                        vv = vv.strip(' ')
-                        if vv not in flags:
-                            flags[vv] = get_flag(vv)
             # Force every thing to string, so we can truncate stuff in the template
             res3.append({k: str(v) for k, v in x.items()})
-        # print(res3, keys, flags)
-        rhtml = render_template("data_table.html", data=res3, keys=keys, flags=flags, hostnames=hostnames)
+        rhtml = render_template("data_table.html", data=res3, keys=keys, hostnames=hostnames_list)
         return json.dumps({'success': True, 'rhtml': rhtml}), 200, {'ContentType': 'application/json'}
 
 
-def get_hosts() -> List[str]:
+def get_hosts_mongo() -> List[str]:
     col = get_mongo_connection()
     res = col.distinct("hostname")
     return list(set([x.lower() for x in res]))
@@ -208,15 +197,27 @@ def utility_processor():
             pass
         return ""
 
-    return dict(match_prefix=match_prefix)
+    def get_flag_by_ip(ip_address: str):
+        return get_flag(ip_address)
+
+    def get_hostname(ip_address: str):
+        hostname = hostnames.translate(ip_address)
+        if hostname is not None:
+            return hostname.strip()
+        p = match_prefix(ip_address, hostnames.get_hostnames())
+        if p != "":
+            return p
+        return ip_address
+
+    return dict(match_prefix=match_prefix, get_flag_by_ip=get_flag_by_ip, get_hostname=get_hostname)
 
 
 @app.route('/hosts/', methods=['POST'])
 def hosts() -> Tuple[str, int, Dict[str, str]]:
     try:
         selected = request.json.get('selected', '').strip()
-        hostnames = get_hosts()
-        html = render_template('hosts_list.html', hosts=hostnames, selected=selected)
+        hostnames_list = get_hosts_mongo()
+        html = render_template('hosts_list.html', hosts=hostnames_list, selected=selected)
         return json.dumps({'success': True, 'html': html}), 200, {'ContentType': 'application/json'}
     except Exception as e:
         return json.dumps({'success': False, "message": str(e)}), 200, {'ContentType': 'application/json'}
@@ -262,12 +263,16 @@ def passive_dns(item) -> Tuple[str, int, Dict[str, str]]:
         for x in dns_data['data']:
             x['createdTimestamp'] = datetime.utcfromtimestamp(x['createdTimestamp'] // 1000).strftime(
                 '%Y-%m-%d %H:%M:%S')
-            x['lastUpdatedTimestamp'] = datetime.utcfromtimestamp(x['lastUpdatedTimestamp'] // 1000).strftime('%Y-%m-%d %H:%M:%S')
-            x['firstSeenTimestamp'] = datetime.utcfromtimestamp(x['firstSeenTimestamp'] // 1000).strftime('%Y-%m-%d %H:%M:%S')
-            x['lastSeenTimestamp'] = datetime.utcfromtimestamp(x['lastSeenTimestamp'] // 1000).strftime( '%Y-%m-%d %H:%M:%S')
+            x['lastUpdatedTimestamp'] = datetime.utcfromtimestamp(x['lastUpdatedTimestamp'] // 1000).strftime(
+                '%Y-%m-%d %H:%M:%S')
+            x['firstSeenTimestamp'] = datetime.utcfromtimestamp(x['firstSeenTimestamp'] // 1000).strftime(
+                '%Y-%m-%d %H:%M:%S')
+            x['lastSeenTimestamp'] = datetime.utcfromtimestamp(x['lastSeenTimestamp'] // 1000).strftime(
+                '%Y-%m-%d %H:%M:%S')
         # print(dns_data, dns_data['size'])
     except Exception as e:
-        return make_response(json.dumps({'success': False, "message": str(e)}), 200, {'ContentType': 'application/json'})
+        return make_response(json.dumps({'success': False, "message": str(e)}), 200,
+                             {'ContentType': 'application/json'})
     return render_template("passive_dns.html", dns_data=dns_data, item=item), 200, {'ContentType': 'application/json'}
 
 
@@ -360,22 +365,11 @@ def notifications_data() -> Tuple[str, int, Dict[str, str]]:
             "$and": [{"timestamp": {"$gte": mask_range[0]}}, {"timestamp": {"$lte": mask_range[1]}}, type_mask]}
         res = col.find(mask)
         data = []
-        flags: Dict[str, Tuple[str, str]] = {}
         for i in res:
             local_tz: str = str(tzlocal.get_localzone())
             i['timestamp'] = pytz.timezone('utc').localize(i['timestamp']).astimezone(pytz.timezone(local_tz))
             data.append(i)
-            for k, v in i.items():
-                v = str(v)
-                if k == 'ip_address' and v not in flags:
-                    flags[v] = get_flag(v)
-                elif k in ['ips', 'ip_addresses']:
-                    for vv in v.split(','):
-                        vv = vv.strip(' ')
-                        if vv not in flags:
-                            flags[vv] = get_flag(vv)
-        rhtml = render_template("notifications_table.html", keys=keys, data=data, names=names, prog_name=prog_name,
-                                flags=flags)
+        rhtml = render_template("notifications_table.html", keys=keys, data=data, names=names, prog_name=prog_name)
         return json.dumps({'success': True, 'rhtml': rhtml, 'title_type': title_type}), 200, \
                {'ContentType': 'application/json'}
     except Exception as e:
