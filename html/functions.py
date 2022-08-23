@@ -158,7 +158,10 @@ def get_dns_data(item: str) -> List[str]:
             result = dns.resolver.resolve(item, 'A')
         except dns.exception.DNSException:
             pass
-        result1 = dns.resolver.resolve(item, 'AAAA')
+        try:
+            result1 = dns.resolver.resolve(item, 'AAAA')
+        except dns.exception.DNSException:
+            pass
     except (dns.resolver.NoAnswer, dns.resolver.NXDOMAIN, dns.exception.Timeout, dns.exception.DNSException):
         result = ['Not found']
     data: List[str] = []

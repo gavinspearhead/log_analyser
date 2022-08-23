@@ -283,6 +283,7 @@ def threat_links(item) -> Tuple[str, int, Dict[str, str]]:
 
 @app.route('/reverse_dns/<item>/', methods=["GET"])
 def reverse_dns(item) -> Tuple[str, int, Dict[str, str]]:
+    item = item.strip()
     dns_data = get_dns_data(item)
     whois_data = get_whois_data(item)
     asn_data = get_asn_info(item)
