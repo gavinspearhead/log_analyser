@@ -140,8 +140,11 @@ def get_asn_info(item: str) -> Dict[str, str]:
 
 
 def get_location_info(ip_address: str):
-    city = geoip2_city_db.city(ip_address.strip())
     rv: Dict[str, str] = {}
+    try:
+        city = geoip2_city_db.city(ip_address.strip())
+    except geoip2.errors.AddressNotFoundError:
+        return rv
     try:
         rv['City'] = city.city.names['en']
     except KeyError:
