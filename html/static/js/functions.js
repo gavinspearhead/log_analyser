@@ -26,21 +26,29 @@ function set_ip_click_handler() {
             url: script_root +"/reverse_dns/"+ encodeURIComponent(ip_address),
             type: "GET"
         }).done(function(data) {
-            $("#dns_popup_content").html(data);
-            $("#dns_popup").modal("handleUpdate");
-
+            var res = JSON.parse(data);
+            if (res.success == true) {
+                $("#dns_popup_content").html(res.rhtml);
+                $("#dns_popup").modal("handleUpdate");
+            }
         });
         $.ajax({
             url: script_root +"/passive_dns/"+ encodeURIComponent(ip_address) ,
             type: "GET"
         }).done(function(data) {
-            $("#passive_dns_data").html(data);
+            var res = JSON.parse(data);
+            if (res.success == true) {
+                $("#passive_dns_data").html(res.rhtml);
+            }
         });
         $.ajax({
             url: script_root +"/threat_links/"+ encodeURIComponent(ip_address) ,
             type: "GET"
         }).done(function(data) {
-            $("#threat_links").html(data);
+            var res = JSON.parse(data);
+            if (res.success == true) {
+                $("#threat_links").html(res.rhtml);
+            }
         });
     })
 

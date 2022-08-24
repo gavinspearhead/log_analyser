@@ -250,16 +250,18 @@ def dashboard() -> Response:
         resp.set_cookie('test', 'test')
         return resp
     except Exception as e:
-        return make_response(json.dumps({'success': False, "message": str(e)}), 200,
-                             {'ContentType': 'application/json'})
+        return make_response(json.dumps({'success': False, "message": str(e)}), 200, {'ContentType': 'application/json'})
 
 
 @app.route('/passive_dns/<item>/', methods=["GET"])
-def passive_dns(item) -> Tuple[str, int, Dict[str, str]]:
+def passive_dns(item) -> Response:
     try:
         url = "https://api.mnemonic.no/pdns/v3/"
         response = requests.get(url + item)
         dns_data = response.json()
+        # print(dns_data)
+        if dns_data['responseCode'] != 200:
+            raise ValueError(dns_data['messages'][0]['message'])
         for x in dns_data['data']:
             x['createdTimestamp'] = datetime.utcfromtimestamp(x['createdTimestamp'] // 1000).strftime(
                 '%Y-%m-%d %H:%M:%S')
@@ -269,31 +271,34 @@ def passive_dns(item) -> Tuple[str, int, Dict[str, str]]:
                 '%Y-%m-%d %H:%M:%S')
             x['lastSeenTimestamp'] = datetime.utcfromtimestamp(x['lastSeenTimestamp'] // 1000).strftime(
                 '%Y-%m-%d %H:%M:%S')
-        # print(dns_data, dns_data['size'])
+        rhtml = render_template("passive_dns.html", dns_data=dns_data, item=item)
     except Exception as e:
-        return make_response(json.dumps({'success': False, "message": str(e)}), 200,
-                             {'ContentType': 'application/json'})
-    return render_template("passive_dns.html", dns_data=dns_data, item=item), 200, {'ContentType': 'application/json'}
+        return make_response(json.dumps({'success': False, "message": str(e)}), 200, {'ContentType': 'application/json'})
+    return make_response(json.dumps({'success': True, 'rhtml': rhtml}), 200, {'ContentType': 'application/json'})
 
 
 @app.route('/threat_links/<item>/', methods=["GET"])
-def threat_links(item) -> Tuple[str, int, Dict[str, str]]:
-    return render_template("threat_links.html", item=item), 200, {'ContentType': 'application/json'}
+def threat_links(item) -> Response:
+    rhtml = render_template("threat_links.html", item=item)
+    return make_response(json.dumps({'success': True, 'rhtml': rhtml}), 200, {'ContentType': 'application/json'})
 
 
 @app.route('/reverse_dns/<item>/', methods=["GET"])
-def reverse_dns(item) -> Tuple[str, int, Dict[str, str]]:
+def reverse_dns(item) -> Response:
     item = item.strip()
     dns_data = get_dns_data(item)
     whois_data = get_whois_data(item)
+    # print(whois_data)
     asn_data = get_asn_info(item)
     prefix = get_prefix(item)
+
     if prefix:
         asn_data['Prefix'] = prefix
     location = get_location_info(item)
-
-    return render_template("reverse_dns.html", dns_data=dns_data, item=item, whois_data=whois_data, location=location,
-                           asn_data=asn_data), 200, {'ContentType': 'application/json'}
+    # print(location)
+    rhtml = render_template("reverse_dns.html", dns_data=dns_data, item=item, whois_data=whois_data, location=location,
+                            asn_data=asn_data)
+    return make_response(json.dumps({'success': True, 'rhtml': rhtml}), 200, {'ContentType': 'application/json'})
 
 
 @app.route('/notifications_count/', methods=['POST'])
