@@ -22,6 +22,9 @@ function set_ip_click_handler() {
         $("#dns_popup_content").html("Loading....<br>");
         $("#passive_dns_data").text("");
         $("#threat_links").text("");
+        $("#asn_data").text("");
+        $("#whois_data").text("");
+
         $.ajax({
             url: script_root +"/reverse_dns/"+ encodeURIComponent(ip_address),
             type: "GET"
@@ -33,12 +36,30 @@ function set_ip_click_handler() {
             }
         });
         $.ajax({
+            url: script_root +"/whois/"+ encodeURIComponent(ip_address) ,
+            type: "GET"
+        }).done(function(data) {
+            var res = JSON.parse(data);
+            if (res.success == true) {
+                $("#whois_data").html(res.rhtml);
+            }
+        });
+        $.ajax({
             url: script_root +"/passive_dns/"+ encodeURIComponent(ip_address) ,
             type: "GET"
         }).done(function(data) {
             var res = JSON.parse(data);
             if (res.success == true) {
                 $("#passive_dns_data").html(res.rhtml);
+            }
+        });
+        $.ajax({
+            url: script_root +"/asn/"+ encodeURIComponent(ip_address) ,
+            type: "GET"
+        }).done(function(data) {
+            var res = JSON.parse(data);
+            if (res.success == true) {
+                $("#asn_data").html(res.rhtml);
             }
         });
         $.ajax({

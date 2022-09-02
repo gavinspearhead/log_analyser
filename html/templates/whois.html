@@ -1,0 +1,8 @@
+{% if whois_data != {} %}
+<h5>Whois for {{item}}</h5>
+<ul>
+	{% for y in whois_data %}
+		<li>{{y}} : {{ whois_data[y] }} </li>
+	{% endfor %}
+</ul>
+{%endif%}

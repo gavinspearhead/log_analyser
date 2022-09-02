@@ -283,21 +283,34 @@ def threat_links(item) -> Response:
     return make_response(json.dumps({'success': True, 'rhtml': rhtml}), 200, {'ContentType': 'application/json'})
 
 
+@app.route('/whois/<item>/', methods=["GET"])
+def whois(item) -> Response:
+    item = item.strip()
+    whois_data = get_whois_data(item)
+    # print(whois_data)
+    rhtml = render_template("whois.html",  item=item, whois_data=whois_data)
+    return make_response(json.dumps({'success': True, 'rhtml': rhtml}), 200, {'ContentType': 'application/json'})
+
+
+@app.route('/asn/<item>/', methods=["GET"])
+def asn(item) -> Response:
+    item = item.strip()
+    asn_data = get_asn_info(item)
+    location = get_location_info(item)
+    prefix = get_prefix(item)
+    if prefix:
+        asn_data['Prefix'] = prefix
+    rhtml = render_template("asn.html",  item=item,  location=location, asn_data=asn_data)
+    return make_response(json.dumps({'success': True, 'rhtml': rhtml}), 200, {'ContentType': 'application/json'})
+
+
 @app.route('/reverse_dns/<item>/', methods=["GET"])
 def reverse_dns(item) -> Response:
     item = item.strip()
     dns_data = get_dns_data(item)
-    whois_data = get_whois_data(item)
-    # print(whois_data)
-    asn_data = get_asn_info(item)
-    prefix = get_prefix(item)
 
-    if prefix:
-        asn_data['Prefix'] = prefix
-    location = get_location_info(item)
     # print(location)
-    rhtml = render_template("reverse_dns.html", dns_data=dns_data, item=item, whois_data=whois_data, location=location,
-                            asn_data=asn_data)
+    rhtml = render_template("reverse_dns.html", dns_data=dns_data, item=item)
     return make_response(json.dumps({'success': True, 'rhtml': rhtml}), 200, {'ContentType': 'application/json'})
 
 
