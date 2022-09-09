@@ -118,6 +118,12 @@ def match_ip_address(search: str) -> Optional[Dict[str, Any]]:
     return None
 
 
+def get_hosts_mongo() -> List[str]:
+    col = get_mongo_connection()
+    res = col.distinct("hostname")
+    return list(set([x.lower() for x in res]))
+
+
 def get_mongo_connection() -> pymongo.collection.Collection:
     config_path: str = os.path.dirname(__file__)
     output = Outputs()
@@ -197,9 +203,7 @@ def get_whois_data(item: str) -> Dict[str, str]:
 
 
 if __name__ == '__main__':
-    print('fao')
     print(get_whois_data('101.3.4.5'))
     print(get_whois_data('84.243.238.30'))
     print(get_whois_data('85.104.118.11'))
     print(get_whois_data('84.53.185.170'))
-    print('aoeua')

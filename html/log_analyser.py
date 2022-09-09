@@ -15,7 +15,7 @@ import tzlocal
 from typing import List, Dict, Any, Tuple
 from flask import Flask, render_template, request, make_response, Response
 from data_set import Data_set
-from functions import get_period_mask, get_mongo_connection, get_dns_data, get_whois_data
+from functions import get_period_mask, get_mongo_connection, get_dns_data, get_whois_data, get_hosts_mongo
 from util import get_flag, get_asn_info, get_prefix, get_location_info
 from ssh_data import get_ssh_data
 from apache_data import get_apache_data
@@ -180,12 +180,6 @@ def load_data() -> Tuple[str, int, Dict[str, str]]:
         return json.dumps({'success': True, 'rhtml': rhtml}), 200, {'ContentType': 'application/json'}
 
 
-def get_hosts_mongo() -> List[str]:
-    col = get_mongo_connection()
-    res = col.distinct("hostname")
-    return list(set([x.lower() for x in res]))
-
-
 @app.context_processor
 def utility_processor():
     def match_prefix(ip: str, prefixes: Dict[str, str]) -> str:
@@ -279,6 +273,7 @@ def passive_dns(item) -> Response:
 
 @app.route('/threat_links/<item>/', methods=["GET"])
 def threat_links(item) -> Response:
+    item = item.strip()
     rhtml = render_template("threat_links.html", item=item)
     return make_response(json.dumps({'success': True, 'rhtml': rhtml}), 200, {'ContentType': 'application/json'})
 
@@ -287,7 +282,6 @@ def threat_links(item) -> Response:
 def whois(item) -> Response:
     item = item.strip()
     whois_data = get_whois_data(item)
-    # print(whois_data)
     rhtml = render_template("whois.html",  item=item, whois_data=whois_data)
     return make_response(json.dumps({'success': True, 'rhtml': rhtml}), 200, {'ContentType': 'application/json'})
 
@@ -308,8 +302,6 @@ def asn(item) -> Response:
 def reverse_dns(item) -> Response:
     item = item.strip()
     dns_data = get_dns_data(item)
-
-    # print(location)
     rhtml = render_template("reverse_dns.html", dns_data=dns_data, item=item)
     return make_response(json.dumps({'success': True, 'rhtml': rhtml}), 200, {'ContentType': 'application/json'})
 

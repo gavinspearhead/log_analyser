@@ -19,7 +19,7 @@ function set_ip_click_handler() {
     $(".ip_addr").click(function(event) {
         var ip_address = $(this).attr('data-content') ;
         $("#dns_popup").modal('show');
-        $("#dns_popup_content").html("Loading....<br>");
+        $("#dns_popup_content").text("");
         $("#passive_dns_data").text("");
         $("#threat_links").text("");
         $("#asn_data").text("");
