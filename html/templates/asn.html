@@ -12,7 +12,16 @@
 <h5>Location information for {{item}}</h5>
 <ul>
     {% for y in location %}
-    <li>{{y}} : {{ location[y] }} </li>
+        {%if y == 'Flag' %}
+        {%else%}
+        <li>
+            {{y}} : {{ location[y] }}
+            {% if y == 'Country' and "Flag" in location %}
+                &nbsp;
+                <img src="{{ url_for('static', filename='img/flags/' ~ location['Flag']|lower ~ '.png') }}" title="{{location['Flag']}}">
+            {% endif %}
+        </li>
+        {% endif %}
     {% endfor %}
 </ul>
 {%endif%}

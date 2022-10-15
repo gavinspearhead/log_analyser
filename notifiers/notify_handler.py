@@ -19,10 +19,10 @@ class Notify_handler:
         self._convert_dns = config.get('resolve_ip', False)
         self._find_country = config.get('find_country', False)
 
-    def do_find_country(self):
+    def do_find_country(self) -> bool:
         return self._find_country
 
-    def do_convert_dns(self):
+    def do_convert_dns(self) -> bool:
         return self._convert_dns
 
     def check_rate_limit(self, limit_type: str) -> bool:

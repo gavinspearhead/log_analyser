@@ -159,6 +159,7 @@ def get_location_info(ip_address: str):
         pass
     try:
         rv['Country'] = city.country.names['en']
+        rv['Flag'] = city.country.iso_code
     except KeyError:
         pass
     try:

@@ -33,7 +33,7 @@ class Notify_http(notify_handler.Notify_handler):
         else:
             raise NotImplementedError
 
-    def get_format(self):
+    def get_format(self) -> str:
         if self._method == "POST":
             return "json"
         else:
