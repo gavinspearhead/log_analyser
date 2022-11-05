@@ -18,12 +18,12 @@ function set_ip_click_handler() {
     $(".ip_addr").unbind("click");
     $(".ip_addr").click(function(event) {
         var ip_address = $(this).attr('data-content') ;
-        $("#dns_popup").modal('show');
         $("#dns_popup_content").text("");
         $("#passive_dns_data").text("");
         $("#threat_links").text("");
         $("#asn_data").text("");
         $("#whois_data").text("");
+        $("#dns_popup").modal('show');
 
         $.ajax({
             url: script_root +"/reverse_dns/"+ encodeURIComponent(ip_address),

@@ -124,10 +124,13 @@ def get_prefix(ip_address: str) -> Optional[str]:
         r = geoip2_country_db.country(ip_address)
         network_address = ipaddress.ip_interface("{}/{}".format(ip_address, r.traits._prefix_len))
         return str(network_address.network)
-    except geoip2.errors.AddressNotFoundError:
+    except (geoip2.errors.AddressNotFoundError, ValueError):
         for x in local_addresses:
-            if ipaddress.ip_address(ip_address) in ipaddress.ip_network(x):
-                return x
+            try:
+                if ipaddress.ip_address(ip_address) in ipaddress.ip_network(x):
+                    return x
+            except ValueError:
+                pass
         return None
 
 
@@ -135,7 +138,7 @@ def get_asn_info(item: str) -> Dict[str, str]:
     try:
         asn = geoip2_asn_db.asn(item.strip())
         return {'AS Number': asn.autonomous_system_number, 'AS Organisation': asn.autonomous_system_organization}
-    except geoip2.errors.AddressNotFoundError:
+    except (geoip2.errors.AddressNotFoundError, ValueError):
         return {}
 
 
@@ -143,7 +146,7 @@ def get_location_info(ip_address: str):
     rv: Dict[str, str] = {}
     try:
         city = geoip2_city_db.city(ip_address.strip())
-    except geoip2.errors.AddressNotFoundError:
+    except (geoip2.errors.AddressNotFoundError, ValueError):
         return rv
     try:
         rv['City'] = city.city.names['en']

@@ -12,7 +12,7 @@
         {% for k in keys %}
             {% if k == 'ip_address' or k == 'dest_address' %}
                 {% set h = get_hostname(d[k]) %}
-                <td><span title="{{d[k]}}" class="ip_addr" data-content="{{h}}">{{ h | truncate(80) }}</span>
+                <td><span title="{{d[k]}}" class="ip_addr" data-content="{{d[k]}}">{{ h | truncate(80) }}</span>
                 {% set flag, country = get_flag_by_ip(d[k]) %}
                 {% if flag != '' %}
                     <img src="{{ url_for('static', filename='img/flags/' ~ flag ~ '.png') }}" title="{{country}}">
