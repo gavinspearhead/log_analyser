@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from hostnames import Hostnames
 from filenames import hostnames_file_name
-from util import get_prefix
+from util import get_prefix, get_flag
 from functions import join_str_list
 
 
@@ -55,6 +55,32 @@ class Data_set:
     @property
     def data(self) -> List[Dict[str, Union[int, str]]]:
         return self._data
+
+    def merge_countries(self, sum_list: List[str], join_list: List[str], hash_list: Optional[List[str]] = None,
+                       sort_by=None) -> None:
+        rv2: Dict[str, Dict[str, Union[str, int]]] = {}
+        for x in self._data:
+            iso_code, country = get_flag(str(x['ip_address']))
+            key = iso_code
+            if country is None or country == '':
+                key = country = 'Unknown'
+            if hash_list is not None:
+                key = str(iso_code) + str(hash(str([x[y] for y in hash_list])))
+            print(key, country)
+            if key in rv2:
+                for z in sum_list:
+                    rv2[key][z] += x[z]
+                for y in join_list:
+                    rv2[key][y] = join_str_list(rv2[key][y], x[y])
+            else:
+                rv2[key] = {}
+                rv2[key]['country'] = country
+                rv2[key].update(x)
+                del rv2[key]['ip_address']
+        self._data = list(rv2.values())
+        print(rv2)
+        if sort_by is not None:
+            self._data.sort(key=lambda r: r[sort_by], reverse=True)
 
     def merge_prefixes(self, sum_list: List[str], join_list: List[str], hash_list: Optional[List[str]] = None,
                        sort_by=None) -> None:

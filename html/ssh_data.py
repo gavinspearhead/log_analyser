@@ -98,7 +98,9 @@ def get_ssh_ip_data(search: str, mask: Dict[str, Any], name: str) -> Data_set:
                      "hosts": {"$addToSet": "$host"}}},
          {"$sort": {"total": -1}}
          ])
-    data = Data_set('type', 'prefix' if name == 'ip_prefixes' else 'ip_address', 'count')
+    name_to_field = { 'ip_prefixes': 'prefix', 'ip_countries': 'country', 'ip_addresses': 'ip_address'}
+
+    data = Data_set('type', name_to_field[name], 'count')
     for x in res:
         ip_address = x['_id']['ip_address']
         row = {
@@ -112,6 +114,9 @@ def get_ssh_ip_data(search: str, mask: Dict[str, Any], name: str) -> Data_set:
     if name == 'ip_prefixes':
         data.set_keys(['IP Prefixes', 'Count', 'Type', 'Users', 'Hosts'])
         data.merge_prefixes(['count'], ['users', 'hosts'], ['type'])
+    elif name == 'ip_countries':
+        data.set_keys(['Countries', 'Count', 'Type', 'Users', 'Hosts'])
+        data.merge_countries(['count'], ['users', 'hosts'], ['type'])
     else:
         data.set_keys(['IP Addresses', 'Count', 'Type', 'Users', 'Hosts'], )
     return data
@@ -273,7 +278,7 @@ def get_ssh_data(name: str, period: str, search: str, raw: bool = False, to_time
         data = get_ssh_user_time_data(search, mask, raw, time_mask, intervals)
     elif name == 'time_ips':
         data = get_ssh_time_ips_data(search, mask, raw, time_mask, intervals)
-    elif name == 'ip_addresses' or name == 'ip_prefixes':
+    elif name == 'ip_addresses' or name == 'ip_prefixes' or name == 'ip_countries':
         data = get_ssh_ip_data(search, mask, name)
     elif name == 'new_ips':
         data = get_ssh_new_ips_data(search, mask, mask_range[0])

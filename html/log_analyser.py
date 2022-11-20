@@ -40,6 +40,7 @@ class Dashboard_data_types:
         "ssh_time_ips": ("ssh", "time_ips", "SSH - IPs per time"),
         "ssh_ip_addresses": ("ssh", "ip_addresses", "SSH - IP Addresses"),
         "ssh_ip_prefixes": ("ssh", "ip_prefixes", "SSH - IP Prefixes"),
+        "ssh_ip_countries": ("ssh", "ip_countries", "SSH - IP countries"),
         "apache_ip_addresses": ("apache", "ip_addresses", "Apache - IP Addresses"),
         "apache_ip_prefixes": ("apache", "ip_prefixes", "Apache - IP Prefixes"),
         "apache_time_ips": ("apache", "time_ips", "Apache - IPs per Time"),
@@ -99,6 +100,7 @@ main_data_types: Dict[str, Dict[str, Tuple[str, str, str]]] = {
         "ssh_time_ips": ("ssh", "time_ips", "IPs per Time"),
         "ssh_ip_addresses": ("ssh", "ip_addresses", "IP Addresses"),
         "ssh_ip_prefixes": ("ssh", "ip_prefixes", "IP Prefixes"),
+        "ssh_ip_countries": ("ssh", "ip_countries", "IP Countries"),
         "ssh_new_ips": ("ssh", "new_ips", "New IP Addresses"),
     },
     "apache": {

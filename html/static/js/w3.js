@@ -178,7 +178,6 @@ w3.sortHTML = function(id, sel, sortvalue) {
           }
           v1 = v1.toLowerCase();
           v2 = v2.toLowerCase();
-          console.log(v1, v2);
           if (v1.match(/^\d+\.\d+/) && v2.match(/^\d+\.\d+/)) {
               v1 = parseFloat(v1);
               v2 = parseFloat(v2);

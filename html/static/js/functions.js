@@ -72,7 +72,6 @@ function set_ip_click_handler() {
             }
         });
     })
-
 }
 
 function get_period()
