@@ -66,7 +66,6 @@ class Data_set:
                 key = country = 'Unknown'
             if hash_list is not None:
                 key = str(iso_code) + str(hash(str([x[y] for y in hash_list])))
-            print(key, country)
             if key in rv2:
                 for z in sum_list:
                     rv2[key][z] += x[z]
@@ -78,7 +77,6 @@ class Data_set:
                 rv2[key].update(x)
                 del rv2[key]['ip_address']
         self._data = list(rv2.values())
-        print(rv2)
         if sort_by is not None:
             self._data.sort(key=lambda r: r[sort_by], reverse=True)
 
