@@ -55,7 +55,8 @@ class RegexParser(LogParser):
         'APACHE_TIMESTAMP': ('\\[\\d+/[a-zA-Z]+/\\d+:\\d+:\\d+:\\d+\\s[+-]?\\d+]', parse_apache_timestamp),
         'SYSLOG_TIMESTAMP': ('[A-Za-z]+\\s+\\d+\\s+\\d+:\\d+:\\d+', parse_syslog_timestamp),
         'ISOTIME': (
-            '\\d{4}-?[01]\\d-?[0-3]\\dT[0-2]\\d:?[0-5]\\d:?[0-5]\\d(?:\\.\\d+)?(?:[+-][0-2]\\d(:?[0-5]\\d)?|Z|z)?',
+            '\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})',
+#            '\\d{4}-?[01]\\d-?[0-3]\\dT[0-2]\\d:?[0-5]\\d:?[0-5]\\d(?:\\.\\d+)?(?:[+-][0-2]\\d(:?[0-5]\\d)?|Z|z)?',
             parse_iso_timestamp),
         'DATE': ('\\d{4}-[01]\\d-[0-3]\\dT[0-2]\\d', str),
         '%': ('%', str)
@@ -104,6 +105,7 @@ class RegexParser(LogParser):
                 raise ValueError('missing closing parenthesis')
 
     def parse_regexp(self, line: str) -> Tuple[str, Dict]:
+        #print(line)
         pos: int = 0
         out: str = ""
         filters: Dict = {}
@@ -130,7 +132,7 @@ class RegexParser(LogParser):
         res = self._compiled_pattern.search(line)
         if res is None:
             return []
-        # print(res.groups())
+        #print(res.groups())
         return list(res.groups())
 
     def emit(self, matches: List[str], name: str) -> Dict[str, Union[datetime, int, str, float, bool]]:
@@ -150,6 +152,7 @@ class RegexParser(LogParser):
             except KeyError:
                 continue
         res['name'] = name
+        #print(res)
         return res
 
     def notify(self, output_dict: List[str], name: str) -> None:

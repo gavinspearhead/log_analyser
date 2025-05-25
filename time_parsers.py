@@ -88,3 +88,4 @@ if __name__ == "__main__":
     print('j', parse_syslog_timestamp("Dec 1 23:17:58 "))
     print('y', parse_apache_timestamp("[04/Dec/2021:00:41:47 +0100]"))
     print('x', parse_iso_timestamp("2021-12-04T03:41:47z"))
+    print('x', parse_iso_timestamp("2025-05-25T21:10:29.238524+00:00"))
